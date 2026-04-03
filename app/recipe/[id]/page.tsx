@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { toast } from 'sonner'
 import type { Recipe } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
@@ -166,6 +167,25 @@ export default function RecipeDetailPage() {
             <span className="material-symbols-outlined text-base">edit</span>
             עריכה
           </Link>
+          <button
+            onClick={async () => {
+              if (!confirm('למחוק את המתכון?')) return
+              const { error } = await supabase
+                .from('recipes')
+                .delete()
+                .eq('id', recipe.id)
+              if (error) {
+                toast.error('שגיאה במחיקת המתכון')
+                return
+              }
+              toast.success('המתכון נמחק')
+              router.push('/')
+            }}
+            className="flex items-center gap-1 rounded-lg border border-error/30 px-4 py-2 text-sm text-error transition-colors hover:bg-error/10"
+          >
+            <span className="material-symbols-outlined text-base">delete</span>
+            מחיקה
+          </button>
         </div>
 
         {/* Ingredients */}
