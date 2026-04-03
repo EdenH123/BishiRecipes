@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase'
-import { type Recipe, CATEGORIES, DEFAULT_TAGS } from '@/lib/types'
+import { type Recipe, type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, parseIngredient, serializeIngredient } from '@/lib/types'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -22,8 +22,10 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   const [category, setCategory] = useState(recipe?.category ?? '')
   const [tags, setTags] = useState<string[]>(recipe?.tags ?? [])
   const [customTag, setCustomTag] = useState('')
-  const [ingredients, setIngredients] = useState<string[]>(
-    recipe?.ingredients?.length ? recipe.ingredients : ['']
+  const [ingredients, setIngredients] = useState<Ingredient[]>(
+    recipe?.ingredients?.length
+      ? recipe.ingredients.map(parseIngredient)
+      : [{ amount: '', unit: '', name: '' }]
   )
   const [steps, setSteps] = useState<string[]>(
     recipe?.steps?.length ? recipe.steps : ['']
@@ -73,15 +75,17 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   }
 
   function addIngredient() {
-    setIngredients((prev) => [...prev, ''])
+    setIngredients((prev) => [...prev, { amount: '', unit: '', name: '' }])
   }
 
   function removeIngredient(index: number) {
     setIngredients((prev) => prev.filter((_, i) => i !== index))
   }
 
-  function updateIngredient(index: number, value: string) {
-    setIngredients((prev) => prev.map((item, i) => (i === index ? value : item)))
+  function updateIngredient(index: number, field: keyof Ingredient, value: string) {
+    setIngredients((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    )
   }
 
   function addStep() {
@@ -105,7 +109,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
       return
     }
 
-    const filteredIngredients = ingredients.filter((s) => s.trim() !== '')
+    const filteredIngredients = ingredients.filter((ing) => ing.name.trim() !== '')
     if (filteredIngredients.length === 0) {
       toast.error('יש להוסיף לפחות מצרך אחד')
       return
@@ -156,7 +160,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         description: description.trim() || null,
         category: category || null,
         tags,
-        ingredients: filteredIngredients,
+        ingredients: filteredIngredients.map(serializeIngredient),
         steps: filteredSteps,
         image_url: imageUrl,
         video_url: videoUrl.trim() || null,
@@ -300,22 +304,48 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
 
       {/* 5. Ingredients */}
       <div>
-        <label className="font-medium text-gray-700 mb-1 block">מצרכים</label>
+        <label className="font-medium text-gray-700 mb-2 block">מצרכים</label>
+        {/* Header row */}
+        <div className="flex gap-2 items-center mb-2 text-xs text-outline">
+          <span className="w-16 text-center">כמות</span>
+          <span className="w-24 text-center">יחידה</span>
+          <span className="flex-1">שם המצרך</span>
+          <span className="w-7"></span>
+        </div>
         <div className="space-y-2">
           {ingredients.map((ingredient, index) => (
             <div key={index} className="flex gap-2 items-center">
               <input
                 type="text"
-                value={ingredient}
-                onChange={(e) => updateIngredient(index, e.target.value)}
+                value={ingredient.amount}
+                onChange={(e) => updateIngredient(index, 'amount', e.target.value)}
+                placeholder="2"
+                className="w-16 rounded-lg border border-gray-200 p-3 text-center focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                dir="ltr"
+              />
+              <select
+                value={ingredient.unit}
+                onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+                className="w-24 rounded-lg border border-gray-200 p-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm"
+              >
+                {MEASUREMENT_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit || '—'}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={ingredient.name}
+                onChange={(e) => updateIngredient(index, 'name', e.target.value)}
                 placeholder={`מצרך ${index + 1}`}
-                className={inputClass}
+                className="flex-1 rounded-lg border border-gray-200 p-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
               />
               {ingredients.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeIngredient(index)}
-                  className="shrink-0 text-gray-400 hover:text-primary text-lg transition-colors"
+                  className="shrink-0 w-7 text-gray-400 hover:text-primary text-lg transition-colors"
                 >
                   ✕
                 </button>

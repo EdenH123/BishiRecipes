@@ -7,7 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
-import type { Recipe } from '@/lib/types'
+import { type Recipe, parseIngredient, displayIngredient } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import FavoriteButton from '@/components/FavoriteButton'
@@ -197,23 +197,32 @@ export default function RecipeDetailPage() {
         >
           <h2 className="text-xl font-bold">מצרכים</h2>
           <ul className="mt-3 flex flex-col gap-2">
-            {recipe.ingredients.map((ingredient, i) => (
-              <li key={i} className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={checkedIngredients.has(i)}
-                  onChange={() => toggleIngredient(i)}
-                  className="h-5 w-5 shrink-0 cursor-pointer rounded border-gray-300 accent-tertiary"
-                />
-                <span
-                  className={`text-sm ${
-                    checkedIngredients.has(i) ? 'text-gray-400 line-through' : 'text-gray-700'
-                  }`}
-                >
-                  {ingredient}
-                </span>
-              </li>
-            ))}
+            {recipe.ingredients.map((raw, i) => {
+              const ing = parseIngredient(raw)
+              return (
+                <li key={i} className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={checkedIngredients.has(i)}
+                    onChange={() => toggleIngredient(i)}
+                    className="h-5 w-5 shrink-0 cursor-pointer rounded border-gray-300 accent-tertiary"
+                  />
+                  <span
+                    className={`text-sm ${
+                      checkedIngredients.has(i) ? 'text-gray-400 line-through' : 'text-gray-700'
+                    }`}
+                  >
+                    {ing.amount && (
+                      <span className="font-bold">{ing.amount} </span>
+                    )}
+                    {ing.unit && (
+                      <span className="text-outline">{ing.unit} </span>
+                    )}
+                    {ing.name}
+                  </span>
+                </li>
+              )
+            })}
           </ul>
         </motion.section>
 

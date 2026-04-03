@@ -37,6 +37,52 @@ export interface Comment {
   profiles?: Profile
 }
 
+export interface Ingredient {
+  amount: string
+  unit: string
+  name: string
+}
+
+export const MEASUREMENT_UNITS = [
+  '',
+  'כוס',
+  'כוסות',
+  'כף',
+  'כפות',
+  'כפית',
+  'כפיות',
+  'גרם',
+  'ק״ג',
+  'מ״ל',
+  'ליטר',
+  'יחידה',
+  'יחידות',
+  'חבילה',
+  'קורט',
+  'לפי הטעם',
+] as const
+
+export function parseIngredient(raw: string): Ingredient {
+  try {
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object' && 'name' in parsed) {
+      return { amount: parsed.amount || '', unit: parsed.unit || '', name: parsed.name || '' }
+    }
+  } catch {
+    // Legacy plain string format
+  }
+  return { amount: '', unit: '', name: raw }
+}
+
+export function serializeIngredient(ing: Ingredient): string {
+  return JSON.stringify({ amount: ing.amount, unit: ing.unit, name: ing.name })
+}
+
+export function displayIngredient(ing: Ingredient): string {
+  const parts = [ing.amount, ing.unit, ing.name].filter(Boolean)
+  return parts.join(' ')
+}
+
 export const CATEGORIES = [
   'ארוחת בוקר',
   'ארוחת צהריים',
