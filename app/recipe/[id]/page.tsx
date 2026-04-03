@@ -135,6 +135,13 @@ export default function RecipeDetailPage() {
         {/* Title */}
         <h1 className="text-3xl font-bold">{recipe.title}</h1>
 
+        {/* Description */}
+        {recipe.description && (
+          <p className="mt-2 text-on-surface-variant leading-relaxed">
+            {recipe.description}
+          </p>
+        )}
+
         {/* Category + tags */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {recipe.category && (

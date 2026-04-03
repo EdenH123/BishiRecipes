@@ -41,6 +41,12 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
             {recipe.title}
           </h3>
 
+          {recipe.description && (
+            <p className="text-xs text-on-surface-variant mb-1.5 line-clamp-2">
+              {recipe.description}
+            </p>
+          )}
+
           <div className="flex flex-wrap gap-1 mb-2 justify-end">
             {recipe.tags?.slice(0, 3).map((tag) => (
               <span
