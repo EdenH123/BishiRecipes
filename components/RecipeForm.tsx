@@ -38,15 +38,16 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   )
   const [loading, setLoading] = useState(false)
   const [allCategories, setAllCategories] = useState<string[]>([...CATEGORIES])
-  const [allTags, setAllTags] = useState<string[]>([...DEFAULT_TAGS])
+  const [dbTags, setDbTags] = useState<string[]>([])
+  // Merge DB tags + default tags + current recipe tags so new custom tags show immediately
+  const allTags = Array.from(new Set([...DEFAULT_TAGS, ...dbTags, ...tags]))
 
   // Fetch existing custom categories & tags from recipes, filter out hidden ones
   useEffect(() => {
     async function fetchFilters() {
-      const [recipesRes, hiddenRes] = await Promise.all([
-        supabase.from('recipes').select('category, tags'),
-        supabase.from('hidden_filters').select('type, value'),
-      ])
+      const recipesRes = await supabase.from('recipes').select('category, tags')
+      // hidden_filters table may not exist yet — ignore errors
+      const hiddenRes = await supabase.from('hidden_filters').select('type, value')
 
       const hiddenCats = new Set<string>()
       const hiddenTags = new Set<string>()
@@ -69,7 +70,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
       }
 
       setAllCategories(Array.from(cats).filter((c) => !hiddenCats.has(c)))
-      setAllTags(Array.from(tagSet).filter((t) => !hiddenTags.has(t)))
+      setDbTags(Array.from(tagSet).filter((t) => !hiddenTags.has(t)))
     }
     fetchFilters()
   }, [])
