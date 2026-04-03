@@ -137,7 +137,7 @@ export default function RecipeDetailPage() {
 
         {/* Description */}
         {recipe.description && (
-          <p className="mt-2 text-on-surface-variant leading-relaxed">
+          <p className="mt-2 text-on-surface-variant leading-relaxed whitespace-pre-line">
             {recipe.description}
           </p>
         )}

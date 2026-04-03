@@ -42,7 +42,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           </h3>
 
           {recipe.description && (
-            <p className="text-xs text-on-surface-variant mb-1.5 line-clamp-2">
+            <p className="text-xs text-on-surface-variant mb-1.5 line-clamp-2 whitespace-pre-line">
               {recipe.description}
             </p>
           )}

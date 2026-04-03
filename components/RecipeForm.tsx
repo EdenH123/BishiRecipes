@@ -230,7 +230,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
       <div>
         <label className="font-medium text-gray-700 mb-1 block">תיאור</label>
         <textarea
-          rows={2}
+          rows={4}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           className={inputClass}
