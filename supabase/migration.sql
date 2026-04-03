@@ -7,6 +7,7 @@ create table if not exists profiles (
   id uuid references auth.users on delete cascade primary key,
   display_name text not null,
   avatar_url text,
+  is_admin boolean default false,
   created_at timestamptz default now()
 );
 

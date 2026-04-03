@@ -29,6 +29,7 @@ export default function RecipeDetailPage() {
 
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set())
@@ -51,7 +52,18 @@ export default function RecipeDetailPage() {
       }
 
       setRecipe(recipeRes.data as Recipe)
-      setUserId(userRes.data.user?.id ?? null)
+      const currentUserId = userRes.data.user?.id ?? null
+      setUserId(currentUserId)
+
+      if (currentUserId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', currentUserId)
+          .single()
+        setIsAdmin(profile?.is_admin ?? false)
+      }
+
       setLoading(false)
     }
 
@@ -174,25 +186,27 @@ export default function RecipeDetailPage() {
             <span className="material-symbols-outlined text-base">edit</span>
             עריכה
           </Link>
-          <button
-            onClick={async () => {
-              if (!confirm('למחוק את המתכון?')) return
-              const { error } = await supabase
-                .from('recipes')
-                .delete()
-                .eq('id', recipe.id)
-              if (error) {
-                toast.error('שגיאה במחיקת המתכון')
-                return
-              }
-              toast.success('המתכון נמחק')
-              router.push('/')
-            }}
-            className="flex items-center gap-1 rounded-lg border border-error/30 px-4 py-2 text-sm text-error transition-colors hover:bg-error/10"
-          >
-            <span className="material-symbols-outlined text-base">delete</span>
-            מחיקה
-          </button>
+          {(userId === recipe.created_by || isAdmin) && (
+            <button
+              onClick={async () => {
+                if (!confirm('למחוק את המתכון?')) return
+                const { error } = await supabase
+                  .from('recipes')
+                  .delete()
+                  .eq('id', recipe.id)
+                if (error) {
+                  toast.error('שגיאה במחיקת המתכון')
+                  return
+                }
+                toast.success('המתכון נמחק')
+                router.push('/')
+              }}
+              className="flex items-center gap-1 rounded-lg border border-error/30 px-4 py-2 text-sm text-error transition-colors hover:bg-error/10"
+            >
+              <span className="material-symbols-outlined text-base">delete</span>
+              מחיקה
+            </button>
+          )}
         </div>
 
         {/* Ingredients */}
@@ -289,7 +303,7 @@ export default function RecipeDetailPage() {
             className="mt-8 border-t border-outline-variant pt-6"
           >
             <h2 className="mb-4 text-xl font-bold">תגובות</h2>
-            <CommentSection recipeId={recipe.id} userId={userId} />
+            <CommentSection recipeId={recipe.id} userId={userId} isAdmin={isAdmin} />
           </motion.div>
         )}
       </motion.div>

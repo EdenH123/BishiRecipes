@@ -20,6 +20,7 @@ interface Comment {
 interface CommentSectionProps {
   recipeId: string
   userId: string
+  isAdmin?: boolean
 }
 
 function formatDate(dateStr: string): string {
@@ -30,7 +31,7 @@ function formatDate(dateStr: string): string {
   return `${day}/${month}/${year}`
 }
 
-export default function CommentSection({ recipeId, userId }: CommentSectionProps) {
+export default function CommentSection({ recipeId, userId, isAdmin }: CommentSectionProps) {
   const supabase = createClient()
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
@@ -142,7 +143,8 @@ export default function CommentSection({ recipeId, userId }: CommentSectionProps
                 </p>
               </div>
 
-              {/* Delete button */}
+              {/* Delete button — only for comment author or admin */}
+              {(comment.user_id === userId || isAdmin) && (
               <button
                 onClick={() => handleDelete(comment.id)}
                 className="shrink-0 cursor-pointer text-lg text-gray-400 transition-colors hover:text-red-500"
@@ -150,6 +152,7 @@ export default function CommentSection({ recipeId, userId }: CommentSectionProps
               >
                 🗑️
               </button>
+              )}
             </motion.div>
           ))
         )}
