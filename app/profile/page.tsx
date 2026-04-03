@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { Recipe, Profile } from '@/lib/types'
@@ -20,7 +20,9 @@ export default function ProfilePage() {
   const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [activeTab, setActiveTab] = useState<'recipes' | 'favorites'>('recipes')
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     async function loadProfile() {
@@ -102,6 +104,40 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !profile) return
+
+    setUploadingAvatar(true)
+    try {
+      const fileName = `avatars/${profile.id}-${Date.now()}.${file.name.split('.').pop()}`
+      const { error: uploadError } = await supabase.storage
+        .from('recipe-images')
+        .upload(fileName, file)
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('recipe-images')
+        .getPublicUrl(fileName)
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', profile.id)
+
+      if (updateError) throw updateError
+
+      setProfile({ ...profile, avatar_url: publicUrl })
+      toast.success('התמונה עודכנה בהצלחה!')
+    } catch (err) {
+      console.error('Avatar upload error:', err)
+      toast.error('שגיאה בהעלאת התמונה')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/auth/login')
@@ -129,9 +165,37 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-3xl px-4 py-6">
         {/* Avatar */}
         <div className="flex justify-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary-container text-3xl font-bold text-on-secondary-container">
-            {profile?.display_name?.charAt(0) || '?'}
-          </div>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="relative group"
+          >
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile.display_name}
+                className="h-20 w-20 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary-container text-3xl font-bold text-on-secondary-container">
+                {profile?.display_name?.charAt(0) || '?'}
+              </div>
+            )}
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+              {uploadingAvatar ? (
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <span className="material-symbols-outlined text-white text-xl">photo_camera</span>
+              )}
+            </div>
+          </button>
         </div>
 
         {/* Edit display name */}

@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { useState, useEffect, useRef, type FormEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
 
 interface RecipeFormProps {
   recipe?: Recipe
@@ -30,6 +30,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   const [steps, setSteps] = useState<string[]>(
     recipe?.steps?.length ? recipe.steps : ['']
   )
+  const [customCategory, setCustomCategory] = useState('')
   const [videoUrl, setVideoUrl] = useState(recipe?.video_url ?? '')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(
@@ -98,6 +99,28 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
 
   function updateStep(index: number, value: string) {
     setSteps((prev) => prev.map((item, i) => (i === index ? value : item)))
+  }
+
+  // Drag-to-reorder state
+  const [dragIngredient, setDragIngredient] = useState<number | null>(null)
+  const [dragStep, setDragStep] = useState<number | null>(null)
+
+  function reorderIngredients(from: number, to: number) {
+    setIngredients((prev) => {
+      const next = [...prev]
+      const [item] = next.splice(from, 1)
+      next.splice(to, 0, item)
+      return next
+    })
+  }
+
+  function reorderSteps(from: number, to: number) {
+    setSteps((prev) => {
+      const next = [...prev]
+      const [item] = next.splice(from, 1)
+      next.splice(to, 0, item)
+      return next
+    })
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -243,17 +266,38 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
           קטגוריה
         </label>
         <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          value={
+            category === '' && !customCategory ? '' :
+            (CATEGORIES as readonly string[]).includes(category) && !customCategory ? category :
+            '__custom__'
+          }
+          onChange={(e) => {
+            if (e.target.value === '__custom__') {
+              setCustomCategory('1')
+              setCategory('')
+            } else {
+              setCategory(e.target.value)
+              setCustomCategory('')
+            }
+          }}
           className={inputClass}
         >
           <option value="">בחרו קטגוריה</option>
           {CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
+            <option key={cat} value={cat}>{cat}</option>
           ))}
+          <option value="__custom__">אחר...</option>
         </select>
+        {(customCategory || (category !== '' && !(CATEGORIES as readonly string[]).includes(category))) && (
+          <input
+            type="text"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="הקלידו קטגוריה..."
+            className={`${inputClass} mt-2`}
+            autoFocus
+          />
+        )}
       </div>
 
       {/* 4. Tags */}
@@ -314,7 +358,16 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         </div>
         <div className="space-y-2">
           {ingredients.map((ingredient, index) => (
-            <div key={index} className="flex gap-2 items-center">
+            <div
+              key={index}
+              draggable
+              onDragStart={() => setDragIngredient(index)}
+              onDragOver={(e) => { e.preventDefault() }}
+              onDrop={() => { if (dragIngredient !== null && dragIngredient !== index) reorderIngredients(dragIngredient, index); setDragIngredient(null) }}
+              onDragEnd={() => setDragIngredient(null)}
+              className={`flex gap-2 items-center transition-opacity ${dragIngredient === index ? 'opacity-40' : ''}`}
+            >
+              <span className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg">drag_indicator</span>
               <input
                 type="text"
                 value={ingredient.amount}
@@ -369,7 +422,16 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         </label>
         <div className="space-y-2">
           {steps.map((step, index) => (
-            <div key={index} className="flex gap-2 items-center">
+            <div
+              key={index}
+              draggable
+              onDragStart={() => setDragStep(index)}
+              onDragOver={(e) => { e.preventDefault() }}
+              onDrop={() => { if (dragStep !== null && dragStep !== index) reorderSteps(dragStep, index); setDragStep(null) }}
+              onDragEnd={() => setDragStep(null)}
+              className={`flex gap-2 items-center transition-opacity ${dragStep === index ? 'opacity-40' : ''}`}
+            >
+              <span className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg">drag_indicator</span>
               <span className="shrink-0 w-7 h-7 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-sm font-medium">
                 {index + 1}
               </span>

@@ -21,7 +21,9 @@ export default function HomePage() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
+  const [allCategories, setAllCategories] = useState<string[]>([])
   const [members, setMembers] = useState<{ id: string; display_name: string }[]>([])
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alpha'>('newest')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -41,14 +43,19 @@ export default function HomePage() {
         setRecipes(recipesRes.data as Recipe[])
 
         const recipeTags = new Set<string>([...DEFAULT_TAGS])
+        const recipeCategories = new Set<string>([...CATEGORIES])
         for (const recipe of recipesRes.data) {
           if (recipe.tags) {
             for (const tag of recipe.tags) {
               recipeTags.add(tag)
             }
           }
+          if (recipe.category) {
+            recipeCategories.add(recipe.category)
+          }
         }
         setAllTags(Array.from(recipeTags))
+        setAllCategories(Array.from(recipeCategories))
       }
 
       if (membersRes.data) {
@@ -74,7 +81,7 @@ export default function HomePage() {
   }, [])
 
   const filteredRecipes = useMemo(() => {
-    return recipes.filter((recipe) => {
+    const filtered = recipes.filter((recipe) => {
       if (search && !recipe.title.toLowerCase().includes(search.toLowerCase())) {
         return false
       }
@@ -94,7 +101,22 @@ export default function HomePage() {
       }
       return true
     })
-  }, [recipes, search, selectedCategory, selectedTags, selectedMember, showFavoritesOnly, favoriteIds])
+
+    const sorted = [...filtered]
+    switch (sortBy) {
+      case 'oldest':
+        sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        break
+      case 'alpha':
+        sorted.sort((a, b) => a.title.localeCompare(b.title, 'he'))
+        break
+      case 'newest':
+      default:
+        sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        break
+    }
+    return sorted
+  }, [recipes, search, selectedCategory, selectedTags, selectedMember, showFavoritesOnly, favoriteIds, sortBy])
 
   function handleToggleTag(tag: string) {
     setSelectedTags((prev) =>
@@ -124,7 +146,7 @@ export default function HomePage() {
         {/* Filter bar */}
         <div className="max-w-5xl mx-auto mb-8">
           <FilterBar
-            categories={[...CATEGORIES]}
+            categories={allCategories}
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
             tags={allTags}
@@ -136,6 +158,19 @@ export default function HomePage() {
             showFavoritesOnly={showFavoritesOnly}
             onToggleFavorites={() => setShowFavoritesOnly((prev) => !prev)}
           />
+        </div>
+
+        {/* Sort */}
+        <div className="max-w-5xl mx-auto mb-4 flex justify-end">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'alpha')}
+            className="rounded-full bg-surface-container-low px-4 py-2 text-sm text-on-surface-variant outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="newest">חדש ← ישן</option>
+            <option value="oldest">ישן ← חדש</option>
+            <option value="alpha">א-ב</option>
+          </select>
         </div>
 
         {/* Recipe grid */}

@@ -13,6 +13,23 @@ import BottomNav from '@/components/BottomNav'
 import FavoriteButton from '@/components/FavoriteButton'
 import CommentSection from '@/components/CommentSection'
 
+function scaleAmount(amount: string, multiplier: number): string {
+  if (!amount || multiplier === 1) return amount
+  // Try to parse as a number (supports fractions like "1/2")
+  let num: number
+  if (amount.includes('/')) {
+    const [n, d] = amount.split('/')
+    num = parseFloat(n) / parseFloat(d)
+  } else {
+    num = parseFloat(amount)
+  }
+  if (isNaN(num)) return amount
+  const result = num * multiplier
+  // Show nice fractions for common values
+  if (result === Math.floor(result)) return String(result)
+  return result % 1 === 0.5 ? `${result}` : result.toFixed(1).replace(/\.0$/, '')
+}
+
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
   const day = String(d.getDate()).padStart(2, '0')
@@ -33,6 +50,7 @@ export default function RecipeDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set())
+  const [servingsMultiplier, setServingsMultiplier] = useState(1)
 
   useEffect(() => {
     async function load() {
@@ -216,7 +234,26 @@ export default function RecipeDetailPage() {
           transition={{ delay: 0.15, duration: 0.4 }}
           className="mt-8"
         >
-          <h2 className="text-xl font-bold">מצרכים</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">מצרכים</h2>
+            <div className="flex items-center gap-2 rounded-full bg-surface-container-low px-2 py-1">
+              <button
+                onClick={() => setServingsMultiplier((m) => Math.max(0.5, m - 0.5))}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors"
+              >
+                <span className="material-symbols-outlined text-base">remove</span>
+              </button>
+              <span className="min-w-[2.5rem] text-center text-sm font-bold">
+                x{servingsMultiplier}
+              </span>
+              <button
+                onClick={() => setServingsMultiplier((m) => m + 0.5)}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors"
+              >
+                <span className="material-symbols-outlined text-base">add</span>
+              </button>
+            </div>
+          </div>
           <ul className="mt-3 flex flex-col gap-2">
             {recipe.ingredients.map((raw, i) => {
               const ing = parseIngredient(raw)
@@ -234,7 +271,7 @@ export default function RecipeDetailPage() {
                     }`}
                   >
                     {ing.amount && (
-                      <span className="font-bold">{ing.amount} </span>
+                      <span className="font-bold">{scaleAmount(ing.amount, servingsMultiplier)} </span>
                     )}
                     {ing.unit && (
                       <span className="text-outline">{ing.unit} </span>
