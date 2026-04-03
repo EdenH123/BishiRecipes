@@ -274,6 +274,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
       transition={{ duration: 0.3 }}
       className="max-w-2xl mx-auto p-4 space-y-5"
       dir="rtl"
+      lang="he"
     >
       {/* 1. Title */}
       <div>
@@ -285,6 +286,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          spellCheck
           className={inputClass}
         />
       </div>
@@ -296,6 +298,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
           rows={4}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          spellCheck
           className={inputClass}
         />
       </div>
@@ -432,6 +435,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                 value={ingredient.name}
                 onChange={(e) => updateIngredient(index, 'name', e.target.value)}
                 placeholder={`מצרך ${index + 1}`}
+                spellCheck
                 className="flex-1 rounded-lg border border-gray-200 p-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
               />
               {ingredients.length > 1 && (
@@ -471,6 +475,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                 value={step}
                 onChange={(e) => updateStep(index, e.target.value)}
                 placeholder={`שלב ${index + 1}`}
+                spellCheck
                 className={inputClass}
               />
               {steps.length > 1 && (

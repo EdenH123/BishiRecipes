@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { type Recipe, parseIngredient, displayIngredient } from '@/lib/types'
+import RecipeCard from '@/components/RecipeCard'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import FavoriteButton from '@/components/FavoriteButton'
@@ -55,6 +56,7 @@ export default function RecipeDetailPage() {
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set())
   const [servingsMultiplier, setServingsMultiplier] = useState(1)
   const [cookingMode, setCookingMode] = useState(false)
+  const [relatedRecipes, setRelatedRecipes] = useState<Recipe[]>([])
 
   useEffect(() => {
     async function load() {
@@ -87,6 +89,35 @@ export default function RecipeDetailPage() {
       }
 
       setLoading(false)
+
+      // Fetch related recipes (same category or overlapping tags)
+      if (recipeRes.data) {
+        const r = recipeRes.data
+        const { data: candidates } = await supabase
+          .from('recipes')
+          .select('*, profiles!created_by(id, display_name, avatar_url)')
+          .neq('id', id)
+          .limit(20)
+
+        if (candidates) {
+          const scored = candidates.map((c) => {
+            let score = 0
+            if (r.category && c.category === r.category) score += 2
+            if (r.tags && c.tags) {
+              for (const t of r.tags) {
+                if (c.tags.includes(t)) score += 1
+              }
+            }
+            return { recipe: c as Recipe, score }
+          })
+          const related = scored
+            .filter((s) => s.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 4)
+            .map((s) => s.recipe)
+          setRelatedRecipes(related)
+        }
+      }
     }
 
     load()
@@ -245,6 +276,35 @@ export default function RecipeDetailPage() {
           )}
         </div>
 
+        {/* Share */}
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            onClick={() => {
+              const url = window.location.href
+              const text = `${recipe.title} — בישי מתכונים`
+              window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + url)}`, '_blank')
+            }}
+            className="flex items-center gap-1.5 rounded-full bg-[#25D366]/10 px-4 py-2 text-sm font-medium text-[#25D366] transition-colors hover:bg-[#25D366]/20"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.632-1.467A11.932 11.932 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.587-5.932-1.61l-.425-.253-2.746.87.879-2.672-.278-.442A9.776 9.776 0 012.182 12c0-5.414 4.404-9.818 9.818-9.818S21.818 6.586 21.818 12s-4.404 9.818-9.818 9.818z"/></svg>
+            WhatsApp
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(window.location.href)
+                toast.success('הקישור הועתק!')
+              } catch {
+                toast.error('לא ניתן להעתיק')
+              }
+            }}
+            className="flex items-center gap-1.5 rounded-full bg-surface-container-low px-4 py-2 text-sm text-on-surface-variant transition-colors hover:bg-surface-container"
+          >
+            <span className="material-symbols-outlined text-base">content_copy</span>
+            העתק קישור
+          </button>
+        </div>
+
         {/* Ingredients */}
         <motion.section
           initial={{ opacity: 0 }}
@@ -346,6 +406,23 @@ export default function RecipeDetailPage() {
               </div>
               <span className="material-symbols-outlined text-outline">open_in_new</span>
             </a>
+          </motion.section>
+        )}
+
+        {/* Related recipes */}
+        {relatedRecipes.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="mt-8 border-t border-outline-variant pt-6"
+          >
+            <h2 className="text-xl font-bold mb-4">מתכונים דומים</h2>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {relatedRecipes.map((r) => (
+                <RecipeCard key={r.id} recipe={r} />
+              ))}
+            </div>
           </motion.section>
         )}
 
