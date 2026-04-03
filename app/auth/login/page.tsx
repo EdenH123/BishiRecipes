@@ -19,7 +19,7 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
@@ -28,6 +28,22 @@ export default function LoginPage() {
       toast.error(error.message)
       setLoading(false)
       return
+    }
+
+    // Ensure profile exists (may be missing if signup had issues)
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', data.user.id)
+        .single()
+
+      if (!profile) {
+        const displayName = data.user.email?.split('@')[0] || 'משתמש/ת'
+        await supabase
+          .from('profiles')
+          .insert({ id: data.user.id, display_name: displayName })
+      }
     }
 
     toast.success('התחברת בהצלחה!')

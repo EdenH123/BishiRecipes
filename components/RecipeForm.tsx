@@ -177,9 +177,10 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         router.push(`/recipe/${data.id}`)
       }
     } catch (err: unknown) {
+      console.error('Recipe save error:', err)
       const message =
-        err instanceof Error ? err.message : 'שגיאה בשמירת המתכון'
-      toast.error(message)
+        err instanceof Error ? err.message : String(err)
+      toast.error(message || 'שגיאה בשמירת המתכון')
     } finally {
       setLoading(false)
     }
