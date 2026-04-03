@@ -149,6 +149,32 @@ create policy "Authenticated users can delete recipe images"
   to authenticated
   using (bucket_id = 'recipe-images');
 
+-- Hidden filters table (admin can hide categories/tags)
+create table if not exists hidden_filters (
+  id uuid primary key default gen_random_uuid(),
+  type text not null check (type in ('category', 'tag')),
+  value text not null,
+  hidden_at timestamptz default now(),
+  unique(type, value)
+);
+
+alter table hidden_filters enable row level security;
+
+create policy "Anyone can view hidden filters"
+  on hidden_filters for select
+  to authenticated
+  using (true);
+
+create policy "Anyone can insert hidden filters"
+  on hidden_filters for insert
+  to authenticated
+  with check (true);
+
+create policy "Anyone can delete hidden filters"
+  on hidden_filters for delete
+  to authenticated
+  using (true);
+
 -- ===========================================
 -- Auto-update updated_at trigger
 -- ===========================================

@@ -38,28 +38,41 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   )
   const [loading, setLoading] = useState(false)
   const [allCategories, setAllCategories] = useState<string[]>([...CATEGORIES])
+  const [allTags, setAllTags] = useState<string[]>([...DEFAULT_TAGS])
 
-  // Fetch existing custom categories from recipes
+  // Fetch existing custom categories & tags from recipes, filter out hidden ones
   useEffect(() => {
-    async function fetchCategories() {
-      const { data } = await supabase
-        .from('recipes')
-        .select('category')
-      if (data) {
-        const cats = new Set<string>([...CATEGORIES])
-        for (const r of data) {
-          if (r.category) cats.add(r.category)
-        }
-        setAllCategories(Array.from(cats))
-      }
-    }
-    fetchCategories()
-  }, [])
+    async function fetchFilters() {
+      const [recipesRes, hiddenRes] = await Promise.all([
+        supabase.from('recipes').select('category, tags'),
+        supabase.from('hidden_filters').select('type, value'),
+      ])
 
-  // Build the full set of available tag chips
-  const allTags = Array.from(
-    new Set([...DEFAULT_TAGS, ...(recipe?.tags ?? []), ...tags])
-  )
+      const hiddenCats = new Set<string>()
+      const hiddenTags = new Set<string>()
+      if (hiddenRes.data) {
+        for (const h of hiddenRes.data) {
+          if (h.type === 'category') hiddenCats.add(h.value)
+          else hiddenTags.add(h.value)
+        }
+      }
+
+      const cats = new Set<string>([...CATEGORIES])
+      const tagSet = new Set<string>([...DEFAULT_TAGS, ...(recipe?.tags ?? []), ...tags])
+      if (recipesRes.data) {
+        for (const r of recipesRes.data) {
+          if (r.category) cats.add(r.category)
+          if (r.tags) {
+            for (const t of r.tags) tagSet.add(t)
+          }
+        }
+      }
+
+      setAllCategories(Array.from(cats).filter((c) => !hiddenCats.has(c)))
+      setAllTags(Array.from(tagSet).filter((t) => !hiddenTags.has(t)))
+    }
+    fetchFilters()
+  }, [])
 
   // Clean up object URL on unmount or when preview changes
   useEffect(() => {

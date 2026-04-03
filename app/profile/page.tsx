@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { Recipe, Profile } from '@/lib/types'
+import { CATEGORIES, DEFAULT_TAGS } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import RecipeCard from '@/components/RecipeCard'
@@ -21,8 +22,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [activeTab, setActiveTab] = useState<'recipes' | 'favorites'>('recipes')
+  const [activeTab, setActiveTab] = useState<'recipes' | 'favorites' | 'admin'>('recipes')
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [allCategories, setAllCategories] = useState<string[]>([])
+  const [allTags, setAllTags] = useState<string[]>([])
 
   useEffect(() => {
     async function loadProfile() {
@@ -138,6 +141,70 @@ export default function ProfilePage() {
     }
   }
 
+  // Load categories & tags for admin panel
+  useEffect(() => {
+    if (!profile?.is_admin) return
+    async function loadFilters() {
+      const [recipesRes, hiddenRes] = await Promise.all([
+        supabase.from('recipes').select('category, tags'),
+        supabase.from('hidden_filters').select('type, value'),
+      ])
+      const hiddenCats = new Set<string>()
+      const hiddenTags = new Set<string>()
+      if (hiddenRes.data) {
+        for (const h of hiddenRes.data) {
+          if (h.type === 'category') hiddenCats.add(h.value)
+          else hiddenTags.add(h.value)
+        }
+      }
+      const cats = new Set<string>([...CATEGORIES])
+      const tagSet = new Set<string>([...DEFAULT_TAGS])
+      if (recipesRes.data) {
+        for (const r of recipesRes.data) {
+          if (r.category) cats.add(r.category)
+          if (r.tags) for (const t of r.tags) tagSet.add(t)
+        }
+      }
+      setAllCategories(Array.from(cats).filter((c) => !hiddenCats.has(c)))
+      setAllTags(Array.from(tagSet).filter((t) => !hiddenTags.has(t)))
+    }
+    loadFilters()
+  }, [profile?.is_admin])
+
+  async function handleRemoveCategory(cat: string) {
+    if (!confirm(`להסיר את הקטגוריה "${cat}"?`)) return
+    try {
+      // Add to hidden list
+      await supabase.from('hidden_filters').upsert({ type: 'category', value: cat }, { onConflict: 'type,value' })
+      // Remove from all recipes that have it
+      await supabase.from('recipes').update({ category: null }).eq('category', cat)
+      setAllCategories((prev) => prev.filter((c) => c !== cat))
+      toast.success(`הקטגוריה "${cat}" הוסרה`)
+    } catch {
+      toast.error('שגיאה בהסרת הקטגוריה')
+    }
+  }
+
+  async function handleRemoveTag(tag: string) {
+    if (!confirm(`להסיר את התווית "${tag}"?`)) return
+    try {
+      // Add to hidden list
+      await supabase.from('hidden_filters').upsert({ type: 'tag', value: tag }, { onConflict: 'type,value' })
+      // Remove from all recipes - fetch recipes with this tag, then update each
+      const { data: recipes } = await supabase.from('recipes').select('id, tags').contains('tags', [tag])
+      if (recipes) {
+        for (const r of recipes) {
+          const newTags = (r.tags || []).filter((t: string) => t !== tag)
+          await supabase.from('recipes').update({ tags: newTags }).eq('id', r.id)
+        }
+      }
+      setAllTags((prev) => prev.filter((t) => t !== tag))
+      toast.success(`התווית "${tag}" הוסרה`)
+    } catch {
+      toast.error('שגיאה בהסרת התווית')
+    }
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/auth/login')
@@ -237,6 +304,18 @@ export default function ProfilePage() {
           >
             מועדפים ⭐
           </button>
+          {profile?.is_admin && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`pb-3 text-base font-rubik transition-colors ${
+                activeTab === 'admin'
+                  ? 'border-b-2 border-primary font-bold text-primary'
+                  : 'text-gray-500'
+              }`}
+            >
+              ניהול
+            </button>
+          )}
         </div>
 
         {/* Tab content with animation */}
@@ -249,7 +328,59 @@ export default function ProfilePage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              {activeRecipes.length === 0 ? (
+              {activeTab === 'admin' ? (
+                <div className="space-y-8">
+                  {/* Categories management */}
+                  <div>
+                    <h3 className="text-lg font-bold mb-3">קטגוריות</h3>
+                    {allCategories.length === 0 ? (
+                      <p className="text-gray-400 text-sm">אין קטגוריות</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {allCategories.map((cat) => (
+                          <div
+                            key={cat}
+                            className="flex items-center gap-1.5 rounded-full bg-surface-container-low px-4 py-2 text-sm"
+                          >
+                            <span>{cat}</span>
+                            <button
+                              onClick={() => handleRemoveCategory(cat)}
+                              className="flex h-5 w-5 items-center justify-center rounded-full text-red-500 hover:bg-red-100 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-base">close</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tags management */}
+                  <div>
+                    <h3 className="text-lg font-bold mb-3">תוויות</h3>
+                    {allTags.length === 0 ? (
+                      <p className="text-gray-400 text-sm">אין תוויות</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {allTags.map((tag) => (
+                          <div
+                            key={tag}
+                            className="flex items-center gap-1.5 rounded-full bg-primary/10 px-4 py-2 text-sm text-primary"
+                          >
+                            <span>{tag}</span>
+                            <button
+                              onClick={() => handleRemoveTag(tag)}
+                              className="flex h-5 w-5 items-center justify-center rounded-full text-red-500 hover:bg-red-100 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-base">close</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : activeRecipes.length === 0 ? (
                 <p className="py-12 text-center text-gray-400 font-rubik">
                   {activeTab === 'recipes'
                     ? 'עדיין לא הוספת מתכונים'

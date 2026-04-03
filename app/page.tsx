@@ -30,14 +30,24 @@ export default function HomePage() {
     async function fetchData() {
       setLoading(true)
 
-      const [recipesRes, membersRes, userRes] = await Promise.all([
+      const [recipesRes, membersRes, userRes, hiddenRes] = await Promise.all([
         supabase
           .from('recipes')
           .select('*, profiles!created_by(id, display_name, avatar_url)')
           .order('created_at', { ascending: false }),
         supabase.from('profiles').select('id, display_name'),
         supabase.auth.getUser(),
+        supabase.from('hidden_filters').select('type, value'),
       ])
+
+      const hiddenCats = new Set<string>()
+      const hiddenTags = new Set<string>()
+      if (hiddenRes.data) {
+        for (const h of hiddenRes.data) {
+          if (h.type === 'category') hiddenCats.add(h.value)
+          else hiddenTags.add(h.value)
+        }
+      }
 
       if (recipesRes.data) {
         setRecipes(recipesRes.data as Recipe[])
@@ -54,8 +64,8 @@ export default function HomePage() {
             recipeCategories.add(recipe.category)
           }
         }
-        setAllTags(Array.from(recipeTags))
-        setAllCategories(Array.from(recipeCategories))
+        setAllTags(Array.from(recipeTags).filter((t) => !hiddenTags.has(t)))
+        setAllCategories(Array.from(recipeCategories).filter((c) => !hiddenCats.has(c)))
       }
 
       if (membersRes.data) {
