@@ -28,6 +28,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   const [steps, setSteps] = useState<string[]>(
     recipe?.steps?.length ? recipe.steps : ['']
   )
+  const [videoUrl, setVideoUrl] = useState(recipe?.video_url ?? '')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(
     recipe?.image_url ?? null
@@ -158,6 +159,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         ingredients: filteredIngredients,
         steps: filteredSteps,
         image_url: imageUrl,
+        video_url: videoUrl.trim() || null,
       }
 
       if (recipe) {
@@ -399,7 +401,26 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         </button>
       </div>
 
-      {/* 8. Submit / Cancel */}
+      {/* 8. Video URL */}
+      <div>
+        <label className="font-medium text-gray-700 mb-1 block">
+          <span className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-lg">play_circle</span>
+            קישור לסרטון (TikTok / Instagram)
+          </span>
+        </label>
+        <input
+          type="url"
+          value={videoUrl}
+          onChange={(e) => setVideoUrl(e.target.value)}
+          placeholder="https://www.tiktok.com/... או https://www.instagram.com/reel/..."
+          className={inputClass}
+          dir="ltr"
+        />
+        <p className="mt-1 text-xs text-outline">אופציונלי — הדביקו קישור לסרטון של המתכון</p>
+      </div>
+
+      {/* 9. Submit / Cancel */}
       <div className="flex gap-3 pt-2">
         <button
           type="submit"

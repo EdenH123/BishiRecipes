@@ -18,6 +18,7 @@ create table if not exists recipes (
   ingredients text[] not null default '{}',
   steps text[] not null default '{}',
   image_url text,
+  video_url text,
   category text,
   tags text[] default '{}',
   created_by uuid references profiles(id),

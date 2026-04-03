@@ -12,6 +12,7 @@ export interface Recipe {
   ingredients: string[]
   steps: string[]
   image_url: string | null
+  video_url: string | null
   category: string | null
   tags: string[]
   created_by: string

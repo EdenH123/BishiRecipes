@@ -237,6 +237,33 @@ export default function RecipeDetailPage() {
           </ol>
         </motion.section>
 
+        {/* Video link */}
+        {recipe.video_url && (
+          <motion.section
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="mt-8"
+          >
+            <h2 className="text-xl font-bold mb-3">סרטון המתכון</h2>
+            <a
+              href={recipe.video_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-lg bg-surface-container-lowest p-4 border border-outline-variant transition-colors hover:bg-surface-container group"
+            >
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+                <span className="material-symbols-outlined text-2xl">play_circle</span>
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-on-surface">צפו בסרטון</p>
+                <p className="text-xs text-outline truncate" dir="ltr">{recipe.video_url}</p>
+              </div>
+              <span className="material-symbols-outlined text-outline">open_in_new</span>
+            </a>
+          </motion.section>
+        )}
+
         {/* Comments */}
         {userId && (
           <motion.div
