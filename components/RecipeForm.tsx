@@ -235,6 +235,22 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         toast('המתכון נשמר בהצלחה!')
         router.push(`/recipe/${data.id}`)
       }
+
+      // Unhide any tags/category that were just used
+      if (tags.length > 0) {
+        await supabase
+          .from('hidden_filters')
+          .delete()
+          .eq('type', 'tag')
+          .in('value', tags)
+      }
+      if (category) {
+        await supabase
+          .from('hidden_filters')
+          .delete()
+          .eq('type', 'category')
+          .eq('value', category)
+      }
     } catch (err: unknown) {
       console.error('Recipe save error:', err)
       const message =
