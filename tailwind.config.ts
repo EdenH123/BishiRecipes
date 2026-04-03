@@ -56,6 +56,15 @@ const config: Config = {
         lg: '2rem',
         xl: '3rem',
       },
+      animation: {
+        shimmer: 'shimmer 1.5s ease-in-out infinite',
+      },
+      keyframes: {
+        shimmer: {
+          '0%, 100%': { opacity: '0.4' },
+          '50%': { opacity: '0.7' },
+        },
+      },
     },
   },
   plugins: [],

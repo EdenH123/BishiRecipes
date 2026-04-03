@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { Recipe, Profile } from '@/lib/types'
 import { CATEGORIES, DEFAULT_TAGS } from '@/lib/types'
@@ -380,6 +381,18 @@ export default function ProfilePage() {
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  {/* Admin tools */}
+                  <div className="mt-8 pt-6 border-t border-gray-200">
+                    <h3 className="text-lg font-bold mb-3">כלי ניהול</h3>
+                    <Link
+                      href="/test"
+                      className="flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-3 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low"
+                    >
+                      <span className="material-symbols-outlined text-base">science</span>
+                      דף בדיקות מערכת
+                    </Link>
                   </div>
                 </div>
               ) : activeRecipes.length === 0 ? (

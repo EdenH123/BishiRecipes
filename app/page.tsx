@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { type Recipe, type Profile, CATEGORIES, DEFAULT_TAGS } from '@/lib/types'
@@ -8,6 +8,7 @@ import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import RecipeCard from '@/components/RecipeCard'
 import FilterBar from '@/components/FilterBar'
+import Onboarding from '@/components/Onboarding'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function HomePage() {
@@ -25,6 +26,8 @@ export default function HomePage() {
   const [members, setMembers] = useState<{ id: string; display_name: string }[]>([])
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alpha'>('newest')
   const [loading, setLoading] = useState(true)
+  const [visibleCount, setVisibleCount] = useState(12)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     async function fetchData() {
@@ -129,6 +132,30 @@ export default function HomePage() {
     return sorted
   }, [recipes, search, selectedCategory, selectedTags, selectedMember, showFavoritesOnly, favoriteIds, sortBy])
 
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(12)
+  }, [search, selectedCategory, selectedTags, selectedMember, showFavoritesOnly, sortBy])
+
+  // Infinite scroll
+  useEffect(() => {
+    const el = loadMoreRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 12)
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [loading])
+
+  const visibleRecipes = filteredRecipes.slice(0, visibleCount)
+  const hasMore = visibleCount < filteredRecipes.length
+
   function handleToggleTag(tag: string) {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
@@ -191,10 +218,17 @@ export default function HomePage() {
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
-                  className={`aspect-[3/4] animate-pulse rounded bg-surface-container ${
+                  className={`rounded overflow-hidden bg-surface-container-lowest shadow-sm ${
                     i % 2 === 1 ? 'mt-4' : ''
                   }`}
-                />
+                >
+                  <div className="aspect-[4/3] bg-surface-container animate-shimmer" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-4 w-3/4 rounded bg-surface-container animate-shimmer" />
+                    <div className="h-3 w-full rounded bg-surface-container animate-shimmer" />
+                    <div className="h-3 w-1/2 rounded bg-surface-container animate-shimmer" />
+                  </div>
+                </div>
               ))}
             </div>
           ) : recipes.length === 0 ? (
@@ -206,23 +240,30 @@ export default function HomePage() {
               לא נמצאו מתכונים לפי הסינון הזה 🤷
             </p>
           ) : (
-            <AnimatePresence mode="popLayout">
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-                {filteredRecipes.map((recipe, index) => (
-                  <motion.div
-                    key={recipe.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.2 }}
-                    className={index % 2 === 1 ? 'mt-4' : ''}
-                  >
-                    <RecipeCard recipe={recipe} />
-                  </motion.div>
-                ))}
-              </div>
-            </AnimatePresence>
+            <>
+              <AnimatePresence mode="popLayout">
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                  {visibleRecipes.map((recipe, index) => (
+                    <motion.div
+                      key={recipe.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.2 }}
+                      className={index % 2 === 1 ? 'mt-4' : ''}
+                    >
+                      <RecipeCard recipe={recipe} />
+                    </motion.div>
+                  ))}
+                </div>
+              </AnimatePresence>
+              {hasMore && (
+                <div ref={loadMoreRef} className="flex justify-center py-8">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-surface-container border-t-primary" />
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
@@ -238,6 +279,7 @@ export default function HomePage() {
       </motion.a>
 
       <BottomNav />
+      <Onboarding />
     </div>
   )
 }

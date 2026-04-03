@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { type Recipe, parseIngredient, displayIngredient } from '@/lib/types'
+import { exportRecipeAsImage } from '@/lib/export-recipe'
 import RecipeCard from '@/components/RecipeCard'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
@@ -75,7 +76,9 @@ export default function RecipeDetailPage() {
         return
       }
 
-      setRecipe(recipeRes.data as Recipe)
+      const recipeData = recipeRes.data as Recipe
+      setRecipe(recipeData)
+      document.title = `${recipeData.title} — בישי מתכונים`
       const currentUserId = userRes.data.user?.id ?? null
       setUserId(currentUserId)
 
@@ -302,6 +305,13 @@ export default function RecipeDetailPage() {
           >
             <span className="material-symbols-outlined text-base">content_copy</span>
             העתק קישור
+          </button>
+          <button
+            onClick={() => exportRecipeAsImage(recipe)}
+            className="flex items-center gap-1.5 rounded-full bg-surface-container-low px-4 py-2 text-sm text-on-surface-variant transition-colors hover:bg-surface-container"
+          >
+            <span className="material-symbols-outlined text-base">download</span>
+            ייצוא תמונה
           </button>
         </div>
 

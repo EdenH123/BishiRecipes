@@ -4,7 +4,19 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'בישי מתכונים',
-  description: 'אפליקציית מתכונים משפחתית',
+  description: 'אפליקציית מתכונים משפחתית — שתפו, בשלו ותהנו יחד!',
+  openGraph: {
+    title: 'בישי מתכונים',
+    description: 'אפליקציית מתכונים משפחתית — שתפו, בשלו ותהנו יחד!',
+    siteName: 'בישי מתכונים',
+    type: 'website',
+    locale: 'he_IL',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'בישי מתכונים',
+    description: 'אפליקציית מתכונים משפחתית — שתפו, בשלו ותהנו יחד!',
+  },
 }
 
 export default function RootLayout({

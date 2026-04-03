@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase'
 import { type Recipe, type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, parseIngredient, serializeIngredient } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
+import confetti from 'canvas-confetti'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -234,8 +235,14 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
 
         if (error) throw error
 
-        toast('המתכון נשמר בהצלחה!')
-        router.push(`/recipe/${data.id}`)
+        toast('המתכון נשמר בהצלחה! 🎉')
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.7 },
+          colors: ['#b41c1b', '#feae2c', '#006a43', '#4A90D9'],
+        })
+        setTimeout(() => router.push(`/recipe/${data.id}`), 1200)
       }
 
       // Unhide any tags/category that were just used
