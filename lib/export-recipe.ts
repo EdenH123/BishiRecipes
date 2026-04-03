@@ -1,30 +1,32 @@
 import { parseIngredient } from './types'
 
-export async function exportRecipeAsImage(recipe: {
+interface ExportRecipe {
   title: string
   description?: string | null
   ingredients: string[]
+  steps: string[]
   category?: string | null
   image_url?: string | null
   profiles?: { display_name: string } | null
-}): Promise<void> {
-  const W = 1080
-  const H = 1920
-  const PAD = 60
-  const canvas = document.createElement('canvas')
-  canvas.width = W
-  canvas.height = H
-  const ctx = canvas.getContext('2d')!
+}
 
-  // Background gradient
-  const grad = ctx.createLinearGradient(0, 0, 0, H)
-  grad.addColorStop(0, '#FFF8F7')
-  grad.addColorStop(1, '#F5E6E0')
-  ctx.fillStyle = grad
-  ctx.fillRect(0, 0, W, H)
+const W = 1080
+const PAD = 60
+const CONTENT_W = W - PAD * 2
 
-  // Load recipe image if available
-  let imgLoaded = false
+export async function exportRecipeAsImage(recipe: ExportRecipe): Promise<void> {
+  // First pass: calculate total height needed
+  const measureCanvas = document.createElement('canvas')
+  measureCanvas.width = W
+  measureCanvas.height = 100
+  const mCtx = measureCanvas.getContext('2d')!
+  mCtx.direction = 'rtl'
+
+  let totalH = PAD // top padding
+
+  // Image
+  const IMG_H = 600
+  let recipeImg: HTMLImageElement | null = null
   if (recipe.image_url) {
     try {
       const img = new Image()
@@ -34,101 +36,221 @@ export async function exportRecipeAsImage(recipe: {
         img.onerror = () => reject()
         img.src = recipe.image_url!
       })
-      // Draw image at top with rounded bottom
-      const imgH = 700
-      ctx.save()
-      ctx.beginPath()
-      ctx.roundRect(0, 0, W, imgH, [0, 0, 40, 40])
-      ctx.clip()
-      const scale = Math.max(W / img.width, imgH / img.height)
-      const sw = img.width * scale
-      const sh = img.height * scale
-      ctx.drawImage(img, (W - sw) / 2, (imgH - sh) / 2, sw, sh)
-      // Dark overlay at bottom for text
-      const overlayGrad = ctx.createLinearGradient(0, imgH - 200, 0, imgH)
-      overlayGrad.addColorStop(0, 'rgba(0,0,0,0)')
-      overlayGrad.addColorStop(1, 'rgba(0,0,0,0.5)')
-      ctx.fillStyle = overlayGrad
-      ctx.fillRect(0, 0, W, imgH)
-      ctx.restore()
-      imgLoaded = true
-    } catch {
-      // Skip image
-    }
+      recipeImg = img
+      totalH += IMG_H + 40
+    } catch { /* skip */ }
   }
 
-  let y = imgLoaded ? 740 : 120
+  // Title
+  mCtx.font = 'bold 56px Rubik, sans-serif'
+  const titleLines = wrapText(mCtx, recipe.title, CONTENT_W)
+  totalH += titleLines.length * 68 + 10
 
-  // Helper: right-aligned text
+  // Category
+  if (recipe.category) totalH += 56
+
+  // Description
+  let descLines: string[] = []
+  if (recipe.description) {
+    mCtx.font = '32px Rubik, sans-serif'
+    descLines = wrapTextMultiline(mCtx, recipe.description, CONTENT_W)
+    totalH += descLines.length * 42 + 20
+  }
+
+  // Ingredients section
+  totalH += 70 // header
+  mCtx.font = '30px Rubik, sans-serif'
+  const ingLines: string[][] = []
+  for (const raw of recipe.ingredients) {
+    const ing = parseIngredient(raw)
+    const text = `• ${[ing.amount, ing.unit, ing.name].filter(Boolean).join(' ')}`
+    const lines = wrapText(mCtx, text, CONTENT_W)
+    ingLines.push(lines)
+    totalH += lines.length * 40
+  }
+  totalH += 10
+
+  // Steps section
+  totalH += 70 // header
+  mCtx.font = '30px Rubik, sans-serif'
+  const stepLines: string[][] = []
+  for (let i = 0; i < recipe.steps.length; i++) {
+    const text = `${i + 1}. ${recipe.steps[i]}`
+    const lines = wrapText(mCtx, text, CONTENT_W - 20)
+    stepLines.push(lines)
+    totalH += lines.length * 40 + 12
+  }
+
+  // Branding footer
+  totalH += 120
+
+  // Add some bottom padding
+  totalH += PAD
+
+  // Second pass: actually draw
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = totalH
+  const ctx = canvas.getContext('2d')!
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, totalH)
+  grad.addColorStop(0, '#FFF8F7')
+  grad.addColorStop(1, '#F5E6E0')
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, W, totalH)
+
   ctx.textAlign = 'right'
   ctx.direction = 'rtl'
 
+  let y = PAD
+
+  // Recipe image
+  if (recipeImg) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.roundRect(PAD, y, CONTENT_W, IMG_H, 24)
+    ctx.clip()
+    const scale = Math.max(CONTENT_W / recipeImg.width, IMG_H / recipeImg.height)
+    const sw = recipeImg.width * scale
+    const sh = recipeImg.height * scale
+    ctx.drawImage(
+      recipeImg,
+      PAD + (CONTENT_W - sw) / 2,
+      y + (IMG_H - sh) / 2,
+      sw,
+      sh,
+    )
+    ctx.restore()
+    // Subtle border
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.roundRect(PAD, y, CONTENT_W, IMG_H, 24)
+    ctx.stroke()
+    y += IMG_H + 40
+  }
+
   // Title
   ctx.fillStyle = '#1C1B1F'
-  ctx.font = 'bold 64px Rubik, sans-serif'
-  const titleLines = wrapText(ctx, recipe.title, W - PAD * 2)
+  ctx.font = 'bold 56px Rubik, sans-serif'
   for (const line of titleLines) {
     ctx.fillText(line, W - PAD, y)
-    y += 76
+    y += 68
   }
+  y += 10
 
   // Category badge
   if (recipe.category) {
-    y += 10
-    ctx.font = '500 32px Rubik, sans-serif'
+    ctx.font = '500 28px Rubik, sans-serif'
     const tw = ctx.measureText(recipe.category).width
     ctx.fillStyle = '#B41C1B'
     ctx.beginPath()
-    ctx.roundRect(W - PAD - tw - 30, y - 34, tw + 30, 48, 24)
+    ctx.roundRect(W - PAD - tw - 28, y - 30, tw + 28, 42, 21)
     ctx.fill()
     ctx.fillStyle = '#FFFFFF'
-    ctx.fillText(recipe.category, W - PAD - 15, y)
-    y += 60
+    ctx.fillText(recipe.category, W - PAD - 14, y)
+    y += 56
   }
 
   // Description
-  if (recipe.description) {
-    y += 10
+  if (descLines.length > 0) {
     ctx.fillStyle = '#49454F'
-    ctx.font = '36px Rubik, sans-serif'
-    const descLines = wrapText(ctx, recipe.description, W - PAD * 2).slice(0, 3)
+    ctx.font = '32px Rubik, sans-serif'
     for (const line of descLines) {
       ctx.fillText(line, W - PAD, y)
-      y += 48
+      y += 42
     }
+    y += 20
   }
 
-  // Ingredients
-  y += 30
-  ctx.fillStyle = '#1C1B1F'
-  ctx.font = 'bold 40px Rubik, sans-serif'
-  ctx.fillText('מצרכים', W - PAD, y)
+  // Divider
+  ctx.strokeStyle = '#E3BEB9'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.moveTo(PAD, y)
+  ctx.lineTo(W - PAD, y)
+  ctx.stroke()
+  y += 20
+
+  // Ingredients header
+  ctx.fillStyle = '#B41C1B'
+  ctx.font = 'bold 38px Rubik, sans-serif'
+  ctx.fillText('🥘  מצרכים', W - PAD, y)
   y += 50
 
-  ctx.font = '32px Rubik, sans-serif'
-  ctx.fillStyle = '#49454F'
-  const maxIngredients = Math.min(recipe.ingredients.length, 10)
-  for (let i = 0; i < maxIngredients; i++) {
-    const ing = parseIngredient(recipe.ingredients[i])
-    const text = [ing.amount, ing.unit, ing.name].filter(Boolean).join(' ')
-    ctx.fillText(`• ${text}`, W - PAD, y)
-    y += 44
+  // Ingredients
+  ctx.font = '30px Rubik, sans-serif'
+  ctx.fillStyle = '#1C1B1F'
+  for (const lines of ingLines) {
+    for (let j = 0; j < lines.length; j++) {
+      ctx.fillText(lines[j], W - PAD, y)
+      y += 40
+    }
   }
-  if (recipe.ingredients.length > 10) {
-    ctx.fillText(`...ועוד ${recipe.ingredients.length - 10}`, W - PAD, y)
-    y += 44
+  y += 10
+
+  // Divider
+  ctx.strokeStyle = '#E3BEB9'
+  ctx.beginPath()
+  ctx.moveTo(PAD, y)
+  ctx.lineTo(W - PAD, y)
+  ctx.stroke()
+  y += 20
+
+  // Steps header
+  ctx.fillStyle = '#B41C1B'
+  ctx.font = 'bold 38px Rubik, sans-serif'
+  ctx.fillText('👩‍🍳  הוראות הכנה', W - PAD, y)
+  y += 50
+
+  // Steps
+  ctx.font = '30px Rubik, sans-serif'
+  ctx.fillStyle = '#1C1B1F'
+  for (const lines of stepLines) {
+    for (let j = 0; j < lines.length; j++) {
+      // Bold the number on the first line
+      if (j === 0) {
+        ctx.font = 'bold 30px Rubik, sans-serif'
+        const numMatch = lines[j].match(/^(\d+\.)/)
+        if (numMatch) {
+          const numW = ctx.measureText(numMatch[1] + ' ').width
+          ctx.fillStyle = '#B41C1B'
+          ctx.fillText(numMatch[1], W - PAD, y)
+          ctx.fillStyle = '#1C1B1F'
+          ctx.font = '30px Rubik, sans-serif'
+          ctx.fillText(lines[j].slice(numMatch[1].length), W - PAD - numW, y)
+        } else {
+          ctx.fillText(lines[j], W - PAD, y)
+        }
+        ctx.font = '30px Rubik, sans-serif'
+      } else {
+        ctx.fillText(lines[j], W - PAD, y)
+      }
+      y += 40
+    }
+    y += 12
   }
 
-  // Branding at bottom
-  ctx.fillStyle = '#B41C1B'
-  ctx.font = 'bold 36px Rubik, sans-serif'
+  // Footer branding
+  y += 20
+  ctx.fillStyle = '#E3BEB9'
+  ctx.beginPath()
+  ctx.moveTo(PAD, y)
+  ctx.lineTo(W - PAD, y)
+  ctx.stroke()
+  y += 30
+
   ctx.textAlign = 'center'
-  ctx.fillText('בישי מתכונים 🍽️', W / 2, H - 60)
+  ctx.fillStyle = '#B41C1B'
+  ctx.font = 'bold 32px Rubik, sans-serif'
+  ctx.fillText('בישי מתכונים 🍽️', W / 2, y)
+  y += 36
 
   if (recipe.profiles?.display_name) {
     ctx.fillStyle = '#79747E'
-    ctx.font = '28px Rubik, sans-serif'
-    ctx.fillText(`הוסיף/ה: ${recipe.profiles.display_name}`, W / 2, H - 110)
+    ctx.font = '26px Rubik, sans-serif'
+    ctx.fillText(`הוסיף/ה: ${recipe.profiles.display_name}`, W / 2, y)
   }
 
   // Download
@@ -158,4 +280,17 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   }
   if (current) lines.push(current)
   return lines
+}
+
+function wrapTextMultiline(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const paragraphs = text.split('\n')
+  const allLines: string[] = []
+  for (const p of paragraphs) {
+    if (p.trim() === '') {
+      allLines.push('')
+    } else {
+      allLines.push(...wrapText(ctx, p, maxWidth))
+    }
+  }
+  return allLines
 }
