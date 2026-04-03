@@ -46,7 +46,7 @@ export default function ProfilePage() {
         // Fetch user's recipes
         const { data: recipesData } = await supabase
           .from('recipes')
-          .select('*, profiles(id, display_name, avatar_url)')
+          .select('*, profiles!created_by(id, display_name, avatar_url)')
           .eq('created_by', user.id)
           .order('created_at', { ascending: false })
 
@@ -64,7 +64,7 @@ export default function ProfilePage() {
           const recipeIds = favoritesData.map((f) => f.recipe_id)
           const { data: favRecipes } = await supabase
             .from('recipes')
-            .select('*, profiles(id, display_name, avatar_url)')
+            .select('*, profiles!created_by(id, display_name, avatar_url)')
             .in('id', recipeIds)
 
           if (favRecipes) {

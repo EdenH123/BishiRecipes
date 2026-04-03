@@ -37,7 +37,7 @@ export default function RecipeDetailPage() {
       const [recipeRes, userRes] = await Promise.all([
         supabase
           .from('recipes')
-          .select('*, profiles(id, display_name, avatar_url)')
+          .select('*, profiles!created_by(id, display_name, avatar_url)')
           .eq('id', id)
           .single(),
         supabase.auth.getUser(),

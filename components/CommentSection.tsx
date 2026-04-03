@@ -39,7 +39,7 @@ export default function CommentSection({ recipeId, userId }: CommentSectionProps
   const fetchComments = useCallback(async () => {
     const { data, error } = await supabase
       .from('comments')
-      .select('*, profiles(display_name, avatar_url)')
+      .select('*, profiles!user_id(display_name, avatar_url)')
       .eq('recipe_id', recipeId)
       .order('created_at', { ascending: true })
 

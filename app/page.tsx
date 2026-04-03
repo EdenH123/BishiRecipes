@@ -31,7 +31,7 @@ export default function HomePage() {
       const [recipesRes, membersRes, userRes] = await Promise.all([
         supabase
           .from('recipes')
-          .select('*, profiles(id, display_name, avatar_url)')
+          .select('*, profiles!created_by(id, display_name, avatar_url)')
           .order('created_at', { ascending: false }),
         supabase.from('profiles').select('id, display_name'),
         supabase.auth.getUser(),

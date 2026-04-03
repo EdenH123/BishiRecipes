@@ -23,7 +23,7 @@ export default function EditRecipePage() {
     async function load() {
       const { data, error: fetchError } = await supabase
         .from('recipes')
-        .select('*, profiles(id, display_name, avatar_url)')
+        .select('*, profiles!created_by(id, display_name, avatar_url)')
         .eq('id', id)
         .single()
 

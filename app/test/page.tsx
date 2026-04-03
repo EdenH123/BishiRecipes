@@ -128,7 +128,7 @@ export default function TestPage() {
       try {
         const { data, error } = await supabase
           .from('recipes')
-          .select('*, profiles(display_name)')
+          .select('*, profiles!created_by(display_name)')
           .eq('id', testRecipeId)
           .single()
 
