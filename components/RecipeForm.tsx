@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 
 interface RecipeFormProps {
   recipe?: Recipe
@@ -134,19 +134,9 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
 
   // Drag-to-reorder state
   const [dragIngredient, setDragIngredient] = useState<number | null>(null)
-  const [dragStep, setDragStep] = useState<number | null>(null)
 
   function reorderIngredients(from: number, to: number) {
     setIngredients((prev) => {
-      const next = [...prev]
-      const [item] = next.splice(from, 1)
-      next.splice(to, 0, item)
-      return next
-    })
-  }
-
-  function reorderSteps(from: number, to: number) {
-    setSteps((prev) => {
       const next = [...prev]
       const [item] = next.splice(from, 1)
       next.splice(to, 0, item)
@@ -453,16 +443,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         </label>
         <div className="space-y-2">
           {steps.map((step, index) => (
-            <div
-              key={index}
-              draggable
-              onDragStart={() => setDragStep(index)}
-              onDragOver={(e) => { e.preventDefault() }}
-              onDrop={() => { if (dragStep !== null && dragStep !== index) reorderSteps(dragStep, index); setDragStep(null) }}
-              onDragEnd={() => setDragStep(null)}
-              className={`flex gap-2 items-center transition-opacity ${dragStep === index ? 'opacity-40' : ''}`}
-            >
-              <span className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg">drag_indicator</span>
+            <div key={index} className="flex gap-2 items-center">
               <span className="shrink-0 w-7 h-7 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-sm font-medium">
                 {index + 1}
               </span>
