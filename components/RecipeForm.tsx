@@ -123,16 +123,24 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
 
       // Upload image if a new file was selected
       if (imageFile) {
-        const fileName = `${Date.now()}-${imageFile.name}`
-        const { error: uploadError } = await supabase.storage
-          .from('recipe-images')
-          .upload(fileName, imageFile)
+        try {
+          const fileName = `${Date.now()}-${imageFile.name}`
+          const { error: uploadError } = await supabase.storage
+            .from('recipe-images')
+            .upload(fileName, imageFile)
 
-        if (uploadError) throw uploadError
-
-        imageUrl = supabase.storage
-          .from('recipe-images')
-          .getPublicUrl(fileName).data.publicUrl
+          if (uploadError) {
+            console.warn('Image upload failed:', uploadError)
+            toast.error('העלאת התמונה נכשלה, המתכון יישמר בלי תמונה')
+          } else {
+            imageUrl = supabase.storage
+              .from('recipe-images')
+              .getPublicUrl(fileName).data.publicUrl
+          }
+        } catch (uploadErr) {
+          console.warn('Image upload exception:', uploadErr)
+          toast.error('העלאת התמונה נכשלה, המתכון יישמר בלי תמונה')
+        }
       }
 
       const {
