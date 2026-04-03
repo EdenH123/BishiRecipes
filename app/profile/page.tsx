@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { Recipe, Profile } from '@/lib/types'
 import { CATEGORIES, DEFAULT_TAGS } from '@/lib/types'
+import { compressImage } from '@/lib/compress-image'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import RecipeCard from '@/components/RecipeCard'
@@ -113,10 +114,11 @@ export default function ProfilePage() {
 
     setUploadingAvatar(true)
     try {
-      const fileName = `avatars/${profile.id}-${Date.now()}.${file.name.split('.').pop()}`
+      const compressed = await compressImage(file)
+      const fileName = `avatars/${profile.id}-${Date.now()}.jpg`
       const { error: uploadError } = await supabase.storage
         .from('recipe-images')
-        .upload(fileName, file)
+        .upload(fileName, compressed)
 
       if (uploadError) throw uploadError
 

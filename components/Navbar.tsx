@@ -46,6 +46,7 @@ export default function Navbar() {
                 <img
                   src={profile.avatar_url}
                   alt={profile.display_name}
+                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
               ) : (

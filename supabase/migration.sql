@@ -149,6 +149,32 @@ create policy "Authenticated users can delete recipe images"
   to authenticated
   using (bucket_id = 'recipe-images');
 
+-- Ratings table
+create table if not exists ratings (
+  recipe_id uuid references recipes(id) on delete cascade,
+  user_id uuid references profiles(id) on delete cascade,
+  score smallint not null check (score >= 1 and score <= 5),
+  created_at timestamptz default now(),
+  primary key (recipe_id, user_id)
+);
+
+alter table ratings enable row level security;
+
+create policy "Anyone can view ratings"
+  on ratings for select
+  to authenticated
+  using (true);
+
+create policy "Users can insert own ratings"
+  on ratings for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own ratings"
+  on ratings for update
+  to authenticated
+  using (auth.uid() = user_id);
+
 -- Hidden filters table (admin can hide categories/tags)
 create table if not exists hidden_filters (
   id uuid primary key default gen_random_uuid(),

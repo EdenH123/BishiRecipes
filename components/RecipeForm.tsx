@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase'
 import { type Recipe, type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, parseIngredient, serializeIngredient } from '@/lib/types'
+import { compressImage } from '@/lib/compress-image'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -174,10 +175,11 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
       // Upload image if a new file was selected
       if (imageFile) {
         try {
-          const fileName = `${Date.now()}-${imageFile.name}`
+          const compressed = await compressImage(imageFile)
+          const fileName = `${Date.now()}-${compressed.name}`
           const { error: uploadError } = await supabase.storage
             .from('recipe-images')
-            .upload(fileName, imageFile)
+            .upload(fileName, compressed)
 
           if (uploadError) {
             console.warn('Image upload failed:', uploadError)

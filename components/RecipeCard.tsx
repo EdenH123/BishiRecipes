@@ -21,6 +21,8 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
             <img
               src={recipe.image_url}
               alt={recipe.title}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (

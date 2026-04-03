@@ -12,6 +12,9 @@ import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import FavoriteButton from '@/components/FavoriteButton'
 import CommentSection from '@/components/CommentSection'
+import RatingStars from '@/components/RatingStars'
+import CookingMode from '@/components/CookingMode'
+import { AnimatePresence } from 'framer-motion'
 
 function scaleAmount(amount: string, multiplier: number): string {
   if (!amount || multiplier === 1) return amount
@@ -51,6 +54,7 @@ export default function RecipeDetailPage() {
   const [error, setError] = useState(false)
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set())
   const [servingsMultiplier, setServingsMultiplier] = useState(1)
+  const [cookingMode, setCookingMode] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -194,9 +198,23 @@ export default function RecipeDetailPage() {
           הוסיף/ה: {recipe.profiles?.display_name ?? 'משתמש/ת'} · {formatDate(recipe.created_at)}
         </p>
 
+        {/* Rating */}
+        {userId && (
+          <div className="mt-4">
+            <RatingStars recipeId={recipe.id} userId={userId} />
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="mt-4 flex items-center gap-4">
           {userId && <FavoriteButton recipeId={recipe.id} userId={userId} />}
+          <button
+            onClick={() => setCookingMode(true)}
+            className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <span className="material-symbols-outlined text-base">skillet</span>
+            מצב בישול
+          </button>
           <Link
             href={`/recipe/${recipe.id}/edit`}
             className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
@@ -346,6 +364,17 @@ export default function RecipeDetailPage() {
       </motion.div>
 
       <BottomNav />
+
+      {/* Cooking mode overlay */}
+      <AnimatePresence>
+        {cookingMode && (
+          <CookingMode
+            steps={recipe.steps}
+            title={recipe.title}
+            onClose={() => setCookingMode(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
