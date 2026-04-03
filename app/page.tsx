@@ -30,15 +30,16 @@ export default function HomePage() {
     async function fetchData() {
       setLoading(true)
 
-      const [recipesRes, membersRes, userRes, hiddenRes] = await Promise.all([
+      const [recipesRes, membersRes, userRes] = await Promise.all([
         supabase
           .from('recipes')
           .select('*, profiles!created_by(id, display_name, avatar_url)')
           .order('created_at', { ascending: false }),
         supabase.from('profiles').select('id, display_name'),
         supabase.auth.getUser(),
-        supabase.from('hidden_filters').select('type, value'),
       ])
+      // hidden_filters table may not exist yet — query separately
+      const hiddenRes = await supabase.from('hidden_filters').select('type, value')
 
       const hiddenCats = new Set<string>()
       const hiddenTags = new Set<string>()
