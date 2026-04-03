@@ -146,16 +146,24 @@ export default function TestPage() {
       add('7. Cleanup', 'pass', 'Test recipe deleted')
     }
 
-    // Test 7: Storage bucket
+    // Test 7: Storage - try uploading a tiny test file
     try {
-      const { data, error } = await supabase.storage.getBucket('recipe-images')
-      if (error) {
-        add('8. Storage Bucket', 'fail', `Error: ${error.message}`)
+      const testBlob = new Blob(['test'], { type: 'text/plain' })
+      const testFileName = `_test_${Date.now()}.txt`
+
+      const { error: uploadError } = await supabase.storage
+        .from('recipe-images')
+        .upload(testFileName, testBlob)
+
+      if (uploadError) {
+        add('8. Storage Upload', 'fail', `Upload error: ${uploadError.message}`)
       } else {
-        add('8. Storage Bucket', 'pass', `Bucket exists: ${data.name}, public: ${data.public}`)
+        // Clean up test file
+        await supabase.storage.from('recipe-images').remove([testFileName])
+        add('8. Storage Upload', 'pass', 'Upload and delete test file succeeded')
       }
     } catch (e) {
-      add('8. Storage Bucket', 'fail', `Exception: ${String(e)}`)
+      add('8. Storage Upload', 'fail', `Exception: ${String(e)}`)
     }
 
     setRunning(false)
