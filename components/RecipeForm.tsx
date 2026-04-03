@@ -37,6 +37,24 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
     recipe?.image_url ?? null
   )
   const [loading, setLoading] = useState(false)
+  const [allCategories, setAllCategories] = useState<string[]>([...CATEGORIES])
+
+  // Fetch existing custom categories from recipes
+  useEffect(() => {
+    async function fetchCategories() {
+      const { data } = await supabase
+        .from('recipes')
+        .select('category')
+      if (data) {
+        const cats = new Set<string>([...CATEGORIES])
+        for (const r of data) {
+          if (r.category) cats.add(r.category)
+        }
+        setAllCategories(Array.from(cats))
+      }
+    }
+    fetchCategories()
+  }, [])
 
   // Build the full set of available tag chips
   const allTags = Array.from(
@@ -268,7 +286,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         <select
           value={
             category === '' && !customCategory ? '' :
-            (CATEGORIES as readonly string[]).includes(category) && !customCategory ? category :
+            allCategories.includes(category) && !customCategory ? category :
             '__custom__'
           }
           onChange={(e) => {
@@ -283,12 +301,12 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
           className={inputClass}
         >
           <option value="">בחרו קטגוריה</option>
-          {CATEGORIES.map((cat) => (
+          {allCategories.map((cat) => (
             <option key={cat} value={cat}>{cat}</option>
           ))}
           <option value="__custom__">אחר...</option>
         </select>
-        {(customCategory || (category !== '' && !(CATEGORIES as readonly string[]).includes(category))) && (
+        {(customCategory || (category !== '' && !allCategories.includes(category))) && (
           <input
             type="text"
             value={category}
