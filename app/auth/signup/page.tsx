@@ -1,0 +1,145 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase'
+
+export default function SignupPage() {
+  const router = useRouter()
+  const supabase = createClient()
+
+  const [displayName, setDisplayName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+
+    if (error) {
+      toast.error(error.message)
+      setLoading(false)
+      return
+    }
+
+    if (data.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({ id: data.user.id, display_name: displayName })
+
+      if (profileError) {
+        toast.error(profileError.message)
+        setLoading(false)
+        return
+      }
+    }
+
+    toast.success('נרשמת בהצלחה! אפשר להתחבר')
+    router.push('/auth/login')
+  }
+
+  return (
+    <div className="min-h-screen bg-[#FFFBF5] flex items-center justify-center px-4 font-rubik">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="w-full max-w-md"
+      >
+        <div className="bg-white rounded-card shadow-lg shadow-black/8 border border-[#F5A623]/20 p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+              🍳 בישי מתכונים
+            </h1>
+            <p className="text-gray-500 text-sm">
+              הצטרפו אלינו ושתפו מתכונים
+            </p>
+          </div>
+
+          <form onSubmit={handleSignup} className="space-y-5">
+            <div>
+              <label
+                htmlFor="displayName"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
+              >
+                שם תצוגה
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                required
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="השם שיוצג באפליקציה"
+                className="w-full px-4 py-3 rounded-card border border-gray-200 bg-[#FFFBF5]/50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E8433A]/30 focus:border-[#E8433A] transition-colors"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
+              >
+                אימייל
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="w-full px-4 py-3 rounded-card border border-gray-200 bg-[#FFFBF5]/50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E8433A]/30 focus:border-[#E8433A] transition-colors"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
+              >
+                סיסמה
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="בחר סיסמה חזקה"
+                className="w-full px-4 py-3 rounded-card border border-gray-200 bg-[#FFFBF5]/50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E8433A]/30 focus:border-[#E8433A] transition-colors"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-card bg-[#E8433A] hover:bg-[#d63a32] text-white font-medium text-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-md shadow-[#E8433A]/20"
+            >
+              {loading ? 'נרשם...' : 'הרשמה'}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-gray-500 mt-6">
+            יש לך חשבון?{' '}
+            <Link
+              href="/auth/login"
+              className="text-[#4A90D9] hover:text-[#3a7bc8] font-medium transition-colors"
+            >
+              התחברות
+            </Link>
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  )
+}

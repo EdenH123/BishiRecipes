@@ -1,0 +1,164 @@
+-- ===========================================
+-- בישי מתכונים — Supabase Migration
+-- ===========================================
+
+-- Profiles table
+create table if not exists profiles (
+  id uuid references auth.users on delete cascade primary key,
+  display_name text not null,
+  avatar_url text,
+  created_at timestamptz default now()
+);
+
+-- Recipes table
+create table if not exists recipes (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  ingredients text[] not null default '{}',
+  steps text[] not null default '{}',
+  image_url text,
+  category text,
+  tags text[] default '{}',
+  created_by uuid references profiles(id),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Favorites table
+create table if not exists favorites (
+  user_id uuid references profiles(id) on delete cascade,
+  recipe_id uuid references recipes(id) on delete cascade,
+  primary key (user_id, recipe_id)
+);
+
+-- Comments table
+create table if not exists comments (
+  id uuid primary key default gen_random_uuid(),
+  recipe_id uuid references recipes(id) on delete cascade,
+  user_id uuid references profiles(id) on delete cascade,
+  content text not null,
+  created_at timestamptz default now()
+);
+
+-- ===========================================
+-- Row Level Security Policies
+-- ===========================================
+
+-- Enable RLS on all tables
+alter table profiles enable row level security;
+alter table recipes enable row level security;
+alter table favorites enable row level security;
+alter table comments enable row level security;
+
+-- Profiles: all authenticated can read; everyone can update/delete any row (collaborative)
+create policy "Anyone can view profiles"
+  on profiles for select
+  to authenticated
+  using (true);
+
+create policy "Users can insert own profile"
+  on profiles for insert
+  to authenticated
+  with check (auth.uid() = id);
+
+create policy "Anyone can update profiles"
+  on profiles for update
+  to authenticated
+  using (true);
+
+-- Recipes: all authenticated can CRUD (collaborative family app)
+create policy "Anyone can view recipes"
+  on recipes for select
+  to authenticated
+  using (true);
+
+create policy "Anyone can insert recipes"
+  on recipes for insert
+  to authenticated
+  with check (true);
+
+create policy "Anyone can update recipes"
+  on recipes for update
+  to authenticated
+  using (true);
+
+create policy "Anyone can delete recipes"
+  on recipes for delete
+  to authenticated
+  using (true);
+
+-- Favorites: users manage their own
+create policy "Users can view own favorites"
+  on favorites for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own favorites"
+  on favorites for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "Users can delete own favorites"
+  on favorites for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- Comments: all authenticated can read; anyone can insert/delete (collaborative)
+create policy "Anyone can view comments"
+  on comments for select
+  to authenticated
+  using (true);
+
+create policy "Anyone can insert comments"
+  on comments for insert
+  to authenticated
+  with check (true);
+
+create policy "Anyone can delete comments"
+  on comments for delete
+  to authenticated
+  using (true);
+
+-- ===========================================
+-- Storage bucket for recipe images
+-- ===========================================
+insert into storage.buckets (id, name, public)
+values ('recipe-images', 'recipe-images', true)
+on conflict (id) do nothing;
+
+-- Storage policies
+create policy "Anyone can view recipe images"
+  on storage.objects for select
+  using (bucket_id = 'recipe-images');
+
+create policy "Authenticated users can upload recipe images"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'recipe-images');
+
+create policy "Authenticated users can update recipe images"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'recipe-images');
+
+create policy "Authenticated users can delete recipe images"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'recipe-images');
+
+-- ===========================================
+-- Auto-update updated_at trigger
+-- ===========================================
+create or replace function update_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger recipes_updated_at
+  before update on recipes
+  for each row
+  execute function update_updated_at();
