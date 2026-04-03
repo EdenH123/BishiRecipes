@@ -75,7 +75,7 @@ export default function FavoriteButton({ recipeId, userId }: FavoriteButtonProps
       aria-label={favorited ? 'הסר ממועדפים' : 'הוסף למועדפים'}
     >
       {favorited ? (
-        <span className="text-saffron">⭐</span>
+        <span className="text-secondary-container">⭐</span>
       ) : (
         <span className="text-gray-400">☆</span>
       )}

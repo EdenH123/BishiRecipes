@@ -14,34 +14,38 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
       <motion.div
         whileHover={{ y: -4 }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-        className="overflow-hidden rounded-card bg-white shadow-md transition-shadow hover:shadow-lg font-rubik"
+        className="bg-surface-container-lowest rounded overflow-hidden shadow-[0px_4px_16px_rgba(180,28,27,0.04)] group"
       >
-        {recipe.image_url ? (
-          <img
-            src={recipe.image_url}
-            alt={recipe.title}
-            className="aspect-[4/3] w-full object-cover"
-          />
-        ) : (
-          <div className="flex aspect-[4/3] w-full items-center justify-center bg-saffron">
-            <span className="text-5xl">🍽️</span>
-          </div>
-        )}
+        <div className="aspect-[4/3] overflow-hidden relative">
+          {recipe.image_url ? (
+            <img
+              src={recipe.image_url}
+              alt={recipe.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex w-full h-full items-center justify-center bg-secondary-container/30 text-5xl">
+              🍽️
+            </div>
+          )}
 
-        <div className="p-4" dir="rtl">
-          <h3 className="text-lg font-bold text-gray-900">{recipe.title}</h3>
+          {recipe.category && (
+            <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-bold text-primary">
+              {recipe.category}
+            </div>
+          )}
+        </div>
 
-          <div className="mt-2 flex flex-wrap gap-2">
-            {recipe.category && (
-              <span className="rounded-full bg-herb/15 px-2.5 py-0.5 text-xs font-medium text-herb">
-                {recipe.category}
-              </span>
-            )}
+        <div className="p-3 text-right">
+          <h3 className="text-on-surface font-bold text-sm mb-1 line-clamp-1">
+            {recipe.title}
+          </h3>
 
-            {recipe.tags?.map((tag) => (
+          <div className="flex flex-wrap gap-1 mb-2 justify-end">
+            {recipe.tags?.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-warm-100 px-2 py-0.5 text-xs text-gray-600"
+                className="text-[9px] bg-surface-container px-1.5 py-0.5 rounded text-outline"
               >
                 {tag}
               </span>
@@ -49,7 +53,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           </div>
 
           {recipe.profiles?.display_name && (
-            <p className="mt-3 text-xs text-gray-400">
+            <p className="text-[10px] text-outline italic">
               הוסיף/ה: {recipe.profiles.display_name}
             </p>
           )}

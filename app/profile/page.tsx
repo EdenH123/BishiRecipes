@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { Recipe, Profile } from '@/lib/types'
 import Navbar from '@/components/Navbar'
+import BottomNav from '@/components/BottomNav'
 import RecipeCard from '@/components/RecipeCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
@@ -109,11 +110,12 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div dir="rtl" className="min-h-screen bg-[#FFFBF5]">
+      <div dir="rtl" className="min-h-screen bg-surface pt-20 pb-28">
         <Navbar />
         <div className="flex items-center justify-center py-20">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#F5A623] border-t-transparent" />
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-secondary-container border-t-transparent" />
         </div>
+        <BottomNav />
       </div>
     )
   }
@@ -121,13 +123,13 @@ export default function ProfilePage() {
   const activeRecipes = activeTab === 'recipes' ? myRecipes : favoriteRecipes
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FFFBF5]">
+    <div dir="rtl" className="min-h-screen bg-surface pt-20 pb-28">
       <Navbar />
 
       <div className="mx-auto max-w-3xl px-4 py-6">
         {/* Avatar */}
         <div className="flex justify-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#F5A623] text-3xl font-bold text-white">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary-container text-3xl font-bold text-on-secondary-container">
             {profile?.display_name?.charAt(0) || '?'}
           </div>
         </div>
@@ -138,12 +140,12 @@ export default function ProfilePage() {
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-center font-rubik text-lg focus:border-[#F5A623] focus:outline-none focus:ring-1 focus:ring-[#F5A623]"
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-center font-rubik text-lg focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <button
             onClick={handleSaveName}
             disabled={saving || displayName.trim() === profile?.display_name}
-            className="rounded-lg bg-[#4CAF7D] px-5 py-2 font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="rounded-lg bg-tertiary px-5 py-2 font-bold text-on-tertiary transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {saving ? '...' : 'שמירה'}
           </button>
@@ -155,7 +157,7 @@ export default function ProfilePage() {
             onClick={() => setActiveTab('recipes')}
             className={`pb-3 text-base font-rubik transition-colors ${
               activeTab === 'recipes'
-                ? 'border-b-2 border-[#E8433A] font-bold text-[#E8433A]'
+                ? 'border-b-2 border-primary font-bold text-primary'
                 : 'text-gray-500'
             }`}
           >
@@ -165,7 +167,7 @@ export default function ProfilePage() {
             onClick={() => setActiveTab('favorites')}
             className={`pb-3 text-base font-rubik transition-colors ${
               activeTab === 'favorites'
-                ? 'border-b-2 border-[#E8433A] font-bold text-[#E8433A]'
+                ? 'border-b-2 border-primary font-bold text-primary'
                 : 'text-gray-500'
             }`}
           >
@@ -204,12 +206,14 @@ export default function ProfilePage() {
         <div className="mt-12 flex justify-center pb-8">
           <button
             onClick={handleSignOut}
-            className="rounded-lg border-2 border-[#E8433A] px-6 py-2 font-bold text-[#E8433A] transition-colors hover:bg-[#E8433A] hover:text-white"
+            className="rounded-lg border-2 border-primary px-6 py-2 font-bold text-primary transition-colors hover:bg-primary hover:text-on-primary"
           >
             התנתקות
           </button>
         </div>
       </div>
+
+      <BottomNav />
     </div>
   )
 }

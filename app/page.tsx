@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { type Recipe, type Profile, CATEGORIES, DEFAULT_TAGS } from '@/lib/types'
 import Navbar from '@/components/Navbar'
+import BottomNav from '@/components/BottomNav'
 import RecipeCard from '@/components/RecipeCard'
 import FilterBar from '@/components/FilterBar'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -39,7 +40,6 @@ export default function HomePage() {
       if (recipesRes.data) {
         setRecipes(recipesRes.data as Recipe[])
 
-        // Collect all unique tags from recipes and merge with defaults
         const recipeTags = new Set<string>([...DEFAULT_TAGS])
         for (const recipe of recipesRes.data) {
           if (recipe.tags) {
@@ -75,33 +75,23 @@ export default function HomePage() {
 
   const filteredRecipes = useMemo(() => {
     return recipes.filter((recipe) => {
-      // Search filter
       if (search && !recipe.title.toLowerCase().includes(search.toLowerCase())) {
         return false
       }
-
-      // Category filter
       if (selectedCategory && recipe.category !== selectedCategory) {
         return false
       }
-
-      // Tags filter (OR logic — recipe must have at least one of the selected tags)
       if (selectedTags.length > 0) {
         if (!recipe.tags || !selectedTags.some((tag) => recipe.tags.includes(tag))) {
           return false
         }
       }
-
-      // Member filter
       if (selectedMember && recipe.created_by !== selectedMember) {
         return false
       }
-
-      // Favorites filter
       if (showFavoritesOnly && !favoriteIds.includes(recipe.id)) {
         return false
       }
-
       return true
     })
   }, [recipes, search, selectedCategory, selectedTags, selectedMember, showFavoritesOnly, favoriteIds])
@@ -113,89 +103,82 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-warm font-rubik" dir="rtl">
+    <div className="min-h-screen bg-surface" dir="rtl">
       <Navbar />
 
-      {/* Search bar */}
-      <div className="mx-auto mt-4 max-w-2xl px-4">
-        <div className="relative">
-          <svg
-            className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
+      <main className="pt-20 pb-28 px-4">
+        {/* Search bar */}
+        <div className="relative mb-6 max-w-2xl mx-auto">
+          <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+            <span className="material-symbols-outlined text-outline">search</span>
+          </div>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="חיפוש מתכונים..."
-            className="w-full rounded-full border border-gray-200 bg-white px-4 py-2 pr-10 text-sm focus:border-saffron focus:outline-none focus:ring-1 focus:ring-saffron"
+            placeholder="חפש מתכון..."
+            className="w-full bg-surface-container-lowest border-none py-4 pr-12 pl-4 rounded-full shadow-sm focus:ring-2 focus:ring-primary/20 transition-all text-right placeholder:text-outline/60 outline-none"
           />
         </div>
-      </div>
 
-      {/* Filter bar */}
-      <div className="mx-auto mt-4 max-w-5xl px-4">
-        <FilterBar
-          categories={[...CATEGORIES]}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-          tags={allTags}
-          selectedTags={selectedTags}
-          onToggleTag={handleToggleTag}
-          members={members}
-          selectedMember={selectedMember}
-          onSelectMember={setSelectedMember}
-          showFavoritesOnly={showFavoritesOnly}
-          onToggleFavorites={() => setShowFavoritesOnly((prev) => !prev)}
-        />
-      </div>
+        {/* Filter bar */}
+        <div className="max-w-5xl mx-auto mb-8">
+          <FilterBar
+            categories={[...CATEGORIES]}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+            tags={allTags}
+            selectedTags={selectedTags}
+            onToggleTag={handleToggleTag}
+            members={members}
+            selectedMember={selectedMember}
+            onSelectMember={setSelectedMember}
+            showFavoritesOnly={showFavoritesOnly}
+            onToggleFavorites={() => setShowFavoritesOnly((prev) => !prev)}
+          />
+        </div>
 
-      {/* Recipe grid */}
-      <main className="mx-auto max-w-5xl px-4 py-6 pb-24">
-        {loading ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div
-                key={i}
-                className="aspect-[3/4] animate-pulse rounded-2xl bg-gray-200"
-              />
-            ))}
-          </div>
-        ) : recipes.length === 0 ? (
-          <p className="mt-16 text-center text-lg text-gray-400">
-            עדיין אין מתכונים — הוסיפו את הראשון! 🍽️
-          </p>
-        ) : filteredRecipes.length === 0 ? (
-          <p className="mt-16 text-center text-lg text-gray-400">
-            לא נמצאו מתכונים לפי הסינון הזה 🤷
-          </p>
-        ) : (
-          <AnimatePresence mode="popLayout">
+        {/* Recipe grid */}
+        <div className="max-w-5xl mx-auto">
+          {loading ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              {filteredRecipes.map((recipe) => (
-                <motion.div
-                  key={recipe.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <RecipeCard recipe={recipe} />
-                </motion.div>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`aspect-[3/4] animate-pulse rounded bg-surface-container ${
+                    i % 2 === 1 ? 'mt-4' : ''
+                  }`}
+                />
               ))}
             </div>
-          </AnimatePresence>
-        )}
+          ) : recipes.length === 0 ? (
+            <p className="mt-16 text-center text-lg text-on-surface-variant">
+              עדיין אין מתכונים — הוסיפו את הראשון! 🍽️
+            </p>
+          ) : filteredRecipes.length === 0 ? (
+            <p className="mt-16 text-center text-lg text-on-surface-variant">
+              לא נמצאו מתכונים לפי הסינון הזה 🤷
+            </p>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                {filteredRecipes.map((recipe, index) => (
+                  <motion.div
+                    key={recipe.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.2 }}
+                    className={index % 2 === 1 ? 'mt-4' : ''}
+                  >
+                    <RecipeCard recipe={recipe} />
+                  </motion.div>
+                ))}
+              </div>
+            </AnimatePresence>
+          )}
+        </div>
       </main>
 
       {/* Floating add button */}
@@ -203,10 +186,12 @@ export default function HomePage() {
         href="/recipe/new"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        className="fixed bottom-6 left-1/2 z-50 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-tomato text-3xl text-white shadow-lg"
+        className="fixed bottom-24 left-1/2 z-[60] flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-on-primary shadow-[0_12px_32px_rgba(180,28,27,0.3)]"
       >
-        +
+        <span className="material-symbols-outlined text-3xl">add</span>
       </motion.a>
+
+      <BottomNav />
     </div>
   )
 }

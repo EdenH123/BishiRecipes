@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { Recipe } from '@/lib/types'
 import Navbar from '@/components/Navbar'
+import BottomNav from '@/components/BottomNav'
 import FavoriteButton from '@/components/FavoriteButton'
 import CommentSection from '@/components/CommentSection'
 
@@ -71,39 +72,41 @@ export default function RecipeDetailPage() {
   // Loading state
   if (loading) {
     return (
-      <>
+      <div className="min-h-screen bg-surface pt-20 pb-28">
         <Navbar />
         <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-[#E8433A]" />
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-primary" />
         </div>
-      </>
+        <BottomNav />
+      </div>
     )
   }
 
   // Error / not found
   if (error || !recipe) {
     return (
-      <>
+      <div className="min-h-screen bg-surface pt-20 pb-28">
         <Navbar />
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 font-rubik" dir="rtl">
           <p className="text-xl text-gray-600">המתכון לא נמצא 😕</p>
           <Link
             href="/"
-            className="rounded-lg bg-[#E8433A] px-6 py-2 text-white transition-opacity hover:opacity-90"
+            className="rounded-lg bg-primary px-6 py-2 text-white transition-opacity hover:opacity-90"
           >
             חזרה לדף הבית
           </Link>
         </div>
-      </>
+        <BottomNav />
+      </div>
     )
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-surface pt-20 pb-28">
       <Navbar />
 
       {/* Hero image */}
-      <div className="relative w-full max-h-[400px] overflow-hidden rounded-b-2xl bg-[#F5A623]/20">
+      <div className="relative w-full max-h-[400px] overflow-hidden rounded-b-2xl bg-secondary-container/30">
         {recipe.image_url ? (
           <Image
             src={recipe.image_url}
@@ -114,7 +117,7 @@ export default function RecipeDetailPage() {
             priority
           />
         ) : (
-          <div className="flex h-64 w-full items-center justify-center bg-[#F5A623]/20 text-7xl">
+          <div className="flex h-64 w-full items-center justify-center bg-secondary-container/30 text-7xl">
             🍽️
           </div>
         )}
@@ -134,14 +137,14 @@ export default function RecipeDetailPage() {
         {/* Category + tags */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {recipe.category && (
-            <span className="rounded-full bg-[#4CAF7D] px-3 py-1 text-xs font-medium text-white">
+            <span className="rounded-full bg-tertiary px-3 py-1 text-xs font-medium text-white">
               {recipe.category}
             </span>
           )}
           {recipe.tags?.map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-[#FFFBF5] px-3 py-1 text-xs font-medium text-gray-700 border border-gray-200"
+              className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-gray-700 border border-outline-variant"
             >
               {tag}
             </span>
@@ -158,9 +161,10 @@ export default function RecipeDetailPage() {
           {userId && <FavoriteButton recipeId={recipe.id} userId={userId} />}
           <Link
             href={`/recipe/${recipe.id}/edit`}
-            className="flex items-center gap-1 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+            className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
           >
-            ✏️ עריכה
+            <span className="material-symbols-outlined text-base">edit</span>
+            עריכה
           </Link>
         </div>
 
@@ -179,7 +183,7 @@ export default function RecipeDetailPage() {
                   type="checkbox"
                   checked={checkedIngredients.has(i)}
                   onChange={() => toggleIngredient(i)}
-                  className="h-5 w-5 shrink-0 cursor-pointer rounded border-gray-300 accent-[#4CAF7D]"
+                  className="h-5 w-5 shrink-0 cursor-pointer rounded border-gray-300 accent-tertiary"
                 />
                 <span
                   className={`text-sm ${
@@ -204,7 +208,7 @@ export default function RecipeDetailPage() {
           <ol className="mt-3 flex flex-col gap-4">
             {recipe.steps.map((step, i) => (
               <li key={i} className="flex items-start gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E8433A] text-sm font-bold text-white">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
                   {i + 1}
                 </span>
                 <p className="pt-0.5 text-sm leading-relaxed text-gray-700">{step}</p>
@@ -219,13 +223,15 @@ export default function RecipeDetailPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35, duration: 0.4 }}
-            className="mt-8 border-t border-gray-200 pt-6"
+            className="mt-8 border-t border-outline-variant pt-6"
           >
             <h2 className="mb-4 text-xl font-bold">תגובות</h2>
             <CommentSection recipeId={recipe.id} userId={userId} />
           </motion.div>
         )}
       </motion.div>
-    </>
+
+      <BottomNav />
+    </div>
   )
 }

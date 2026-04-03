@@ -186,7 +186,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   }
 
   const inputClass =
-    'rounded-lg border border-gray-200 p-3 w-full focus:border-tomato focus:ring-1 focus:ring-tomato outline-none'
+    'rounded-lg border border-gray-200 p-3 w-full focus:border-primary focus:ring-1 focus:ring-primary outline-none'
 
   return (
     <motion.form
@@ -254,8 +254,8 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                 onClick={() => toggleTag(tag)}
                 className={`px-3 py-1 rounded-full text-sm transition-colors ${
                   selected
-                    ? 'bg-tomato text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-primary text-white'
+                    : 'bg-surface-container text-gray-700 hover:bg-surface-container-high'
                 }`}
               >
                 {tag}
@@ -280,7 +280,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
           <button
             type="button"
             onClick={addCustomTag}
-            className="shrink-0 px-4 py-2 rounded-lg bg-tomato text-white text-sm hover:opacity-90 transition-opacity"
+            className="shrink-0 px-4 py-2 rounded-lg bg-primary text-white text-sm hover:opacity-90 transition-opacity"
           >
             הוסף
           </button>
@@ -304,7 +304,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                 <button
                   type="button"
                   onClick={() => removeIngredient(index)}
-                  className="shrink-0 text-gray-400 hover:text-tomato text-lg transition-colors"
+                  className="shrink-0 text-gray-400 hover:text-primary text-lg transition-colors"
                 >
                   ✕
                 </button>
@@ -315,7 +315,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         <button
           type="button"
           onClick={addIngredient}
-          className="mt-2 text-sm text-tomato hover:underline"
+          className="mt-2 text-sm text-primary hover:underline"
         >
           הוסיפו מצרך +
         </button>
@@ -329,7 +329,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         <div className="space-y-2">
           {steps.map((step, index) => (
             <div key={index} className="flex gap-2 items-center">
-              <span className="shrink-0 w-7 h-7 rounded-full bg-saffron text-white flex items-center justify-center text-sm font-medium">
+              <span className="shrink-0 w-7 h-7 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-sm font-medium">
                 {index + 1}
               </span>
               <input
@@ -343,7 +343,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                 <button
                   type="button"
                   onClick={() => removeStep(index)}
-                  className="shrink-0 text-gray-400 hover:text-tomato text-lg transition-colors"
+                  className="shrink-0 text-gray-400 hover:text-primary text-lg transition-colors"
                 >
                   ✕
                 </button>
@@ -354,7 +354,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         <button
           type="button"
           onClick={addStep}
-          className="mt-2 text-sm text-tomato hover:underline"
+          className="mt-2 text-sm text-primary hover:underline"
         >
           הוסיפו שלב +
         </button>
@@ -373,7 +373,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-full rounded-lg border-2 border-dashed border-gray-300 hover:border-tomato transition-colors p-6 flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-gray-700"
+          className="w-full rounded-lg border-2 border-dashed border-gray-300 hover:border-primary transition-colors p-6 flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-gray-700"
         >
           {imagePreview ? (
             <div className="relative w-full h-48">
@@ -395,7 +395,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 py-3 rounded-lg bg-tomato text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="flex-1 py-3 rounded-lg bg-primary text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {loading ? 'שומר...' : 'שמירה'}
         </button>

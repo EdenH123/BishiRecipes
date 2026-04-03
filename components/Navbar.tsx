@@ -30,29 +30,33 @@ export default function Navbar() {
   }, [])
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-white shadow-sm font-rubik">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3" dir="rtl">
-        <span className="text-xl font-bold text-tomato">בישי מתכונים</span>
+    <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm">
+      <div className="flex flex-row-reverse justify-between items-center px-4 h-16 max-w-5xl mx-auto">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold text-primary">🍳 בישי מתכונים</h1>
+        </div>
 
-        {profile && (
-          <button
-            onClick={() => router.push('/profile')}
-            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full"
-          >
-            {profile.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={profile.display_name}
-                className="h-8 w-8 rounded-full object-cover"
-              />
-            ) : (
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-saffron text-sm font-bold text-white">
-                {profile.display_name?.charAt(0) || '?'}
-              </span>
-            )}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {profile && (
+            <button
+              onClick={() => router.push('/profile')}
+              className="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border-2 border-primary/10 transition-transform active:scale-95"
+            >
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.display_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="flex w-full h-full items-center justify-center bg-secondary-container text-on-secondary-container text-sm font-bold">
+                  {profile.display_name?.charAt(0) || '?'}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
       </div>
-    </nav>
+    </header>
   )
 }

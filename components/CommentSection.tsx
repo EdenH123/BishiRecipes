@@ -116,7 +116,7 @@ export default function CommentSection({ recipeId, userId }: CommentSectionProps
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: 40 }}
               transition={{ duration: 0.2 }}
-              className="flex items-start gap-3 rounded-lg bg-white p-3 shadow-sm"
+              className="flex items-start gap-3 rounded-lg bg-surface-container-lowest p-3 shadow-sm"
             >
               {/* Avatar */}
               {comment.profiles.avatar_url ? (
@@ -126,7 +126,7 @@ export default function CommentSection({ recipeId, userId }: CommentSectionProps
                   className="h-9 w-9 shrink-0 rounded-full object-cover"
                 />
               ) : (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-saffron text-sm font-bold text-white">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary-container text-sm font-bold text-on-secondary-container">
                   {comment.profiles.display_name?.charAt(0) || '?'}
                 </span>
               )}
@@ -162,12 +162,12 @@ export default function CommentSection({ recipeId, userId }: CommentSectionProps
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="הוסיפו תגובה..."
-          className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none transition-colors focus:border-[#E8433A]"
+          className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none transition-colors focus:border-primary"
         />
         <button
           type="submit"
           disabled={submitting || !newComment.trim()}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#E8433A] text-white transition-opacity disabled:opacity-40 cursor-pointer"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition-opacity disabled:opacity-40 cursor-pointer"
           aria-label="שלח תגובה"
         >
           <svg
