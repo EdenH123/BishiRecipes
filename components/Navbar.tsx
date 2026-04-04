@@ -59,7 +59,7 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold text-primary">🍳 בישי מתכונים</h1>
+          <h1 className="text-xl font-bold text-primary">🍳 BISHILicious</h1>
         </div>
       </div>
     </header>

@@ -5,18 +5,18 @@ import PageTransition from '@/components/PageTransition'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'בישי מתכונים',
+  title: 'BISHILicious',
   description: 'אפליקציית מתכונים משפחתית — שתפו, בשלו ותהנו יחד!',
   openGraph: {
-    title: 'בישי מתכונים',
+    title: 'BISHILicious',
     description: 'אפליקציית מתכונים משפחתית — שתפו, בשלו ותהנו יחד!',
-    siteName: 'בישי מתכונים',
+    siteName: 'BISHILicious',
     type: 'website',
     locale: 'he_IL',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'בישי מתכונים',
+    title: 'BISHILicious',
     description: 'אפליקציית מתכונים משפחתית — שתפו, בשלו ותהנו יחד!',
   },
 }
