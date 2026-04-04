@@ -51,7 +51,7 @@ const filterFadeIn = {
 }
 
 export default function HomePage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [search, setSearch] = useState('')
@@ -218,7 +218,8 @@ export default function HomePage() {
 
       return query
     },
-    [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, favoriteIds, sortBy, supabase]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, favoriteIds, sortBy]
   )
 
   // Fetch a page of recipes
@@ -273,7 +274,8 @@ export default function HomePage() {
     setPage(0)
     setHasMore(true)
     fetchRecipesPage(0, true)
-  }, [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, favoriteIds, sortBy, fetchRecipesPage])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, favoriteIds, sortBy])
 
   // Animated counter — animate towards totalCount
   useEffect(() => {
