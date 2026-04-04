@@ -165,6 +165,13 @@ export default function ImportRecipePage() {
       <Navbar />
 
       <div className="mx-auto max-w-3xl px-4 py-6 font-rubik">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1 text-sm text-on-surface-variant mb-4 hover:text-primary active:scale-95 transition-colors"
+        >
+          <span className="material-symbols-outlined text-lg">arrow_forward</span>
+          חזרה
+        </button>
         <h1 className="text-2xl font-bold mb-2">ייבוא מתכון מטקסט</h1>
         <p className="text-on-surface-variant text-sm mb-6">
           הדביקו טקסט של מתכון בכל פורמט — המערכת תזהה אוטומטית את השם, המצרכים והשלבים.
