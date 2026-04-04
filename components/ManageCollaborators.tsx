@@ -54,7 +54,7 @@ export default function ManageCollaborators({
     setLoading(false)
 
     if (error) {
-      toast.error('שגיאה בהוספת שותף')
+      toast.error(`שגיאה בהוספת שותף: ${error.message}`)
       return
     }
 
