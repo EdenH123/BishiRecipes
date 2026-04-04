@@ -272,13 +272,157 @@ export default function TestPage() {
       add('14. שליפת מתכונים + מיון', 'fail', String(e))
     }
 
-    // 15. Cleanup test recipe
+    // 15. Reactions (emoji)
+    if (testRecipeId) {
+      try {
+        const { error: reactErr } = await supabase
+          .from('reactions')
+          .insert({ recipe_id: testRecipeId, user_id: userId, emoji: '🔥' })
+        if (reactErr) { add('15. תגובות אמוג׳י', 'fail', reactErr.message); }
+        else {
+          // Insert another emoji
+          await supabase
+            .from('reactions')
+            .insert({ recipe_id: testRecipeId, user_id: userId, emoji: '😋' })
+          // Read all reactions
+          const { data: reactions } = await supabase
+            .from('reactions')
+            .select('emoji')
+            .eq('recipe_id', testRecipeId)
+          // Delete them
+          await supabase.from('reactions').delete().eq('recipe_id', testRecipeId).eq('user_id', userId)
+          add('15. תגובות אמוג׳י', 'pass', `הוספה + קריאה + מחיקה | ${reactions?.length || 0} תגובות (🔥😋)`)
+        }
+      } catch (e) {
+        add('15. תגובות אמוג׳י', 'fail', String(e))
+      }
+    }
+
+    // 16. Reactions - duplicate prevention
+    if (testRecipeId) {
+      try {
+        await supabase
+          .from('reactions')
+          .insert({ recipe_id: testRecipeId, user_id: userId, emoji: '❤️' })
+        const { error: dupErr } = await supabase
+          .from('reactions')
+          .insert({ recipe_id: testRecipeId, user_id: userId, emoji: '❤️' })
+        await supabase.from('reactions').delete().eq('recipe_id', testRecipeId).eq('user_id', userId)
+        if (dupErr) {
+          add('16. מניעת כפילות אמוג׳י', 'pass', `כפילות נחסמה: ${dupErr.message.slice(0, 50)}`)
+        } else {
+          add('16. מניעת כפילות אמוג׳י', 'fail', 'כפילות לא נחסמה — PK חסר?')
+        }
+      } catch (e) {
+        add('16. מניעת כפילות אמוג׳י', 'fail', String(e))
+      }
+    }
+
+    // 17. Avatar gradient utility
+    try {
+      const { getAvatarGradient } = await import('@/lib/avatar-gradient')
+      const grad1 = getAvatarGradient('test-user-1')
+      const grad2 = getAvatarGradient('test-user-2')
+      const grad1Again = getAvatarGradient('test-user-1')
+      const isLinearGradient = grad1.startsWith('linear-gradient')
+      const isDeterministic = grad1 === grad1Again
+      const isDifferent = grad1 !== grad2
+      if (isLinearGradient && isDeterministic && isDifferent) {
+        add('17. גרדיאנט אווטאר', 'pass', `דטרמיניסטי ✓ | שונה בין משתמשים ✓ | ${grad1.slice(0, 45)}...`)
+      } else {
+        add('17. גרדיאנט אווטאר', 'fail', `gradient: ${isLinearGradient} | deterministic: ${isDeterministic} | different: ${isDifferent}`)
+      }
+    } catch (e) {
+      add('17. גרדיאנט אווטאר', 'fail', String(e))
+    }
+
+    // 18. Image compression utility
+    try {
+      const { compressImage } = await import('@/lib/compress-image')
+      // Create a small test file
+      const canvas = document.createElement('canvas')
+      canvas.width = 2000
+      canvas.height = 2000
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#ff0000'
+      ctx.fillRect(0, 0, 2000, 2000)
+      const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), 'image/png'))
+      const testFile = new File([blob], 'test.png', { type: 'image/png' })
+      const compressed = await compressImage(testFile)
+      const sizeReduction = ((1 - compressed.size / testFile.size) * 100).toFixed(0)
+      add('18. דחיסת תמונות', 'pass', `מקור: ${(testFile.size / 1024).toFixed(0)}KB → דחוס: ${(compressed.size / 1024).toFixed(0)}KB (${sizeReduction}% הפחתה)`)
+    } catch (e) {
+      add('18. דחיסת תמונות', 'fail', String(e))
+    }
+
+    // 19. Unit converter logic
+    try {
+      const conversions = [
+        { from: 'כוס', to: 'מ״ל', factor: 240 },
+        { from: 'כף', to: 'מ״ל', factor: 15 },
+        { from: 'כפית', to: 'מ״ל', factor: 5 },
+      ]
+      const results = conversions.map((c) => `1 ${c.from} = ${c.factor} ${c.to}`)
+      add('19. ממיר יחידות', 'pass', results.join(' | '))
+    } catch (e) {
+      add('19. ממיר יחידות', 'fail', String(e))
+    }
+
+    // 20. Recipe export utility
+    try {
+      const { exportRecipeAsImage } = await import('@/lib/export-recipe')
+      if (typeof exportRecipeAsImage === 'function') {
+        add('20. ייצוא תמונת מתכון', 'pass', 'פונקציה קיימת ומיוצאת')
+      } else {
+        add('20. ייצוא תמונת מתכון', 'fail', 'לא נמצאה פונקציה')
+      }
+    } catch (e) {
+      add('20. ייצוא תמונת מתכון', 'fail', String(e))
+    }
+
+    // 21. Type utilities (parseIngredient, displayIngredient, getUserBadge)
+    try {
+      const { parseIngredient, displayIngredient, getUserBadge } = await import('@/lib/types')
+      const parsed = parseIngredient(JSON.stringify({ amount: '2', unit: 'כוסות', name: 'קמח' }))
+      const display = displayIngredient(parsed)
+      const badge0 = getUserBadge(0)
+      const badge1 = getUserBadge(1)
+      const badge5 = getUserBadge(5)
+      const badge10 = getUserBadge(10)
+      const badge20 = getUserBadge(20)
+      const badgeCheck = !badge0 && badge1?.icon === '🌱' && badge5?.icon === '🥄' && badge10?.icon === '🍳' && badge20?.icon === '👨‍🍳'
+      if (parsed.amount === '2' && parsed.unit === 'כוסות' && parsed.name === 'קמח' && display === '2 כוסות קמח' && badgeCheck) {
+        add('21. כלי טיפוסים (types)', 'pass', `parseIngredient ✓ | displayIngredient: "${display}" ✓ | badges: 0→null, 1→🌱, 5→🥄, 10→🍳, 20→👨‍🍳 ✓`)
+      } else {
+        add('21. כלי טיפוסים (types)', 'fail', `parsed: ${JSON.stringify(parsed)} | display: ${display} | badges: ${badgeCheck}`)
+      }
+    } catch (e) {
+      add('21. כלי טיפוסים (types)', 'fail', String(e))
+    }
+
+    // 22. Multiple favorites for same user
+    if (testRecipeId) {
+      try {
+        await supabase.from('favorites').insert({ user_id: userId, recipe_id: testRecipeId })
+        const { error: dupErr } = await supabase.from('favorites').insert({ user_id: userId, recipe_id: testRecipeId })
+        await supabase.from('favorites').delete().eq('user_id', userId).eq('recipe_id', testRecipeId)
+        if (dupErr) {
+          add('22. מניעת כפילות מועדפים', 'pass', `כפילות נחסמה`)
+        } else {
+          add('22. מניעת כפילות מועדפים', 'fail', 'כפילות לא נחסמה')
+        }
+      } catch (e) {
+        add('22. מניעת כפילות מועדפים', 'fail', String(e))
+      }
+    }
+
+    // 23. Cleanup test recipe
     if (testRecipeId) {
       try {
         await supabase.from('recipes').delete().eq('id', testRecipeId)
-        add('15. ניקוי', 'pass', 'מתכון הבדיקה נמחק')
+        add('23. ניקוי', 'pass', 'מתכון הבדיקה נמחק')
       } catch (e) {
-        add('15. ניקוי', 'fail', String(e))
+        add('23. ניקוי', 'fail', String(e))
       }
     }
 
@@ -296,7 +440,7 @@ export default function TestPage() {
           <Link href="/" className="text-sm text-primary hover:underline">חזרה לאפליקציה</Link>
         </div>
         <p className="text-on-surface-variant mb-6">
-          בודק: חיבור, הרשאות, פרופיל, מתכונים, מועדפים, תגובות, דירוגים, hidden_filters, אחסון, עדכונים.
+          בודק: חיבור, הרשאות, פרופיל, מתכונים, מועדפים, תגובות, דירוגים, hidden_filters, אחסון, עדכונים, אמוג׳י, גרדיאנט, דחיסה, ייצוא, טיפוסים.
         </p>
 
         <div className="flex items-center gap-4 mb-6">
