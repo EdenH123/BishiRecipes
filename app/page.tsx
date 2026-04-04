@@ -14,6 +14,40 @@ import Onboarding from '@/components/Onboarding'
 import BackToTop from '@/components/BackToTop'
 import { motion, AnimatePresence } from 'framer-motion'
 
+const gridContainerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+}
+
+const gridItemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring' as const, stiffness: 300, damping: 25 },
+  },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } },
+}
+
+const listItemVariants = {
+  hidden: { opacity: 0, x: 20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { type: 'spring' as const, stiffness: 300, damping: 25 },
+  },
+  exit: { opacity: 0, x: -20, transition: { duration: 0.2 } },
+}
+
+const filterFadeIn = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' as const } },
+}
+
 export default function HomePage() {
   const supabase = createClient()
 
@@ -33,6 +67,7 @@ export default function HomePage() {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [animatedCount, setAnimatedCount] = useState(0)
+  const [countPulse, setCountPulse] = useState(false)
   const [recentActivity, setRecentActivity] = useState<{ type: string; title: string; user: string; time: string }[]>([])
 
   useEffect(() => {
@@ -148,6 +183,8 @@ export default function HomePage() {
       if (current >= target) {
         current = target
         clearInterval(timer)
+        setCountPulse(true)
+        setTimeout(() => setCountPulse(false), 400)
       }
       setAnimatedCount(current)
     }, 16)
@@ -242,7 +279,12 @@ export default function HomePage() {
         </div>
 
         {/* Filter bar */}
-        <div className="max-w-5xl mx-auto mb-8">
+        <motion.div
+          className="max-w-5xl mx-auto mb-8"
+          variants={filterFadeIn}
+          initial="hidden"
+          animate="visible"
+        >
           <FilterBar
             categories={allCategories}
             selectedCategory={selectedCategory}
@@ -256,7 +298,7 @@ export default function HomePage() {
             showFavoritesOnly={showFavoritesOnly}
             onToggleFavorites={() => setShowFavoritesOnly((prev) => !prev)}
           />
-        </div>
+        </motion.div>
 
         {/* Activity feed */}
         {recentActivity.length > 0 && !loading && (
@@ -282,9 +324,13 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {!loading && recipes.length > 0 && (
-              <span className="text-sm text-on-surface-variant">
+              <motion.span
+                className="text-sm text-on-surface-variant"
+                animate={countPulse ? { scale: [1, 1.15, 1] } : {}}
+                transition={{ duration: 0.35 }}
+              >
                 <span className="font-bold text-primary text-lg">{animatedCount}</span> מתכונים
-              </span>
+              </motion.span>
             )}
             <Link
               href="/taste-map"
@@ -295,18 +341,20 @@ export default function HomePage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex rounded-full bg-surface-container-low overflow-hidden">
-              <button
+              <motion.button
                 onClick={() => setViewMode('grid')}
+                whileTap={{ scale: 0.95 }}
                 className={`p-2 transition-colors ${viewMode === 'grid' ? 'bg-primary text-white' : 'text-on-surface-variant'}`}
               >
                 <span className="material-symbols-outlined text-lg">grid_view</span>
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => setViewMode('list')}
+                whileTap={{ scale: 0.95 }}
                 className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'text-on-surface-variant'}`}
               >
                 <span className="material-symbols-outlined text-lg">view_list</span>
-              </button>
+              </motion.button>
             </div>
             <select
               value={sortBy}
@@ -340,31 +388,37 @@ export default function HomePage() {
             <>
               <AnimatePresence mode="popLayout">
                 {viewMode === 'grid' ? (
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                  <motion.div
+                    key="grid-view"
+                    className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+                    variants={gridContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
                     {visibleRecipes.map((recipe, index) => (
                       <motion.div
                         key={recipe.id}
                         layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.2 }}
+                        variants={gridItemVariants}
                         className={index % 2 === 1 ? 'mt-4' : ''}
                       >
                         <RecipeCard recipe={recipe} />
                       </motion.div>
                     ))}
-                  </div>
+                  </motion.div>
                 ) : (
-                  <div className="flex flex-col gap-3">
+                  <motion.div
+                    key="list-view"
+                    className="flex flex-col gap-3"
+                    variants={gridContainerVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
                     {visibleRecipes.map((recipe) => (
                       <motion.div
                         key={recipe.id}
                         layout
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.2 }}
+                        variants={listItemVariants}
                       >
                         <Link href={`/recipe/${recipe.id}`} className="flex gap-4 rounded-xl bg-surface-container-lowest p-3 shadow-sm hover:shadow-md transition-shadow">
                           <div className="h-20 w-20 shrink-0 rounded-lg overflow-hidden bg-secondary-container/30">
@@ -391,7 +445,7 @@ export default function HomePage() {
                         </Link>
                       </motion.div>
                     ))}
-                  </div>
+                  </motion.div>
                 )}
               </AnimatePresence>
               {hasMore && (

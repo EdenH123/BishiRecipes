@@ -10,8 +10,21 @@ interface RecipeCardProps {
   recipe: Recipe
 }
 
+const tagContainerVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.04 },
+  },
+}
+
+const tagItemVariants = {
+  hidden: { opacity: 0, y: 4 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+}
+
 export default function RecipeCard({ recipe }: RecipeCardProps) {
   const [flipped, setFlipped] = useState(false)
+  const [imageLoaded, setImageLoaded] = useState(false)
 
   const handleFlip = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -22,8 +35,9 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
   return (
     <Link href={`/recipe/${recipe.id}`}>
       <motion.div
-        whileHover={{ y: -4 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        whileHover={{ y: -4, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
         className="group"
         style={{ perspective: 800 }}
       >
@@ -41,11 +55,15 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           >
             <div className="aspect-[4/3] overflow-hidden relative">
               {recipe.image_url ? (
-                <img
+                <motion.img
                   src={recipe.image_url}
                   alt={recipe.title}
                   loading="lazy"
                   decoding="async"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: imageLoaded ? 1 : 0 }}
+                  transition={{ duration: 0.3 }}
+                  onLoad={() => setImageLoaded(true)}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               ) : (
@@ -72,16 +90,22 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 </p>
               )}
 
-              <div className="flex flex-wrap gap-1 mb-2 justify-end">
+              <motion.div
+                className="flex flex-wrap gap-1 mb-2 justify-end"
+                variants={tagContainerVariants}
+                initial="hidden"
+                animate="visible"
+              >
                 {recipe.tags?.slice(0, 3).map((tag) => (
-                  <span
+                  <motion.span
                     key={tag}
+                    variants={tagItemVariants}
                     className="text-[11px] bg-surface-container px-1.5 py-0.5 rounded text-outline"
                   >
                     {tag}
-                  </span>
+                  </motion.span>
                 ))}
-              </div>
+              </motion.div>
 
               {recipe.profiles?.display_name && (
                 <p className="text-[11px] text-outline italic">

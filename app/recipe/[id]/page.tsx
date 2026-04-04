@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
@@ -21,7 +21,84 @@ import UnitConverter from '@/components/UnitConverter'
 import BackToTop from '@/components/BackToTop'
 import ManageCollaborators from '@/components/ManageCollaborators'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
-import { AnimatePresence } from 'framer-motion'
+
+// --- Animation variants ---
+
+const springTransition = { type: 'spring' as const, stiffness: 300, damping: 25 }
+
+const heroImageVariants = {
+  hidden: { opacity: 0, scale: 1.05 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeOut' as const } },
+}
+
+const titleDescVariants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
+}
+
+const ingredientsContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { delay: 0.1, staggerChildren: 0.03 },
+  },
+}
+
+const ingredientItemVariants = {
+  hidden: { opacity: 0, x: 16 },
+  visible: { opacity: 1, x: 0, transition: springTransition },
+}
+
+const stepsContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { delay: 0.15, staggerChildren: 0.04 },
+  },
+}
+
+const stepItemVariants = {
+  hidden: { opacity: 0, x: 20 },
+  visible: { opacity: 1, x: 0, transition: springTransition },
+}
+
+const actionButtonsContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.04 },
+  },
+}
+
+const actionButtonItemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: springTransition },
+}
+
+const ratingVariants = {
+  hidden: { opacity: 0, scale: 0.85 },
+  visible: { opacity: 1, scale: 1, transition: { ...springTransition, stiffness: 260, damping: 18 } },
+}
+
+const tagsContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.03 },
+  },
+}
+
+const tagChipVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: { opacity: 1, scale: 1, transition: springTransition },
+}
+
+const commentsSectionVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.35, ease: 'easeOut' as const } },
+}
+
+// --- Helpers ---
 
 function scaleAmount(amount: string, multiplier: number): string {
   if (!amount || multiplier === 1) return amount
@@ -194,7 +271,12 @@ export default function RecipeDetailPage() {
       <Navbar />
 
       {/* Hero image */}
-      <div className="relative w-full max-h-[250px] sm:max-h-[400px] overflow-hidden rounded-b-2xl bg-secondary-container/30">
+      <motion.div
+        variants={heroImageVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative w-full max-h-[250px] sm:max-h-[400px] overflow-hidden rounded-b-2xl bg-secondary-container/30"
+      >
         {recipe.image_url ? (
           <Image
             src={recipe.image_url}
@@ -209,42 +291,61 @@ export default function RecipeDetailPage() {
             🍽️
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Content */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+      <div
         className="mx-auto max-w-3xl px-4 py-6 font-rubik"
         dir="rtl"
       >
         {/* Title */}
-        <h1 className="text-3xl font-bold">{recipe.title}</h1>
+        <motion.h1
+          variants={titleDescVariants}
+          initial="hidden"
+          animate="visible"
+          className="text-3xl font-bold"
+        >
+          {recipe.title}
+        </motion.h1>
 
         {/* Description */}
         {recipe.description && (
-          <p className="mt-2 text-on-surface-variant leading-relaxed whitespace-pre-line">
+          <motion.p
+            variants={titleDescVariants}
+            initial="hidden"
+            animate="visible"
+            transition={{ delay: 0.05 }}
+            className="mt-2 text-on-surface-variant leading-relaxed whitespace-pre-line"
+          >
             {recipe.description}
-          </p>
+          </motion.p>
         )}
 
         {/* Category + tags */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <motion.div
+          variants={tagsContainerVariants}
+          initial="hidden"
+          animate="visible"
+          className="mt-3 flex flex-wrap items-center gap-2"
+        >
           {recipe.category && (
-            <span className="rounded-full bg-tertiary px-3 py-1 text-xs font-medium text-white">
+            <motion.span
+              variants={tagChipVariants}
+              className="rounded-full bg-tertiary px-3 py-1 text-xs font-medium text-white"
+            >
               {recipe.category}
-            </span>
+            </motion.span>
           )}
           {recipe.tags?.map((tag) => (
-            <span
+            <motion.span
               key={tag}
+              variants={tagChipVariants}
               className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-gray-700 border border-outline-variant"
             >
               {tag}
-            </span>
+            </motion.span>
           ))}
-        </div>
+        </motion.div>
 
         {/* Author + date */}
         <p className="mt-3 text-sm text-gray-500">
@@ -281,9 +382,14 @@ export default function RecipeDetailPage() {
 
         {/* Rating */}
         {userId && (
-          <div className="mt-4">
+          <motion.div
+            variants={ratingVariants}
+            initial="hidden"
+            animate="visible"
+            className="mt-4"
+          >
             <RatingStars recipeId={recipe.id} userId={userId} />
-          </div>
+          </motion.div>
         )}
 
         {/* Emoji Reactions */}
@@ -294,26 +400,39 @@ export default function RecipeDetailPage() {
         )}
 
         {/* Action buttons */}
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          {userId && <FavoriteButton recipeId={recipe.id} userId={userId} />}
-          <button
+        <motion.div
+          variants={actionButtonsContainerVariants}
+          initial="hidden"
+          animate="visible"
+          className="mt-4 flex flex-wrap items-center gap-3"
+        >
+          {userId && (
+            <motion.div variants={actionButtonItemVariants}>
+              <FavoriteButton recipeId={recipe.id} userId={userId} />
+            </motion.div>
+          )}
+          <motion.button
+            variants={actionButtonItemVariants}
             onClick={() => setCookingMode(true)}
             className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
           >
             <span className="material-symbols-outlined text-base">skillet</span>
             מצב בישול
-          </button>
+          </motion.button>
           {(userId === recipe.created_by || isCollaborator || isAdmin) && (
-            <Link
-              href={`/recipe/${recipe.id}/edit`}
-              className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
-            >
-              <span className="material-symbols-outlined text-base">edit</span>
-              עריכה
-            </Link>
+            <motion.div variants={actionButtonItemVariants}>
+              <Link
+                href={`/recipe/${recipe.id}/edit`}
+                className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
+              >
+                <span className="material-symbols-outlined text-base">edit</span>
+                עריכה
+              </Link>
+            </motion.div>
           )}
           {(userId === recipe.created_by || isAdmin) && (
-            <button
+            <motion.button
+              variants={actionButtonItemVariants}
               onClick={() => {
                 if (!confirm('למחוק את המתכון?')) return
                 const recipeId = recipe.id
@@ -347,13 +466,19 @@ export default function RecipeDetailPage() {
             >
               <span className="material-symbols-outlined text-base">delete</span>
               מחיקה
-            </button>
+            </motion.button>
           )}
-        </div>
+        </motion.div>
 
         {/* Share */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button
+        <motion.div
+          variants={actionButtonsContainerVariants}
+          initial="hidden"
+          animate="visible"
+          className="mt-4 flex flex-wrap items-center gap-2"
+        >
+          <motion.button
+            variants={actionButtonItemVariants}
             onClick={() => {
               const url = window.location.href
               const text = `${recipe.title} — בישי מתכונים`
@@ -363,8 +488,9 @@ export default function RecipeDetailPage() {
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.632-1.467A11.932 11.932 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.587-5.932-1.61l-.425-.253-2.746.87.879-2.672-.278-.442A9.776 9.776 0 012.182 12c0-5.414 4.404-9.818 9.818-9.818S21.818 6.586 21.818 12s-4.404 9.818-9.818 9.818z"/></svg>
             WhatsApp
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            variants={actionButtonItemVariants}
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(window.location.href)
@@ -377,15 +503,16 @@ export default function RecipeDetailPage() {
           >
             <span className="material-symbols-outlined text-base">content_copy</span>
             העתק קישור
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            variants={actionButtonItemVariants}
             onClick={() => exportRecipeAsImage(recipe)}
             className="flex items-center gap-1.5 rounded-full bg-surface-container-low px-4 py-2 text-sm text-on-surface-variant transition-colors hover:bg-surface-container"
           >
             <span className="material-symbols-outlined text-base">download</span>
             ייצוא תמונה
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
 
         {/* Manage collaborators (owner only) */}
         {userId === recipe.created_by && (
@@ -402,9 +529,9 @@ export default function RecipeDetailPage() {
 
         {/* Ingredients */}
         <motion.section
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15, duration: 0.4 }}
+          variants={ingredientsContainerVariants}
+          initial="hidden"
+          animate="visible"
           className="mt-8"
         >
           <div className="flex items-center justify-between">
@@ -431,7 +558,7 @@ export default function RecipeDetailPage() {
             {recipe.ingredients.map((raw, i) => {
               const ing = parseIngredient(raw)
               return (
-                <li key={i} className="flex items-center gap-3">
+                <motion.li key={i} variants={ingredientItemVariants} className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={checkedIngredients.has(i)}
@@ -451,7 +578,7 @@ export default function RecipeDetailPage() {
                     )}
                     {ing.name}
                   </span>
-                </li>
+                </motion.li>
               )
             })}
           </ul>
@@ -464,20 +591,20 @@ export default function RecipeDetailPage() {
 
         {/* Steps */}
         <motion.section
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.25, duration: 0.4 }}
+          variants={stepsContainerVariants}
+          initial="hidden"
+          animate="visible"
           className="mt-8"
         >
           <h2 className="text-xl font-bold">שלבי הכנה</h2>
           <ol className="mt-3 flex flex-col gap-4">
             {recipe.steps.map((step, i) => (
-              <li key={i} className="flex items-start gap-3">
+              <motion.li key={i} variants={stepItemVariants} className="flex items-start gap-3">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
                   {i + 1}
                 </span>
                 <p className="pt-0.5 text-sm leading-relaxed text-gray-700">{step}</p>
-              </li>
+              </motion.li>
             ))}
           </ol>
         </motion.section>
@@ -529,16 +656,16 @@ export default function RecipeDetailPage() {
         {/* Comments */}
         {userId && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.35, duration: 0.4 }}
+            variants={commentsSectionVariants}
+            initial="hidden"
+            animate="visible"
             className="mt-8 border-t border-outline-variant pt-6"
           >
             <h2 className="mb-4 text-xl font-bold">תגובות</h2>
             <CommentSection recipeId={recipe.id} userId={userId} isAdmin={isAdmin} />
           </motion.div>
         )}
-      </motion.div>
+      </div>
 
       <BackToTop />
       <BottomNav />

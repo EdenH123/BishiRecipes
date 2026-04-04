@@ -29,6 +29,42 @@ interface RatedRecipe {
 
 const MEDAL = ['🥇', '🥈', '🥉']
 
+const rowVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: i < 3
+      ? {
+          delay: i * 0.08,
+          type: 'spring' as const,
+          stiffness: 260,
+          damping: 20,
+        }
+      : {
+          delay: i * 0.06,
+          type: 'spring' as const,
+          stiffness: 300,
+          damping: 25,
+        },
+  }),
+}
+
+const top3Variants = {
+  hidden: { opacity: 0, y: 30, scale: 0.85 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      delay: i * 0.1,
+      type: 'spring' as const,
+      stiffness: 260,
+      damping: 18,
+    },
+  }),
+}
+
 export default function LeaderboardPage() {
   const supabase = createClient()
 
@@ -271,9 +307,10 @@ export default function LeaderboardPage() {
                     mostRecipes.map((user, index) => (
                       <motion.div
                         key={user.id}
-                        initial={{ opacity: 0, x: 30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        custom={index}
+                        variants={index < 3 ? top3Variants : rowVariants}
+                        initial="hidden"
+                        animate="visible"
                         className={`flex items-center gap-3 rounded-xl p-3 shadow-sm ${getRankStyle(index)}`}
                       >
                         <span className="text-lg font-bold w-8 text-center shrink-0">
@@ -302,9 +339,10 @@ export default function LeaderboardPage() {
                     highestRated.map((recipe, index) => (
                       <motion.div
                         key={recipe.recipe_id}
-                        initial={{ opacity: 0, x: 30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        custom={index}
+                        variants={index < 3 ? top3Variants : rowVariants}
+                        initial="hidden"
+                        animate="visible"
                         className={`flex items-center gap-3 rounded-xl p-3 shadow-sm ${getRankStyle(index)}`}
                       >
                         <span className="text-lg font-bold w-8 text-center shrink-0">
@@ -334,9 +372,10 @@ export default function LeaderboardPage() {
                     mostActive.map((user, index) => (
                       <motion.div
                         key={user.id}
-                        initial={{ opacity: 0, x: 30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                        custom={index}
+                        variants={index < 3 ? top3Variants : rowVariants}
+                        initial="hidden"
+                        animate="visible"
                         className={`flex items-center gap-3 rounded-xl p-3 shadow-sm ${getRankStyle(index)}`}
                       >
                         <span className="text-lg font-bold w-8 text-center shrink-0">

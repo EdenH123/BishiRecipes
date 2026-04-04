@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -34,11 +34,31 @@ function formatDateTime(dateStr: string): string {
   return `${day}/${month}/${year} ${hours}:${minutes}`
 }
 
+const commentVariants = {
+  initial: { opacity: 0, y: -16 },
+  animate: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.05,
+      type: 'spring' as const,
+      stiffness: 300,
+      damping: 25,
+    },
+  }),
+  exit: {
+    opacity: 0,
+    y: -12,
+    transition: { duration: 0.2 },
+  },
+}
+
 export default function CommentSection({ recipeId, userId, isAdmin }: CommentSectionProps) {
   const supabase = createClient()
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const initialLoadDone = useRef(false)
 
   const fetchComments = useCallback(async () => {
     const { data, error } = await supabase
@@ -53,6 +73,7 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
     }
 
     setComments((data as Comment[]) || [])
+    initialLoadDone.current = true
   }, [recipeId])
 
   useEffect(() => {
@@ -112,14 +133,15 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
             אין תגובות עדיין — היו הראשונים! 💬
           </motion.p>
         ) : (
-          comments.map((comment) => (
+          comments.map((comment, i) => (
             <motion.div
               key={comment.id}
               layout
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: 40 }}
-              transition={{ duration: 0.2 }}
+              custom={i}
+              variants={commentVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
               className="flex items-start gap-3 rounded-lg bg-surface-container-lowest p-3 shadow-sm"
             >
               {/* Avatar */}

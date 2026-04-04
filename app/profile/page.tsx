@@ -16,6 +16,23 @@ import RecipeCard from '@/components/RecipeCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 
+const TAB_ORDER = ['recipes', 'favorites', 'achievements', 'admin'] as const
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.95 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      delay: i * 0.06,
+      type: 'spring' as const,
+      stiffness: 300,
+      damping: 25,
+    },
+  }),
+}
+
 export default function ProfilePage() {
   const supabase = createClient()
   const router = useRouter()
@@ -31,6 +48,17 @@ export default function ProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [allCategories, setAllCategories] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
+  const prevTabIndexRef = useRef(0)
+  const [slideDirection, setSlideDirection] = useState(1)
+
+  function handleTabSwitch(tab: typeof activeTab) {
+    const newIndex = TAB_ORDER.indexOf(tab)
+    const prevIndex = prevTabIndexRef.current
+    // In RTL, visual right is lower index, so we invert direction
+    setSlideDirection(newIndex > prevIndex ? -1 : 1)
+    prevTabIndexRef.current = newIndex
+    setActiveTab(tab)
+  }
 
   useEffect(() => {
     async function loadProfile() {
@@ -245,10 +273,13 @@ export default function ProfilePage() {
             onChange={handleAvatarUpload}
             className="hidden"
           />
-          <button
+          <motion.button
             onClick={() => avatarInputRef.current?.click()}
             disabled={uploadingAvatar}
             className="relative group"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           >
             {profile?.avatar_url ? (
               <img
@@ -271,7 +302,7 @@ export default function ProfilePage() {
                 <span className="material-symbols-outlined text-white text-xl">photo_camera</span>
               )}
             </div>
-          </button>
+          </motion.button>
         </div>
 
         {/* User badge */}
@@ -313,7 +344,7 @@ export default function ProfilePage() {
         {/* Tab switcher */}
         <div className="mt-6 flex justify-center gap-4 sm:gap-8 border-b border-gray-200">
           <button
-            onClick={() => setActiveTab('recipes')}
+            onClick={() => handleTabSwitch('recipes')}
             className={`pb-3 text-base font-rubik transition-colors ${
               activeTab === 'recipes'
                 ? 'border-b-2 border-primary font-bold text-primary'
@@ -323,7 +354,7 @@ export default function ProfilePage() {
             המתכונים שלי
           </button>
           <button
-            onClick={() => setActiveTab('favorites')}
+            onClick={() => handleTabSwitch('favorites')}
             className={`pb-3 text-base font-rubik transition-colors ${
               activeTab === 'favorites'
                 ? 'border-b-2 border-primary font-bold text-primary'
@@ -333,7 +364,7 @@ export default function ProfilePage() {
             מועדפים ⭐
           </button>
           <button
-            onClick={() => setActiveTab('achievements')}
+            onClick={() => handleTabSwitch('achievements')}
             className={`pb-3 text-base font-rubik transition-colors ${
               activeTab === 'achievements'
                 ? 'border-b-2 border-primary font-bold text-primary'
@@ -344,7 +375,7 @@ export default function ProfilePage() {
           </button>
           {profile?.is_admin && (
             <button
-              onClick={() => setActiveTab('admin')}
+              onClick={() => handleTabSwitch('admin')}
               className={`pb-3 text-base font-rubik transition-colors ${
                 activeTab === 'admin'
                   ? 'border-b-2 border-primary font-bold text-primary'
@@ -357,14 +388,15 @@ export default function ProfilePage() {
         </div>
 
         {/* Tab content with animation */}
-        <div className="mt-6">
-          <AnimatePresence mode="wait">
+        <div className="mt-6 overflow-hidden">
+          <AnimatePresence mode="wait" initial={false} custom={slideDirection}>
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              custom={slideDirection}
+              initial={{ opacity: 0, x: slideDirection * 60 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: slideDirection * -60 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30, mass: 0.8 }}
             >
               {activeTab === 'achievements' ? (
                 <Achievements userId={profile!.id} />
@@ -440,8 +472,16 @@ export default function ProfilePage() {
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-                  {activeRecipes.map((recipe) => (
-                    <RecipeCard key={recipe.id} recipe={recipe} />
+                  {activeRecipes.map((recipe, i) => (
+                    <motion.div
+                      key={recipe.id}
+                      custom={i}
+                      variants={cardVariants}
+                      initial="hidden"
+                      animate="visible"
+                    >
+                      <RecipeCard recipe={recipe} />
+                    </motion.div>
                   ))}
                 </div>
               )}
