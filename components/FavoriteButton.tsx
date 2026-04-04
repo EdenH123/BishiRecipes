@@ -19,9 +19,9 @@ function BurstParticles() {
     const distance = 18 + Math.random() * 8
     const x = Math.cos(rad) * distance
     const y = Math.sin(rad) * distance
-    const isHeart = i % 2 === 0
-    const size = isHeart ? 10 : 6
-    const colors = ['#b41c1b', '#d83730', '#ff6b6b', '#ff8a80']
+    const isStar = i % 2 === 0
+    const size = isStar ? 10 : 6
+    const colors = ['#f59e0b', '#fbbf24', '#fcd34d', '#fde68a']
     const color = colors[i % colors.length]
 
     return (
@@ -41,9 +41,9 @@ function BurstParticles() {
           color,
         }}
       >
-        {isHeart ? (
+        {isStar ? (
           <svg viewBox="0 0 24 24" fill={color} width={size} height={size}>
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
         ) : (
           <span
@@ -145,7 +145,7 @@ export default function FavoriteButton({ recipeId, userId }: FavoriteButtonProps
             : { scale: [1, 0.8, 1], transition: { duration: 0.25, ease: 'easeInOut' } }
         }
         className={`material-symbols-outlined select-none ${
-          favorited ? 'text-primary' : 'text-gray-400'
+          favorited ? 'text-amber-500' : 'text-gray-400'
         }`}
         style={{
           fontVariationSettings: favorited
@@ -153,7 +153,7 @@ export default function FavoriteButton({ recipeId, userId }: FavoriteButtonProps
             : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
         }}
       >
-        favorite
+        star
       </motion.span>
     </motion.button>
   )
