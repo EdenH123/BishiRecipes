@@ -348,16 +348,20 @@ export default function TestPage() {
       canvas.width = 2000
       canvas.height = 2000
       const ctx = canvas.getContext('2d')!
-      // Draw noise-like pattern for realistic compression test
-      for (let i = 0; i < 500; i++) {
-        ctx.fillStyle = `hsl(${Math.random() * 360}, 70%, 50%)`
-        ctx.fillRect(Math.random() * 2000, Math.random() * 2000, 50, 50)
+      // Fill with pixel-level noise to create a large PNG (well over 200KB)
+      const imageData = ctx.createImageData(2000, 2000)
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        imageData.data[i] = Math.random() * 255     // R
+        imageData.data[i + 1] = Math.random() * 255 // G
+        imageData.data[i + 2] = Math.random() * 255 // B
+        imageData.data[i + 3] = 255                  // A
       }
+      ctx.putImageData(imageData, 0, 0)
       const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), 'image/png'))
       const testFile = new File([blob], 'test.png', { type: 'image/png' })
       const compressed = await compressImage(testFile)
 
-      // Verify size reduced
+      // Verify size reduced — noise PNG is very large, JPEG should compress significantly
       const sizeOk = compressed.size < testFile.size
       // Verify dimensions reduced by loading compressed image
       const compressedImg = new window.Image()
