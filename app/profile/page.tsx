@@ -8,6 +8,7 @@ import type { Recipe, Profile } from '@/lib/types'
 import { CATEGORIES, DEFAULT_TAGS, getUserBadge } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
+import Achievements from '@/components/Achievements'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import RecipeCard from '@/components/RecipeCard'
@@ -25,7 +26,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [activeTab, setActiveTab] = useState<'recipes' | 'favorites' | 'admin'>('recipes')
+  const [activeTab, setActiveTab] = useState<'recipes' | 'favorites' | 'achievements' | 'admin'>('recipes')
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [allCategories, setAllCategories] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
@@ -323,6 +324,16 @@ export default function ProfilePage() {
           >
             מועדפים ⭐
           </button>
+          <button
+            onClick={() => setActiveTab('achievements')}
+            className={`pb-3 text-base font-rubik transition-colors ${
+              activeTab === 'achievements'
+                ? 'border-b-2 border-primary font-bold text-primary'
+                : 'text-gray-500'
+            }`}
+          >
+            הישגים 🏅
+          </button>
           {profile?.is_admin && (
             <button
               onClick={() => setActiveTab('admin')}
@@ -347,7 +358,9 @@ export default function ProfilePage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'admin' ? (
+              {activeTab === 'achievements' ? (
+                <Achievements userId={profile!.id} />
+              ) : activeTab === 'admin' ? (
                 <div className="space-y-8">
                   {/* Categories management */}
                   <div>
