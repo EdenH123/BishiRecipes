@@ -9,6 +9,7 @@ import { CATEGORIES, DEFAULT_TAGS, getUserBadge } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
 import Achievements from '@/components/Achievements'
+import XPProgress from '@/components/XPProgress'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import RecipeCard from '@/components/RecipeCard'
@@ -302,8 +303,15 @@ export default function ProfilePage() {
           </button>
         </div>
 
+        {/* XP Progress */}
+        {profile && (
+          <div className="mt-6">
+            <XPProgress userId={profile.id} />
+          </div>
+        )}
+
         {/* Tab switcher */}
-        <div className="mt-8 flex justify-center gap-4 sm:gap-8 border-b border-gray-200">
+        <div className="mt-6 flex justify-center gap-4 sm:gap-8 border-b border-gray-200">
           <button
             onClick={() => setActiveTab('recipes')}
             className={`pb-3 text-base font-rubik transition-colors ${
