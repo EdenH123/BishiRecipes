@@ -8,7 +8,7 @@ export interface ParsedRecipe {
   category: string
 }
 
-const INGREDIENT_HEADERS = ['מצרכים', 'חומרים', 'רכיבים', 'מה צריך']
+const INGREDIENT_HEADERS = ['מרכיבים', 'מצרכים', 'חומרים', 'רכיבים', 'מה צריך']
 const STEP_HEADERS = ['הכנה', 'אופן הכנה', 'הוראות הכנה', 'הוראות', 'שלבי הכנה', 'דרך הכנה', 'אופן ההכנה']
 
 // Hebrew number words
@@ -25,6 +25,7 @@ function cleanLine(line: string): string {
   return line
     .replace(/^[\s\-•●○◦▪▸►→·∙★☆✓✔⁃–—]+/, '') // strip bullets/dashes
     .replace(/^\d+[\.\)]\s*/, '') // strip numbering like "1. " or "2) "
+    .replace(/^כותרת[:\s]+/i, '') // strip "כותרת:" prefix
     .trim()
 }
 
