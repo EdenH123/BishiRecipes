@@ -6,9 +6,12 @@ import { createClient } from '@/lib/supabase'
 import { type Recipe, type Profile, CATEGORIES, DEFAULT_TAGS } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
+import Fab from '@/components/Fab'
 import RecipeCard from '@/components/RecipeCard'
 import FilterBar from '@/components/FilterBar'
+import SkeletonCard from '@/components/SkeletonCard'
 import Onboarding from '@/components/Onboarding'
+import BackToTop from '@/components/BackToTop'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function HomePage() {
@@ -314,21 +317,9 @@ export default function HomePage() {
         {/* Recipe grid */}
         <div className="max-w-5xl mx-auto">
           {loading ? (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`rounded overflow-hidden bg-surface-container-lowest shadow-sm ${
-                    i % 2 === 1 ? 'mt-4' : ''
-                  }`}
-                >
-                  <div className="aspect-[4/3] bg-surface-container animate-shimmer" />
-                  <div className="p-3 space-y-2">
-                    <div className="h-4 w-3/4 rounded bg-surface-container animate-shimmer" />
-                    <div className="h-3 w-full rounded bg-surface-container animate-shimmer" />
-                    <div className="h-3 w-1/2 rounded bg-surface-container animate-shimmer" />
-                  </div>
-                </div>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={i} />
               ))}
             </div>
           ) : recipes.length === 0 ? (
@@ -407,16 +398,8 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Floating add button */}
-      <motion.a
-        href="/recipe/new"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="fixed bottom-24 left-1/2 z-[60] flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-on-primary shadow-[0_12px_32px_rgba(180,28,27,0.3)]"
-      >
-        <span className="material-symbols-outlined text-3xl">add</span>
-      </motion.a>
-
+      <BackToTop />
+      <Fab />
       <BottomNav />
       <Onboarding />
     </div>

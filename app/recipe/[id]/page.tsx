@@ -18,6 +18,7 @@ import RatingStars from '@/components/RatingStars'
 import EmojiReactions from '@/components/EmojiReactions'
 import CookingMode from '@/components/CookingMode'
 import UnitConverter from '@/components/UnitConverter'
+import BackToTop from '@/components/BackToTop'
 import { AnimatePresence } from 'framer-motion'
 
 function scaleAmount(amount: string, multiplier: number): string {
@@ -481,6 +482,7 @@ export default function RecipeDetailPage() {
         )}
       </motion.div>
 
+      <BackToTop />
       <BottomNav />
 
       {/* Cooking mode overlay */}
