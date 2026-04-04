@@ -163,7 +163,7 @@ export default function HomePage() {
         return false
       }
       if (selectedTags.length > 0) {
-        if (!recipe.tags || !selectedTags.some((tag) => recipe.tags.includes(tag))) {
+        if (!recipe.tags || !selectedTags.every((tag) => recipe.tags.includes(tag))) {
           return false
         }
       }
