@@ -287,12 +287,6 @@ export default function HomePage() {
               </span>
             )}
             <Link
-              href="/leaderboard"
-              className="flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors"
-            >
-              לידרבורד 🏆
-            </Link>
-            <Link
               href="/taste-map"
               className="flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
             >
