@@ -10,7 +10,6 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useState, useEffect, useRef, type FormEvent } from 'react'
-import ImageCropper from './ImageCropper'
 
 interface RecipeFormProps {
   recipe?: Recipe
@@ -40,7 +39,6 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(
     recipe?.image_url ?? null
   )
-  const [cropFile, setCropFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [allCategories, setAllCategories] = useState<string[]>([...CATEGORIES])
   const [dbTags, setDbTags] = useState<string[]>([])
@@ -94,23 +92,9 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null
     if (file) {
-      setCropFile(file)
+      setImageFile(file)
+      setImagePreview(URL.createObjectURL(file))
     }
-    // Reset input so re-selecting the same file triggers onChange
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  function handleCropComplete(croppedBlob: Blob) {
-    const croppedFile = new File([croppedBlob], cropFile?.name ?? 'cropped.jpg', {
-      type: 'image/jpeg',
-    })
-    setImageFile(croppedFile)
-    setImagePreview(URL.createObjectURL(croppedFile))
-    setCropFile(null)
-  }
-
-  function handleCropCancel() {
-    setCropFile(null)
   }
 
   function toggleTag(tag: string) {
@@ -678,13 +662,6 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         </button>
       </div>
       {/* Image Cropper Modal */}
-      {cropFile && (
-        <ImageCropper
-          imageFile={cropFile}
-          onCrop={handleCropComplete}
-          onCancel={handleCropCancel}
-        />
-      )}
     </motion.form>
     </>
   )
