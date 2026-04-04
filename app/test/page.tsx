@@ -383,15 +383,19 @@ export default function TestPage() {
       const tinyResult = await compressImage(tinyFile)
       const skipOk = tinyResult === tinyFile // Should return same file object
 
+      const origKB = (testFile.size / 1024).toFixed(0)
+      const compKB = (compressed.size / 1024).toFixed(0)
+      const same = compressed === testFile
+
       if (sizeOk && dimCheck && skipOk) {
         const sizeReduction = ((1 - compressed.size / testFile.size) * 100).toFixed(0)
-        add('18. דחיסת תמונות', 'pass', `גודל: ${(testFile.size / 1024).toFixed(0)}KB→${(compressed.size / 1024).toFixed(0)}KB (${sizeReduction}%), מימדים: 2000→≤1200 ✓, קטנות לא נדחסות ✓`)
+        add('18. דחיסת תמונות', 'pass', `גודל: ${origKB}KB→${compKB}KB (${sizeReduction}%), מימדים: 2000→≤1200 ✓, קטנות לא נדחסות ✓`)
       } else {
         const issues = []
-        if (!sizeOk) issues.push('גודל לא קטן')
-        if (!dimCheck) issues.push('מימדים לא הוקטנו')
+        if (!sizeOk) issues.push(`גודל: ${origKB}KB→${compKB}KB${same ? ' (אותו קובץ!)' : ''}`)
+        if (!dimCheck) issues.push(`מימדים: ${compressedImg.width}x${compressedImg.height}`)
         if (!skipOk) issues.push('קבצים קטנים נדחסו שלא לצורך')
-        add('18. דחיסת תמונות', 'fail', issues.join(', '))
+        add('18. דחיסת תמונות', 'fail', issues.join(' | '))
       }
     } catch (e) {
       add('18. דחיסת תמונות', 'fail', String(e))
