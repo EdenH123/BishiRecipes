@@ -258,7 +258,6 @@ export default function ImportRecipePage() {
                   ref={imageInputRef}
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   onChange={handleImageOcr}
                   className="hidden"
                 />
