@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { motion } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
@@ -17,16 +16,7 @@ export default function NewRecipePage() {
         className="mx-auto max-w-3xl px-4 py-8 font-rubik"
         dir="rtl"
       >
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-primary">מתכון חדש</h1>
-          <Link
-            href="/recipe/import"
-            className="flex items-center gap-1.5 rounded-full bg-surface-container-low px-4 py-2 text-sm text-on-surface-variant transition-colors hover:bg-surface-container active:scale-95"
-          >
-            <span className="material-symbols-outlined text-base">upload_file</span>
-            ייבוא מטקסט
-          </Link>
-        </div>
+        <h1 className="mb-6 text-3xl font-bold text-primary">מתכון חדש</h1>
         <RecipeForm />
       </motion.div>
       <BottomNav />

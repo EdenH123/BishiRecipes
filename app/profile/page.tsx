@@ -409,13 +409,6 @@ export default function ProfilePage() {
                       <span className="material-symbols-outlined text-base">science</span>
                       דף בדיקות מערכת
                     </Link>
-                    <Link
-                      href="/recipe/import"
-                      className="flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-3 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low mt-2"
-                    >
-                      <span className="material-symbols-outlined text-base">upload_file</span>
-                      ייבוא מתכונים מטקסט
-                    </Link>
                   </div>
                 </div>
               ) : activeRecipes.length === 0 ? (
