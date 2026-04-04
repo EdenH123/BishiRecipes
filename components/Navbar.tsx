@@ -33,10 +33,6 @@ export default function Navbar() {
   return (
     <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm">
       <div className="flex flex-row-reverse justify-between items-center px-4 h-16 max-w-5xl mx-auto">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold text-primary">🍳 בישי מתכונים</h1>
-        </div>
-
         <div className="flex items-center gap-3">
           {profile && (
             <button
@@ -60,6 +56,10 @@ export default function Navbar() {
               )}
             </button>
           )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold text-primary">🍳 בישי מתכונים</h1>
         </div>
       </div>
     </header>
