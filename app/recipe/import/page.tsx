@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { parseRecipeText, type ParsedRecipe } from '@/lib/parse-recipe'
-import { type Ingredient, CATEGORIES, MEASUREMENT_UNITS, serializeIngredient } from '@/lib/types'
+import { type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, serializeIngredient } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 
@@ -43,11 +43,25 @@ export default function ImportRecipePage() {
   const [category, setCategory] = useState('')
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [steps, setSteps] = useState<string[]>([])
+  const [tags, setTags] = useState<string[]>([])
+  const [customTag, setCustomTag] = useState('')
+  const [dbTags, setDbTags] = useState<string[]>([])
+  const allTags = Array.from(new Set([...DEFAULT_TAGS, ...dbTags, ...tags]))
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push('/auth/login'); return }
       setUserId(user.id)
+    })
+    // Fetch existing tags from recipes
+    supabase.from('recipes').select('tags').then(({ data }) => {
+      if (data) {
+        const tagSet = new Set<string>()
+        for (const r of data) {
+          if (r.tags) for (const t of r.tags) tagSet.add(t)
+        }
+        setDbTags(Array.from(tagSet))
+      }
     })
   }, [])
 
@@ -110,7 +124,7 @@ export default function ImportRecipePage() {
       ingredients: ingredients.filter((i) => i.name.trim()).map(serializeIngredient),
       steps: steps.filter((s) => s.trim()),
       category: category || null,
-      tags: [],
+      tags,
       created_by: userId,
     })
     setSaving(false)
@@ -141,6 +155,8 @@ export default function ImportRecipePage() {
       setCategory('')
       setIngredients([])
       setSteps([])
+      setTags([])
+      setCustomTag('')
     }
   }
 
@@ -254,6 +270,56 @@ export default function ImportRecipePage() {
                 {category && (
                   <p className="text-xs text-tertiary mt-1">זוהה אוטומטית — שנו אם צריך</p>
                 )}
+              </div>
+
+              {/* Tags */}
+              <div className="mb-4">
+                <label className="text-sm font-bold text-on-surface-variant mb-2 block">תגיות</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {allTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag])}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors active:scale-95 ${
+                        tags.includes(tag)
+                          ? 'bg-primary text-white'
+                          : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={customTag}
+                    onChange={(e) => setCustomTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customTag.trim()) {
+                        e.preventDefault()
+                        const t = customTag.trim()
+                        if (!tags.includes(t)) setTags((prev) => [...prev, t])
+                        setCustomTag('')
+                      }
+                    }}
+                    placeholder="תגית חדשה..."
+                    className="flex-1 rounded-lg border border-outline-variant px-3 py-2 text-sm outline-none focus:border-primary bg-surface-container-lowest"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const t = customTag.trim()
+                      if (t && !tags.includes(t)) setTags((prev) => [...prev, t])
+                      setCustomTag('')
+                    }}
+                    disabled={!customTag.trim()}
+                    className="px-3 py-2 rounded-lg bg-primary text-white text-sm disabled:opacity-40 active:scale-95"
+                  >
+                    הוסף
+                  </button>
+                </div>
               </div>
 
               {/* Ingredients */}
