@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { createWorker } from 'tesseract.js'
 import { parseRecipeText, type ParsedRecipe } from '@/lib/parse-recipe'
 import { type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, serializeIngredient } from '@/lib/types'
 import Navbar from '@/components/Navbar'
@@ -36,6 +37,9 @@ export default function ImportRecipePage() {
   const [parsed, setParsed] = useState<ParsedRecipe | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [ocrLoading, setOcrLoading] = useState(false)
+  const [ocrProgress, setOcrProgress] = useState(0)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   // Editable fields after parsing
   const [title, setTitle] = useState('')
@@ -77,6 +81,42 @@ export default function ImportRecipePage() {
     setCategory(result.category)
     setIngredients(result.ingredients)
     setSteps(result.steps)
+  }
+
+  async function handleImageOcr(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Reset input
+    if (imageInputRef.current) imageInputRef.current.value = ''
+
+    setOcrLoading(true)
+    setOcrProgress(0)
+    toast.info('מזהה טקסט מהתמונה...')
+
+    try {
+      const worker = await createWorker('heb', undefined, {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            setOcrProgress(Math.round(m.progress * 100))
+          }
+        },
+      })
+      const { data: { text } } = await worker.recognize(file)
+      await worker.terminate()
+
+      if (!text.trim()) {
+        toast.error('לא זוהה טקסט בתמונה')
+        setOcrLoading(false)
+        return
+      }
+
+      setRawText(text)
+      toast.success('הטקסט זוהה! בִדקו ועִרכו לפני העיבוד')
+    } catch (err) {
+      toast.error('שגיאה בזיהוי הטקסט')
+    }
+    setOcrLoading(false)
+    setOcrProgress(0)
   }
 
   function updateIngredient(index: number, field: keyof Ingredient, value: string) {
@@ -192,7 +232,7 @@ export default function ImportRecipePage() {
                 className="w-full h-64 rounded-xl border border-outline-variant p-4 text-base leading-relaxed resize-y outline-none focus:border-primary transition-colors bg-surface-container-lowest"
               />
 
-              <div className="flex items-center gap-3 mt-4">
+              <div className="flex flex-wrap items-center gap-3 mt-4">
                 <button
                   onClick={handleParse}
                   disabled={!rawText.trim()}
@@ -205,12 +245,40 @@ export default function ImportRecipePage() {
                 </button>
 
                 <button
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={ocrLoading}
+                  className="bg-surface-container text-on-surface px-5 py-3 rounded-full font-medium disabled:opacity-40 active:scale-95 transition-transform"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">photo_camera</span>
+                    {ocrLoading ? `מזהה... ${ocrProgress}%` : 'זיהוי מתמונה'}
+                  </span>
+                </button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleImageOcr}
+                  className="hidden"
+                />
+
+                <button
                   onClick={() => { setRawText(EXAMPLE_TEXT); toast.success('דוגמה נטענה') }}
                   className="text-sm text-primary hover:underline"
                 >
                   טען דוגמה
                 </button>
               </div>
+
+              {ocrLoading && (
+                <div className="mt-3 h-2 rounded-full bg-surface-container-low overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-300 rounded-full"
+                    style={{ width: `${ocrProgress}%` }}
+                  />
+                </div>
+              )}
 
               <div className="mt-6 bg-surface-container-low rounded-xl p-4">
                 <h3 className="font-bold text-sm mb-2">פורמטים נתמכים:</h3>
@@ -219,6 +287,7 @@ export default function ImportRecipePage() {
                   <li>{`• רשימה ממוספרת (1. 2. 3.) או עם מקפים (- - -)`}</li>
                   <li>{`• טקסט חופשי — המערכת תנסה לזהות לבד`}</li>
                   <li>{`• כמויות בעברית ("שתי כוסות קמח") או מספרים ("2 כוסות קמח")`}</li>
+                  <li>{`• תמונה של מתכון — זיהוי טקסט אוטומטי (OCR) עם תמיכה בעברית`}</li>
                 </ul>
               </div>
             </motion.div>
