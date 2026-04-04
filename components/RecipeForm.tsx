@@ -3,10 +3,11 @@
 import { createClient } from '@/lib/supabase'
 import { type Recipe, type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, parseIngredient, serializeIngredient } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
+import { parseRecipeText } from '@/lib/parse-recipe'
 import confetti from 'canvas-confetti'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useState, useEffect, useRef, type FormEvent } from 'react'
 import ImageCropper from './ImageCropper'
@@ -43,6 +44,8 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   const [loading, setLoading] = useState(false)
   const [allCategories, setAllCategories] = useState<string[]>([...CATEGORIES])
   const [dbTags, setDbTags] = useState<string[]>([])
+  const [showPasteDialog, setShowPasteDialog] = useState(false)
+  const [pasteText, setPasteText] = useState('')
   // Merge DB tags + default tags + current recipe tags so new custom tags show immediately
   const allTags = Array.from(new Set([...DEFAULT_TAGS, ...dbTags, ...tags]))
 
@@ -286,10 +289,84 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
     }
   }
 
+  function handlePasteImport() {
+    if (!pasteText.trim()) { toast.error('אין טקסט לעיבוד'); return }
+    const result = parseRecipeText(pasteText)
+    if (result.title) setTitle(result.title)
+    if (result.description) setDescription(result.description)
+    if (result.category) setCategory(result.category)
+    if (result.ingredients.length > 0) setIngredients(result.ingredients)
+    if (result.steps.length > 0) setSteps(result.steps)
+    setShowPasteDialog(false)
+    setPasteText('')
+    toast.success(`זוהו ${result.ingredients.length} מצרכים ו-${result.steps.length} שלבים`)
+  }
+
   const inputClass =
     'rounded-lg border border-gray-200 p-3 w-full focus:border-primary focus:ring-1 focus:ring-primary outline-none'
 
   return (
+    <>
+    {/* Paste import dialog */}
+    <AnimatePresence>
+      {showPasteDialog && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
+          onClick={() => setShowPasteDialog(false)}
+        >
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
+            dir="rtl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-bold">הדבקת מתכון מטקסט</h2>
+              <button onClick={() => setShowPasteDialog(false)} className="p-1 text-gray-400 hover:text-gray-600">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-4 flex-1 overflow-y-auto">
+              <p className="text-sm text-on-surface-variant mb-3">
+                הדביקו טקסט של מתכון — המערכת תזהה אוטומטית שם, מצרכים ושלבים.
+              </p>
+              <textarea
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder={`דוגמה:\nעוגת שוקולד\n\nמצרכים:\n2 כוסות קמח\n1 כוס סוכר\n\nהכנה:\nמערבבים הכל...`}
+                className="w-full h-48 rounded-xl border border-outline-variant p-3 text-sm leading-relaxed resize-y outline-none focus:border-primary bg-surface-container-lowest"
+                autoFocus
+              />
+            </div>
+            <div className="p-4 border-t border-gray-200 flex gap-3">
+              <button
+                type="button"
+                onClick={handlePasteImport}
+                disabled={!pasteText.trim()}
+                className="flex-1 bg-primary text-white py-3 rounded-full font-medium disabled:opacity-40 active:scale-95"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined text-lg">auto_fix_high</span>
+                  עיבוד ומילוי
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPasteDialog(false)}
+                className="px-6 py-3 rounded-full text-on-surface-variant bg-surface-container active:scale-95"
+              >
+                ביטול
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
     <motion.form
       onSubmit={handleSubmit}
       initial={{ opacity: 0, y: 12 }}
@@ -299,6 +376,18 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
       dir="rtl"
       lang="he"
     >
+      {/* Paste import button */}
+      {!recipe && (
+        <button
+          type="button"
+          onClick={() => setShowPasteDialog(true)}
+          className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 py-3 text-sm text-primary font-medium transition-colors hover:bg-primary/5 active:scale-[0.98]"
+        >
+          <span className="material-symbols-outlined text-lg">content_paste</span>
+          הדביקו מתכון מטקסט — מילוי אוטומטי
+        </button>
+      )}
+
       {/* 1. Title */}
       <div>
         <label className="font-medium text-gray-700 mb-1 block">
@@ -597,5 +686,6 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         />
       )}
     </motion.form>
+    </>
   )
 }
