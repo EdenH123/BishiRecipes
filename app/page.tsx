@@ -14,6 +14,8 @@ import Onboarding from '@/components/Onboarding'
 import BackToTop from '@/components/BackToTop'
 import { motion, AnimatePresence } from 'framer-motion'
 
+const PAGE_SIZE = 12
+
 const gridContainerVariants = {
   hidden: {},
   visible: {
@@ -63,43 +65,46 @@ export default function HomePage() {
   const [members, setMembers] = useState<{ id: string; display_name: string }[]>([])
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alpha'>('newest')
   const [loading, setLoading] = useState(true)
-  const [visibleCount, setVisibleCount] = useState(12)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [animatedCount, setAnimatedCount] = useState(0)
   const [countPulse, setCountPulse] = useState(false)
   const [recentActivity, setRecentActivity] = useState<{ type: string; title: string; user: string; time: string }[]>([])
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true)
+  // Track hidden filters
+  const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set())
+  const [hiddenTags, setHiddenTags] = useState<Set<string>>(new Set())
 
-      const [recipesRes, membersRes, userRes] = await Promise.all([
-        supabase
-          .from('recipes')
-          .select('*, profiles!created_by(id, display_name, avatar_url)')
-          .order('created_at', { ascending: false }),
+  // Fetch metadata (members, tags, categories, favorites, hidden filters) once on mount
+  useEffect(() => {
+    async function fetchMetadata() {
+      const [membersRes, userRes, hiddenRes, allRecipesMetaRes] = await Promise.all([
         supabase.from('profiles').select('id, display_name'),
         supabase.auth.getUser(),
+        supabase.from('hidden_filters').select('type, value'),
+        // Fetch all recipes but only tags + category for building filter options
+        supabase.from('recipes').select('tags, category'),
       ])
-      // hidden_filters table may not exist yet — query separately
-      const hiddenRes = await supabase.from('hidden_filters').select('type, value')
 
-      const hiddenCats = new Set<string>()
-      const hiddenTags = new Set<string>()
+      const hCats = new Set<string>()
+      const hTags = new Set<string>()
       if (hiddenRes.data) {
         for (const h of hiddenRes.data) {
-          if (h.type === 'category') hiddenCats.add(h.value)
-          else hiddenTags.add(h.value)
+          if (h.type === 'category') hCats.add(h.value)
+          else hTags.add(h.value)
         }
       }
+      setHiddenCats(hCats)
+      setHiddenTags(hTags)
 
-      if (recipesRes.data) {
-        setRecipes(recipesRes.data as Recipe[])
-
+      if (allRecipesMetaRes.data) {
         const recipeTags = new Set<string>([...DEFAULT_TAGS])
         const recipeCategories = new Set<string>([...CATEGORIES])
-        for (const recipe of recipesRes.data) {
+        for (const recipe of allRecipesMetaRes.data) {
           if (recipe.tags) {
             for (const tag of recipe.tags) {
               recipeTags.add(tag)
@@ -109,8 +114,8 @@ export default function HomePage() {
             recipeCategories.add(recipe.category)
           }
         }
-        setAllTags(Array.from(recipeTags).filter((t) => !hiddenTags.has(t)))
-        setAllCategories(Array.from(recipeCategories).filter((c) => !hiddenCats.has(c)))
+        setAllTags(Array.from(recipeTags).filter((t) => !hTags.has(t)))
+        setAllCategories(Array.from(recipeCategories).filter((c) => !hCats.has(c)))
       }
 
       if (membersRes.data) {
@@ -129,19 +134,19 @@ export default function HomePage() {
         }
       }
 
-      setLoading(false)
-
-      // Fetch recent activity (latest comments + recipes)
-      const { data: recentComments } = await supabase
-        .from('comments')
-        .select('content, created_at, profiles!user_id(display_name), recipes!recipe_id(title)')
-        .order('created_at', { ascending: false })
-        .limit(3)
-      const { data: recentRecipes } = await supabase
-        .from('recipes')
-        .select('title, created_at, profiles!created_by(display_name)')
-        .order('created_at', { ascending: false })
-        .limit(3)
+      // Fetch recent activity
+      const [{ data: recentComments }, { data: recentRecipes }] = await Promise.all([
+        supabase
+          .from('comments')
+          .select('content, created_at, profiles!user_id(display_name), recipes!recipe_id(title)')
+          .order('created_at', { ascending: false })
+          .limit(3),
+        supabase
+          .from('recipes')
+          .select('title, created_at, profiles!created_by(display_name)')
+          .order('created_at', { ascending: false })
+          .limit(3),
+      ])
 
       const activity: typeof recentActivity = []
       if (recentRecipes) {
@@ -168,13 +173,112 @@ export default function HomePage() {
       setRecentActivity(activity.slice(0, 5))
     }
 
-    fetchData()
+    fetchMetadata()
   }, [])
 
-  // Animated counter
+  // Build a Supabase query with current filters applied
+  const buildFilteredQuery = useCallback(
+    (forCount = false) => {
+      let query = forCount
+        ? supabase.from('recipes').select('*', { count: 'exact', head: true })
+        : supabase.from('recipes').select('*, profiles!created_by(id, display_name, avatar_url)')
+
+      if (selectedCategory) {
+        query = query.eq('category', selectedCategory)
+      }
+      if (selectedMember) {
+        query = query.eq('created_by', selectedMember)
+      }
+      if (search) {
+        query = query.ilike('title', `%${search}%`)
+      }
+      if (selectedTags.length > 0) {
+        query = query.contains('tags', selectedTags)
+      }
+      if (showFavoritesOnly && favoriteIds.length > 0) {
+        query = query.in('id', favoriteIds)
+      } else if (showFavoritesOnly && favoriteIds.length === 0) {
+        // No favorites — return impossible filter to get 0 results
+        query = query.in('id', ['__none__'])
+      }
+
+      // Apply sort
+      switch (sortBy) {
+        case 'oldest':
+          query = query.order('created_at', { ascending: true })
+          break
+        case 'alpha':
+          query = query.order('title', { ascending: true })
+          break
+        case 'newest':
+        default:
+          query = query.order('created_at', { ascending: false })
+          break
+      }
+
+      return query
+    },
+    [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, favoriteIds, sortBy, supabase]
+  )
+
+  // Fetch a page of recipes
+  const fetchRecipesPage = useCallback(
+    async (pageNum: number, isInitial: boolean) => {
+      if (isInitial) {
+        setLoading(true)
+      } else {
+        setLoadingMore(true)
+      }
+
+      const from = pageNum * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
+
+      const [dataRes, countRes] = await Promise.all([
+        buildFilteredQuery(false).range(from, to),
+        // Only fetch count on initial load / filter change (page 0)
+        pageNum === 0
+          ? buildFilteredQuery(true)
+          : Promise.resolve({ count: null }),
+      ])
+
+      if (countRes.count !== null && countRes.count !== undefined) {
+        setTotalCount(countRes.count)
+      }
+
+      const newRecipes = (dataRes.data as Recipe[]) || []
+      const fetchedCount = newRecipes.length
+
+      if (isInitial) {
+        setRecipes(newRecipes)
+      } else {
+        setRecipes((prev) => [...prev, ...newRecipes])
+      }
+
+      // If we got fewer than PAGE_SIZE results, there are no more pages
+      setHasMore(fetchedCount === PAGE_SIZE)
+      setPage(pageNum)
+
+      if (isInitial) {
+        setLoading(false)
+      } else {
+        setLoadingMore(false)
+      }
+    },
+    [buildFilteredQuery]
+  )
+
+  // Initial fetch + refetch when filters/sort change
   useEffect(() => {
-    if (recipes.length === 0) return
-    const target = recipes.length
+    setRecipes([])
+    setPage(0)
+    setHasMore(true)
+    fetchRecipesPage(0, true)
+  }, [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, favoriteIds, sortBy, fetchRecipesPage])
+
+  // Animated counter — animate towards totalCount
+  useEffect(() => {
+    if (totalCount === 0) return
+    const target = totalCount
     const duration = 800
     const step = Math.max(1, Math.floor(target / (duration / 16)))
     let current = 0
@@ -189,69 +293,23 @@ export default function HomePage() {
       setAnimatedCount(current)
     }, 16)
     return () => clearInterval(timer)
-  }, [recipes.length])
+  }, [totalCount])
 
-  const filteredRecipes = useMemo(() => {
-    const filtered = recipes.filter((recipe) => {
-      if (search && !recipe.title.toLowerCase().includes(search.toLowerCase())) {
-        return false
-      }
-      if (selectedCategory && recipe.category !== selectedCategory) {
-        return false
-      }
-      if (selectedTags.length > 0) {
-        if (!recipe.tags || !selectedTags.every((tag) => recipe.tags.includes(tag))) {
-          return false
-        }
-      }
-      if (selectedMember && recipe.created_by !== selectedMember) {
-        return false
-      }
-      if (showFavoritesOnly && !favoriteIds.includes(recipe.id)) {
-        return false
-      }
-      return true
-    })
-
-    const sorted = [...filtered]
-    switch (sortBy) {
-      case 'oldest':
-        sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-        break
-      case 'alpha':
-        sorted.sort((a, b) => a.title.localeCompare(b.title, 'he'))
-        break
-      case 'newest':
-      default:
-        sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        break
-    }
-    return sorted
-  }, [recipes, search, selectedCategory, selectedTags, selectedMember, showFavoritesOnly, favoriteIds, sortBy])
-
-  // Reset visible count when filters change
-  useEffect(() => {
-    setVisibleCount(12)
-  }, [search, selectedCategory, selectedTags, selectedMember, showFavoritesOnly, sortBy])
-
-  // Infinite scroll
+  // Intersection Observer for infinite scroll
   useEffect(() => {
     const el = loadMoreRef.current
     if (!el) return
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount((prev) => prev + 12)
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          fetchRecipesPage(page + 1, false)
         }
       },
       { rootMargin: '200px' }
     )
     observer.observe(el)
     return () => observer.disconnect()
-  }, [loading])
-
-  const visibleRecipes = filteredRecipes.slice(0, visibleCount)
-  const hasMore = visibleCount < filteredRecipes.length
+  }, [hasMore, loadingMore, loading, page, fetchRecipesPage])
 
   function handleToggleTag(tag: string) {
     setSelectedTags((prev) =>
@@ -323,7 +381,7 @@ export default function HomePage() {
         {/* Sort + counter + view toggle */}
         <div className="max-w-5xl mx-auto mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {!loading && recipes.length > 0 && (
+            {!loading && totalCount > 0 && (
               <motion.span
                 className="text-sm text-on-surface-variant"
                 animate={countPulse ? { scale: [1, 1.15, 1] } : {}}
@@ -376,14 +434,16 @@ export default function HomePage() {
                 <SkeletonCard key={i} />
               ))}
             </div>
-          ) : recipes.length === 0 ? (
-            <p className="mt-16 text-center text-lg text-on-surface-variant">
-              עדיין אין מתכונים — הוסיפו את הראשון! 🍽️
-            </p>
-          ) : filteredRecipes.length === 0 ? (
-            <p className="mt-16 text-center text-lg text-on-surface-variant">
-              לא נמצאו מתכונים לפי הסינון הזה 🤷
-            </p>
+          ) : recipes.length === 0 && !hasMore ? (
+            totalCount === 0 && !selectedCategory && !selectedMember && !search && selectedTags.length === 0 && !showFavoritesOnly ? (
+              <p className="mt-16 text-center text-lg text-on-surface-variant">
+                עדיין אין מתכונים — הוסיפו את הראשון! 🍽️
+              </p>
+            ) : (
+              <p className="mt-16 text-center text-lg text-on-surface-variant">
+                לא נמצאו מתכונים לפי הסינון הזה 🤷
+              </p>
+            )
           ) : (
             <>
               <AnimatePresence mode="popLayout">
@@ -395,7 +455,7 @@ export default function HomePage() {
                     initial="hidden"
                     animate="visible"
                   >
-                    {visibleRecipes.map((recipe, index) => (
+                    {recipes.map((recipe, index) => (
                       <motion.div
                         key={recipe.id}
                         layout
@@ -414,7 +474,7 @@ export default function HomePage() {
                     initial="hidden"
                     animate="visible"
                   >
-                    {visibleRecipes.map((recipe) => (
+                    {recipes.map((recipe) => (
                       <motion.div
                         key={recipe.id}
                         layout
@@ -448,11 +508,14 @@ export default function HomePage() {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {hasMore && (
-                <div ref={loadMoreRef} className="flex justify-center py-8">
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {loadingMore && (
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-surface-container border-t-primary" />
-                </div>
-              )}
+                )}
+                {!hasMore && recipes.length > 0 && (
+                  <p className="text-sm text-on-surface-variant">הגעת לסוף! 🎉</p>
+                )}
+              </div>
             </>
           )}
         </div>

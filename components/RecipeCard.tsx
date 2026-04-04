@@ -2,9 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import type { Recipe } from '@/lib/types'
 import { parseIngredient, displayIngredient } from '@/lib/types'
+
+const BLUR_PLACEHOLDER =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIklEQVQYV2N89+7dfwYGBgZGRkYGJgYKABMDhYCRkgAALCQEAf2VlGIAAAAASUVORK5CYII='
 
 interface RecipeCardProps {
   recipe: Recipe
@@ -55,16 +59,15 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
           >
             <div className="aspect-[4/3] overflow-hidden relative">
               {recipe.image_url ? (
-                <motion.img
+                <Image
                   src={recipe.image_url}
                   alt={recipe.title}
-                  loading="lazy"
-                  decoding="async"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: imageLoaded ? 1 : 0 }}
-                  transition={{ duration: 0.3 }}
+                  fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  placeholder="blur"
+                  blurDataURL={BLUR_PLACEHOLDER}
                   onLoad={() => setImageLoaded(true)}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  className={`object-cover transition-all duration-500 group-hover:scale-105 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                 />
               ) : (
                 <div className="flex w-full h-full items-center justify-center bg-secondary-container/30 text-5xl">
