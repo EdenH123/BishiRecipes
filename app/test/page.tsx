@@ -342,18 +342,53 @@ export default function TestPage() {
     // 18. Image compression utility
     try {
       const { compressImage } = await import('@/lib/compress-image')
-      // Create a small test file
+
+      // Test A: Large image (2000x2000) should be compressed AND resized to max 1200
       const canvas = document.createElement('canvas')
       canvas.width = 2000
       canvas.height = 2000
       const ctx = canvas.getContext('2d')!
-      ctx.fillStyle = '#ff0000'
-      ctx.fillRect(0, 0, 2000, 2000)
+      // Draw noise-like pattern for realistic compression test
+      for (let i = 0; i < 500; i++) {
+        ctx.fillStyle = `hsl(${Math.random() * 360}, 70%, 50%)`
+        ctx.fillRect(Math.random() * 2000, Math.random() * 2000, 50, 50)
+      }
       const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b!), 'image/png'))
       const testFile = new File([blob], 'test.png', { type: 'image/png' })
       const compressed = await compressImage(testFile)
-      const sizeReduction = ((1 - compressed.size / testFile.size) * 100).toFixed(0)
-      add('18. דחיסת תמונות', 'pass', `מקור: ${(testFile.size / 1024).toFixed(0)}KB → דחוס: ${(compressed.size / 1024).toFixed(0)}KB (${sizeReduction}% הפחתה)`)
+
+      // Verify size reduced
+      const sizeOk = compressed.size < testFile.size
+      // Verify dimensions reduced by loading compressed image
+      const compressedImg = new window.Image()
+      const dimCheck: boolean = await new Promise((resolve) => {
+        compressedImg.onload = () => {
+          resolve(compressedImg.width <= 1200 && compressedImg.height <= 1200)
+        }
+        compressedImg.onerror = () => resolve(false)
+        compressedImg.src = URL.createObjectURL(compressed)
+      })
+
+      // Test B: Small file (under 200KB) should NOT be compressed
+      const tinyCanvas = document.createElement('canvas')
+      tinyCanvas.width = 50
+      tinyCanvas.height = 50
+      tinyCanvas.getContext('2d')!.fillRect(0, 0, 50, 50)
+      const tinyBlob: Blob = await new Promise((res) => tinyCanvas.toBlob((b) => res(b!), 'image/png'))
+      const tinyFile = new File([tinyBlob], 'tiny.png', { type: 'image/png' })
+      const tinyResult = await compressImage(tinyFile)
+      const skipOk = tinyResult === tinyFile // Should return same file object
+
+      if (sizeOk && dimCheck && skipOk) {
+        const sizeReduction = ((1 - compressed.size / testFile.size) * 100).toFixed(0)
+        add('18. דחיסת תמונות', 'pass', `גודל: ${(testFile.size / 1024).toFixed(0)}KB→${(compressed.size / 1024).toFixed(0)}KB (${sizeReduction}%), מימדים: 2000→≤1200 ✓, קטנות לא נדחסות ✓`)
+      } else {
+        const issues = []
+        if (!sizeOk) issues.push('גודל לא קטן')
+        if (!dimCheck) issues.push('מימדים לא הוקטנו')
+        if (!skipOk) issues.push('קבצים קטנים נדחסו שלא לצורך')
+        add('18. דחיסת תמונות', 'fail', issues.join(', '))
+      }
     } catch (e) {
       add('18. דחיסת תמונות', 'fail', String(e))
     }
