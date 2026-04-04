@@ -28,7 +28,7 @@ interface CategoryStat {
 }
 
 export default function TasteMap() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [categoryData, setCategoryData] = useState<CategoryStat[]>([])
   const [totalRecipes, setTotalRecipes] = useState(0)
   const [loading, setLoading] = useState(true)

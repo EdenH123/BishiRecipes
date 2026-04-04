@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -54,7 +54,7 @@ const commentVariants = {
 }
 
 export default function CommentSection({ recipeId, userId, isAdmin }: CommentSectionProps) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [submitting, setSubmitting] = useState(false)

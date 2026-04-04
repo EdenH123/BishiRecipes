@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import { calculateXP, getLevel, getNextLevel, getLevelProgress } from '@/lib/xp-levels'
+import { ACHIEVEMENTS, getUnlockedAchievements } from '@/lib/achievements'
+import { parseRecipeText } from '@/lib/parse-recipe'
 import Link from 'next/link'
 
 interface TestResult {
@@ -48,7 +51,7 @@ export default function TestPage() {
     }
 
     if (!userId) {
-      add('3-15. דילוג', 'fail', 'לא מחובר — לא ניתן להמשיך')
+      add('3-36. דילוג', 'fail', 'לא מחובר — לא ניתן להמשיך')
       setRunning(false)
       return
     }
@@ -416,13 +419,209 @@ export default function TestPage() {
       }
     }
 
-    // 23. Cleanup test recipe
+    // 24. XP Calculation
+    try {
+      const xp = calculateXP({ recipeCount: 2, commentCount: 5, ratingCount: 3, favoriteCount: 10, reactionCount: 4, categoriesUsed: 3, collaborationCount: 1 })
+      const expected = 2 * 50 + 5 * 10 + 3 * 5 + 10 * 3 + 4 * 2 + 1 * 30 // 233
+      if (xp === expected) {
+        add('24. חישוב XP', 'pass', `calculateXP = ${xp} (צפוי: ${expected})`)
+      } else {
+        add('24. חישוב XP', 'fail', `calculateXP = ${xp}, צפוי: ${expected}`)
+      }
+    } catch (e) {
+      add('24. חישוב XP', 'fail', String(e))
+    }
+
+    // 25. Level from XP
+    try {
+      const level0 = getLevel(0)
+      const level150 = getLevel(150)
+      const level2000 = getLevel(2000)
+      const pass = level0.level === 1 && level150.level === 2 && level2000.level === 10
+      if (pass) {
+        add('25. רמה לפי XP', 'pass', `0→רמה ${level0.level} | 150→רמה ${level150.level} | 2000→רמה ${level2000.level}`)
+      } else {
+        add('25. רמה לפי XP', 'fail', `0→${level0.level} (צפוי 1) | 150→${level150.level} (צפוי 2) | 2000→${level2000.level} (צפוי 10)`)
+      }
+    } catch (e) {
+      add('25. רמה לפי XP', 'fail', String(e))
+    }
+
+    // 26. Next Level
+    try {
+      const next0 = getNextLevel(0)
+      const next2000 = getNextLevel(2000)
+      const pass = next0.xpNeeded === 100 && next2000.nextLevel === null
+      if (pass) {
+        add('26. רמה הבאה', 'pass', `XP 0→xpNeeded=${next0.xpNeeded} | XP 2000→nextLevel=${next2000.nextLevel}`)
+      } else {
+        add('26. רמה הבאה', 'fail', `XP 0→xpNeeded=${next0.xpNeeded} (צפוי 100) | XP 2000→nextLevel=${JSON.stringify(next2000.nextLevel)} (צפוי null)`)
+      }
+    } catch (e) {
+      add('26. רמה הבאה', 'fail', String(e))
+    }
+
+    // 27. Level Progress
+    try {
+      const progress50 = getLevelProgress(50)
+      const progress2000 = getLevelProgress(2000)
+      const pass = progress50 === 50 && progress2000 === 100
+      if (pass) {
+        add('27. התקדמות ברמה', 'pass', `XP 50→${progress50}% | XP 2000→${progress2000}%`)
+      } else {
+        add('27. התקדמות ברמה', 'fail', `XP 50→${progress50}% (צפוי 50) | XP 2000→${progress2000}% (צפוי 100)`)
+      }
+    } catch (e) {
+      add('27. התקדמות ברמה', 'fail', String(e))
+    }
+
+    // 28. Achievement Unlocking
+    try {
+      const statsWith = { recipeCount: 1, commentCount: 0, ratingCount: 0, favoriteCount: 0, reactionCount: 0, categoriesUsed: 0, collaborationCount: 0 }
+      const statsWithout = { recipeCount: 0, commentCount: 0, ratingCount: 0, favoriteCount: 0, reactionCount: 0, categoriesUsed: 0, collaborationCount: 0 }
+      const unlockedWith = getUnlockedAchievements(statsWith)
+      const unlockedWithout = getUnlockedAchievements(statsWithout)
+      const hasFirstRecipe = unlockedWith.some((a) => a.id === 'first_recipe')
+      const noFirstRecipe = !unlockedWithout.some((a) => a.id === 'first_recipe')
+      if (hasFirstRecipe && noFirstRecipe) {
+        add('28. פתיחת הישגים', 'pass', `recipeCount=1 פותח first_recipe ✓ | recipeCount=0 לא פותח ✓`)
+      } else {
+        add('28. פתיחת הישגים', 'fail', `hasFirstRecipe=${hasFirstRecipe}, noFirstRecipe=${noFirstRecipe}`)
+      }
+    } catch (e) {
+      add('28. פתיחת הישגים', 'fail', String(e))
+    }
+
+    // 29. All Achievements Count
+    try {
+      if (ACHIEVEMENTS.length === 12) {
+        add('29. ספירת הישגים', 'pass', `ACHIEVEMENTS.length = ${ACHIEVEMENTS.length}`)
+      } else {
+        add('29. ספירת הישגים', 'fail', `ACHIEVEMENTS.length = ${ACHIEVEMENTS.length}, צפוי 12`)
+      }
+    } catch (e) {
+      add('29. ספירת הישגים', 'fail', String(e))
+    }
+
+    // 30. Recipe Parser — Basic
+    try {
+      const parsed = parseRecipeText("כותרת: עוגת שוקולד\nמרכיבים:\n2 כוסות קמח\n1 כוס סוכר\nהוראות:\nלערבב הכל\nלאפות 30 דקות")
+      const titleOk = parsed.title === 'עוגת שוקולד' || parsed.title === 'כותרת: עוגת שוקולד'
+      const ingredientsOk = parsed.ingredients.length === 2
+      const stepsOk = parsed.steps.length === 2
+      if (titleOk && ingredientsOk && stepsOk) {
+        add('30. פענוח מתכון — בסיסי', 'pass', `כותרת: "${parsed.title}" | מרכיבים: ${parsed.ingredients.length} | שלבים: ${parsed.steps.length}`)
+      } else {
+        add('30. פענוח מתכון — בסיסי', 'fail', `כותרת: "${parsed.title}" (${titleOk}) | מרכיבים: ${parsed.ingredients.length} (צפוי 2) | שלבים: ${parsed.steps.length} (צפוי 2)`)
+      }
+    } catch (e) {
+      add('30. פענוח מתכון — בסיסי', 'fail', String(e))
+    }
+
+    // 31. Recipe Parser — Category Detection
+    try {
+      const parsed = parseRecipeText("עוגה פשוטה\nמרכיבים:\n2 כוסות קמח\nהוראות:\nלאפות")
+      if (parsed.category === 'קינוח') {
+        add('31. פענוח מתכון — זיהוי קטגוריה', 'pass', `טקסט עם "עוגה" → קטגוריה: "${parsed.category}"`)
+      } else {
+        add('31. פענוח מתכון — זיהוי קטגוריה', 'fail', `קטגוריה: "${parsed.category}", צפוי "קינוח"`)
+      }
+    } catch (e) {
+      add('31. פענוח מתכון — זיהוי קטגוריה', 'fail', String(e))
+    }
+
+    // 32. Collaborators Table
+    if (testRecipeId && userId) {
+      try {
+        const { error: insertErr } = await supabase
+          .from('recipe_collaborators')
+          .insert({ recipe_id: testRecipeId, user_id: userId })
+        if (insertErr) {
+          add('32. טבלת שותפים למתכון', 'fail', `Insert: ${insertErr.message}`)
+        } else {
+          const { data: collabs } = await supabase
+            .from('recipe_collaborators')
+            .select('user_id')
+            .eq('recipe_id', testRecipeId)
+          if (collabs && collabs.length > 0) {
+            await supabase.from('recipe_collaborators').delete().eq('recipe_id', testRecipeId).eq('user_id', userId)
+            add('32. טבלת שותפים למתכון', 'pass', `הוספה + קריאה + מחיקה | ${collabs.length} שותפים`)
+          } else {
+            add('32. טבלת שותפים למתכון', 'fail', 'לא נמצא שותף אחרי הוספה')
+          }
+        }
+      } catch (e) {
+        add('32. טבלת שותפים למתכון', 'fail', String(e))
+      }
+    }
+
+    // 33. Leaderboard Query
+    try {
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('created_by')
+      if (error) {
+        add('33. שאילתת לידרבורד', 'fail', error.message)
+      } else {
+        const counts: Record<string, number> = {}
+        data.forEach((r: { created_by: string }) => {
+          counts[r.created_by] = (counts[r.created_by] || 0) + 1
+        })
+        const userCount = Object.keys(counts).length
+        add('33. שאילתת לידרבורד', 'pass', `${data.length} מתכונים מ-${userCount} משתמשים`)
+      }
+    } catch (e) {
+      add('33. שאילתת לידרבורד', 'fail', String(e))
+    }
+
+    // 34. Recipe Tags Contains Filter
+    try {
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('id, title, tags')
+        .contains('tags', ['שבת'])
+      if (error) {
+        add('34. סינון תגיות contains', 'fail', error.message)
+      } else {
+        add('34. סינון תגיות contains', 'pass', `${data.length} מתכונים עם תגית "שבת"`)
+      }
+    } catch (e) {
+      add('34. סינון תגיות contains', 'fail', String(e))
+    }
+
+    // 35. Admin Hidden Filters
+    try {
+      const testValue = `_test_filter_${Date.now()}`
+      const { error: insertErr } = await supabase
+        .from('hidden_filters')
+        .insert({ type: 'tag', value: testValue })
+      if (insertErr) {
+        add('35. פילטרים מוסתרים (הוספה)', 'fail', `Insert: ${insertErr.message}`)
+      } else {
+        const { data, error: readErr } = await supabase
+          .from('hidden_filters')
+          .select('type, value')
+          .eq('value', testValue)
+        if (readErr) {
+          add('35. פילטרים מוסתרים (הוספה)', 'fail', `Read: ${readErr.message}`)
+        } else if (data && data.length > 0) {
+          await supabase.from('hidden_filters').delete().eq('value', testValue)
+          add('35. פילטרים מוסתרים (הוספה)', 'pass', `הוספה + קריאה + מחיקה | type=${data[0].type}, value=${data[0].value}`)
+        } else {
+          add('35. פילטרים מוסתרים (הוספה)', 'fail', 'לא נמצא אחרי הוספה')
+        }
+      }
+    } catch (e) {
+      add('35. פילטרים מוסתרים (הוספה)', 'fail', String(e))
+    }
+
+    // 36. Cleanup test recipe
     if (testRecipeId) {
       try {
         await supabase.from('recipes').delete().eq('id', testRecipeId)
-        add('23. ניקוי', 'pass', 'מתכון הבדיקה נמחק')
+        add('36. ניקוי', 'pass', 'מתכון הבדיקה נמחק')
       } catch (e) {
-        add('23. ניקוי', 'fail', String(e))
+        add('36. ניקוי', 'fail', String(e))
       }
     }
 
@@ -440,7 +639,7 @@ export default function TestPage() {
           <Link href="/" className="text-sm text-primary hover:underline">חזרה לאפליקציה</Link>
         </div>
         <p className="text-on-surface-variant mb-6">
-          בודק: חיבור, הרשאות, פרופיל, מתכונים, מועדפים, תגובות, דירוגים, hidden_filters, אחסון, עדכונים, אמוג׳י, גרדיאנט, דחיסה, ייצוא, טיפוסים.
+          בודק: חיבור, הרשאות, פרופיל, מתכונים, מועדפים, תגובות, דירוגים, hidden_filters, אחסון, עדכונים, אמוג׳י, גרדיאנט, דחיסה, ייצוא, טיפוסים, XP, רמות, הישגים, פענוח מתכון, שותפים, לידרבורד, תגיות.
         </p>
 
         <div className="flex items-center gap-4 mb-6">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { Profile } from '@/lib/types'
@@ -8,7 +8,7 @@ import { getAvatarGradient } from '@/lib/avatar-gradient'
 
 export default function Navbar() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [profile, setProfile] = useState<Profile | null>(null)
 
   useEffect(() => {

@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState, useEffect, useRef, type FormEvent } from 'react'
+import { useState, useEffect, useMemo, useRef, type FormEvent } from 'react'
 
 interface RecipeFormProps {
   recipe?: Recipe
@@ -17,7 +17,7 @@ interface RecipeFormProps {
 
 export default function RecipeForm({ recipe }: RecipeFormProps) {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [title, setTitle] = useState(recipe?.title ?? '')

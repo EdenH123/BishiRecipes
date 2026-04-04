@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -64,7 +64,7 @@ function BurstParticles() {
 }
 
 export default function FavoriteButton({ recipeId, userId }: FavoriteButtonProps) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [favorited, setFavorited] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showBurst, setShowBurst] = useState(false)

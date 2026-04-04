@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
-import type { UserStats } from '@/lib/achievements'
+import { useUserStats } from '@/lib/hooks/useUserStats'
 import { calculateXP, getLevel, getNextLevel, getLevelProgress } from '@/lib/xp-levels'
 import { motion } from 'framer-motion'
 
@@ -11,75 +9,7 @@ interface XPProgressProps {
 }
 
 export default function XPProgress({ userId }: XPProgressProps) {
-  const supabase = createClient()
-  const [stats, setStats] = useState<UserStats | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const [
-          recipesRes,
-          commentsRes,
-          ratingsRes,
-          favoritesRes,
-          reactionsRes,
-          categoriesRes,
-          collaborationsRes,
-        ] = await Promise.all([
-          supabase
-            .from('recipes')
-            .select('id', { count: 'exact', head: true })
-            .eq('created_by', userId),
-          supabase
-            .from('comments')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', userId),
-          supabase
-            .from('ratings')
-            .select('recipe_id', { count: 'exact', head: true })
-            .eq('user_id', userId),
-          supabase
-            .from('favorites')
-            .select('recipe_id', { count: 'exact', head: true })
-            .eq('user_id', userId),
-          supabase
-            .from('reactions')
-            .select('recipe_id', { count: 'exact', head: true })
-            .eq('user_id', userId),
-          supabase
-            .from('recipes')
-            .select('category')
-            .eq('created_by', userId)
-            .not('category', 'is', null),
-          supabase
-            .from('recipe_collaborators')
-            .select('recipe_id', { count: 'exact', head: true })
-            .eq('user_id', userId),
-        ])
-
-        const distinctCategories = new Set(
-          (categoriesRes.data ?? []).map((r) => r.category).filter(Boolean)
-        )
-
-        setStats({
-          recipeCount: recipesRes.count ?? 0,
-          commentCount: commentsRes.count ?? 0,
-          ratingCount: ratingsRes.count ?? 0,
-          favoriteCount: favoritesRes.count ?? 0,
-          reactionCount: reactionsRes.count ?? 0,
-          categoriesUsed: distinctCategories.size,
-          collaborationCount: collaborationsRes.count ?? 0,
-        })
-      } catch (error) {
-        console.error('Error fetching XP stats:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchStats()
-  }, [userId])
+  const { stats, loading } = useUserStats(userId)
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 import { type Collaborator, type Profile } from '@/lib/types'
@@ -20,7 +20,7 @@ export default function ManageCollaborators({
   collaborators,
   onUpdate,
 }: ManageCollaboratorsProps) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [open, setOpen] = useState(false)
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [searchQuery, setSearchQuery] = useState('')

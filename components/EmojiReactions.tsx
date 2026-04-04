@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 
@@ -18,7 +18,7 @@ interface EmojiReactionsProps {
 }
 
 export default function EmojiReactions({ recipeId, userId }: EmojiReactionsProps) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [myReactions, setMyReactions] = useState<Set<string>>(new Set())
   const [pickerOpen, setPickerOpen] = useState(false)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 
@@ -10,7 +10,7 @@ interface RatingStarsProps {
 }
 
 export default function RatingStars({ recipeId, userId }: RatingStarsProps) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [myRating, setMyRating] = useState<number>(0)
   const [average, setAverage] = useState<number>(0)
   const [count, setCount] = useState<number>(0)
