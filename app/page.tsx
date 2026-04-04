@@ -60,6 +60,7 @@ export default function HomePage() {
   const [selectedMember, setSelectedMember] = useState<string | null>(null)
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
+  const favoriteIdsRef = useRef<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [allCategories, setAllCategories] = useState<string[]>([])
   const [members, setMembers] = useState<{ id: string; display_name: string }[]>([])
@@ -130,7 +131,9 @@ export default function HomePage() {
           .eq('user_id', user.id)
 
         if (favData) {
-          setFavoriteIds(favData.map((f) => f.recipe_id))
+          const ids = favData.map((f) => f.recipe_id)
+          favoriteIdsRef.current = ids
+          setFavoriteIds(ids)
         }
       }
 
@@ -195,9 +198,9 @@ export default function HomePage() {
       if (selectedTags.length > 0) {
         query = query.contains('tags', selectedTags)
       }
-      if (showFavoritesOnly && favoriteIds.length > 0) {
-        query = query.in('id', favoriteIds)
-      } else if (showFavoritesOnly && favoriteIds.length === 0) {
+      if (showFavoritesOnly && favoriteIdsRef.current.length > 0) {
+        query = query.in('id', favoriteIdsRef.current)
+      } else if (showFavoritesOnly && favoriteIdsRef.current.length === 0) {
         // No favorites — return impossible filter to get 0 results
         query = query.in('id', ['__none__'])
       }
@@ -219,7 +222,7 @@ export default function HomePage() {
       return query
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, favoriteIds, sortBy]
+    [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy]
   )
 
   // Fetch a page of recipes
@@ -275,7 +278,7 @@ export default function HomePage() {
     setHasMore(true)
     fetchRecipesPage(0, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, favoriteIds, sortBy])
+  }, [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy])
 
   // Animated counter — animate towards totalCount
   useEffect(() => {
