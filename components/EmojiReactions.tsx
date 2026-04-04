@@ -1,10 +1,17 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 
-const EMOJIS = ['😋', '🔥', '❤️', '👏', '🤤'] as const
+const DEFAULT_EMOJIS = ['😋', '🔥', '❤️', '👏', '🤤'] as const
+
+const EMOJI_PICKER_OPTIONS = [
+  '😍', '🥰', '😎', '🤩', '🥳',
+  '🍕', '🍔', '🌮', '🍰', '🍩',
+  '🎉', '💯', '✨', '🙌', '👌',
+  '😜', '🤗', '💪', '🫶', '👑',
+]
 
 interface EmojiReactionsProps {
   recipeId: string
@@ -15,6 +22,8 @@ export default function EmojiReactions({ recipeId, userId }: EmojiReactionsProps
   const supabase = createClient()
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [myReactions, setMyReactions] = useState<Set<string>>(new Set())
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const pickerRef = useRef<HTMLDivElement>(null)
 
   const fetchReactions = useCallback(async () => {
     const [allRes, myRes] = await Promise.all([
@@ -45,6 +54,19 @@ export default function EmojiReactions({ recipeId, userId }: EmojiReactionsProps
   useEffect(() => {
     fetchReactions()
   }, [fetchReactions])
+
+  // Close picker on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false)
+      }
+    }
+    if (pickerOpen) {
+      document.addEventListener('mousedown', handleClick)
+      return () => document.removeEventListener('mousedown', handleClick)
+    }
+  }, [pickerOpen])
 
   async function toggle(emoji: string) {
     const active = myReactions.has(emoji)
@@ -82,9 +104,15 @@ export default function EmojiReactions({ recipeId, userId }: EmojiReactionsProps
     }
   }
 
+  // Build the list of emojis to display: defaults + any extra that have counts
+  const visibleEmojis = Array.from(new Set([
+    ...DEFAULT_EMOJIS,
+    ...Object.keys(counts).filter((e) => (counts[e] || 0) > 0),
+  ]))
+
   return (
     <div className="flex flex-wrap items-center gap-2" dir="ltr">
-      {EMOJIS.map((emoji) => {
+      {visibleEmojis.map((emoji) => {
         const active = myReactions.has(emoji)
         const count = counts[emoji] || 0
         return (
@@ -107,6 +135,40 @@ export default function EmojiReactions({ recipeId, userId }: EmojiReactionsProps
           </button>
         )
       })}
+
+      {/* Add emoji button + picker */}
+      <div className="relative" ref={pickerRef}>
+        <button
+          type="button"
+          onClick={() => setPickerOpen((v) => !v)}
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container transition-colors text-on-surface-variant"
+          aria-label="Add emoji"
+        >
+          <span className="material-symbols-outlined text-lg">add_reaction</span>
+        </button>
+
+        {pickerOpen && (
+          <div className="absolute bottom-full mb-2 left-0 z-50 rounded-xl bg-surface-container-lowest border border-outline-variant shadow-lg p-2 w-[220px]">
+            <div className="grid grid-cols-5 gap-1">
+              {EMOJI_PICKER_OPTIONS.filter((e) => !DEFAULT_EMOJIS.includes(e as typeof DEFAULT_EMOJIS[number])).map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => {
+                    toggle(emoji)
+                    setPickerOpen(false)
+                  }}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors hover:bg-surface-container ${
+                    myReactions.has(emoji) ? 'bg-primary/15' : ''
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
