@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { Recipe, Profile } from '@/lib/types'
-import { CATEGORIES, DEFAULT_TAGS } from '@/lib/types'
+import { CATEGORIES, DEFAULT_TAGS, getUserBadge } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
@@ -267,6 +267,18 @@ export default function ProfilePage() {
             </div>
           </button>
         </div>
+
+        {/* User badge */}
+        {(() => {
+          const badge = getUserBadge(myRecipes.length)
+          return badge ? (
+            <div className="mt-3 flex justify-center">
+              <span className={`rounded-full px-4 py-1.5 text-sm font-medium ${badge.color}`}>
+                {badge.icon} {badge.label}
+              </span>
+            </div>
+          ) : null
+        })()}
 
         {/* Edit display name */}
         <div className="mt-4 flex items-center justify-center gap-3">

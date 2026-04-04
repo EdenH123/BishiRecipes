@@ -16,6 +16,7 @@ import FavoriteButton from '@/components/FavoriteButton'
 import CommentSection from '@/components/CommentSection'
 import RatingStars from '@/components/RatingStars'
 import CookingMode from '@/components/CookingMode'
+import UnitConverter from '@/components/UnitConverter'
 import { AnimatePresence } from 'framer-motion'
 
 function scaleAmount(amount: string, multiplier: number): string {
@@ -371,6 +372,11 @@ export default function RecipeDetailPage() {
             })}
           </ul>
         </motion.section>
+
+        {/* Unit converter */}
+        <div className="mt-4">
+          <UnitConverter />
+        </div>
 
         {/* Steps */}
         <motion.section

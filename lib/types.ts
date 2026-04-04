@@ -108,3 +108,11 @@ export const DEFAULT_TAGS = [
   'ללא גלוטן',
   'קל להכנה',
 ] as const
+
+export function getUserBadge(recipeCount: number): { label: string; icon: string; color: string } | null {
+  if (recipeCount >= 20) return { label: 'שף מאסטר', icon: '👨‍🍳', color: 'bg-amber-400/20 text-amber-700' }
+  if (recipeCount >= 10) return { label: 'שף בכיר', icon: '🍳', color: 'bg-primary/10 text-primary' }
+  if (recipeCount >= 5) return { label: 'טבח/ית', icon: '🥄', color: 'bg-tertiary/10 text-tertiary' }
+  if (recipeCount >= 1) return { label: 'מתחילים', icon: '🌱', color: 'bg-sky/10 text-sky' }
+  return null
+}

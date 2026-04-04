@@ -11,6 +11,9 @@ interface CookingModeProps {
 
 export default function CookingMode({ steps, title, onClose }: CookingModeProps) {
   const [current, setCurrent] = useState(0)
+  const [timerSeconds, setTimerSeconds] = useState(0)
+  const [timerRunning, setTimerRunning] = useState(false)
+  const [timerInput, setTimerInput] = useState(5) // minutes
 
   // Keep screen awake
   useEffect(() => {
@@ -25,6 +28,38 @@ export default function CookingMode({ steps, title, onClose }: CookingModeProps)
     requestWake()
     return () => { wakeLock?.release() }
   }, [])
+
+  // Timer countdown
+  useEffect(() => {
+    if (!timerRunning || timerSeconds <= 0) return
+    const interval = setInterval(() => {
+      setTimerSeconds((s) => {
+        if (s <= 1) {
+          setTimerRunning(false)
+          // Play alarm sound
+          try {
+            const audioCtx = new AudioContext()
+            for (let i = 0; i < 3; i++) {
+              const osc = audioCtx.createOscillator()
+              const gain = audioCtx.createGain()
+              osc.connect(gain)
+              gain.connect(audioCtx.destination)
+              osc.frequency.value = 880
+              gain.gain.value = 0.3
+              osc.start(audioCtx.currentTime + i * 0.3)
+              osc.stop(audioCtx.currentTime + i * 0.3 + 0.2)
+            }
+          } catch {}
+          return 0
+        }
+        return s - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [timerRunning, timerSeconds])
+
+  const timerMM = String(Math.floor(timerSeconds / 60)).padStart(2, '0')
+  const timerSS = String(timerSeconds % 60).padStart(2, '0')
 
   // Keyboard navigation
   useEffect(() => {
@@ -108,6 +143,54 @@ export default function CookingMode({ steps, title, onClose }: CookingModeProps)
             </p>
           </motion.div>
         </AnimatePresence>
+      </div>
+
+      {/* Timer */}
+      <div className="flex items-center justify-center gap-3 px-6 mb-4">
+        {timerSeconds > 0 || timerRunning ? (
+          <div className="flex items-center gap-3">
+            <span className={`text-3xl font-mono font-bold ${timerSeconds <= 10 && timerSeconds > 0 ? 'text-red-400 animate-pulse' : 'text-white'}`}>
+              {timerMM}:{timerSS}
+            </span>
+            <button
+              onClick={() => setTimerRunning((r) => !r)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <span className="material-symbols-outlined">{timerRunning ? 'pause' : 'play_arrow'}</span>
+            </button>
+            <button
+              onClick={() => { setTimerRunning(false); setTimerSeconds(0) }}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <span className="material-symbols-outlined">stop</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-white/40">timer</span>
+            <div className="flex items-center gap-1 rounded-full bg-white/10 px-1">
+              <button
+                onClick={() => setTimerInput((v) => Math.max(1, v - 1))}
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">remove</span>
+              </button>
+              <span className="text-sm font-mono min-w-[2rem] text-center">{timerInput}m</span>
+              <button
+                onClick={() => setTimerInput((v) => v + 1)}
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+              </button>
+            </div>
+            <button
+              onClick={() => { setTimerSeconds(timerInput * 60); setTimerRunning(true) }}
+              className="rounded-full bg-white/10 px-4 py-2 text-sm font-medium hover:bg-white/20 transition-colors"
+            >
+              התחל טיימר
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
