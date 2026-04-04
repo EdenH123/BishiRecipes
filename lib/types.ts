@@ -23,6 +23,14 @@ export interface Recipe {
   profiles?: Profile
 }
 
+export interface Collaborator {
+  user_id: string
+  profiles: {
+    display_name: string
+    avatar_url: string | null
+  }
+}
+
 export interface Favorite {
   user_id: string
   recipe_id: string

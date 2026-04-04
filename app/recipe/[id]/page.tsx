@@ -7,7 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { type Recipe, parseIngredient, displayIngredient } from '@/lib/types'
+import { type Recipe, type Collaborator, type Profile, parseIngredient, displayIngredient } from '@/lib/types'
 import { exportRecipeAsImage } from '@/lib/export-recipe'
 import RecipeCard from '@/components/RecipeCard'
 import Navbar from '@/components/Navbar'
@@ -19,6 +19,8 @@ import EmojiReactions from '@/components/EmojiReactions'
 import CookingMode from '@/components/CookingMode'
 import UnitConverter from '@/components/UnitConverter'
 import BackToTop from '@/components/BackToTop'
+import ManageCollaborators from '@/components/ManageCollaborators'
+import { getAvatarGradient } from '@/lib/avatar-gradient'
 import { AnimatePresence } from 'framer-motion'
 
 function scaleAmount(amount: string, multiplier: number): string {
@@ -61,6 +63,8 @@ export default function RecipeDetailPage() {
   const [servingsMultiplier, setServingsMultiplier] = useState(1)
   const [cookingMode, setCookingMode] = useState(false)
   const [relatedRecipes, setRelatedRecipes] = useState<Recipe[]>([])
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([])
+  const [isCollaborator, setIsCollaborator] = useState(false)
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -93,6 +97,17 @@ export default function RecipeDetailPage() {
           .eq('id', currentUserId)
           .single()
         setIsAdmin(profile?.is_admin ?? false)
+      }
+
+      // Fetch collaborators
+      const { data: collabData } = await supabase
+        .from('recipe_collaborators')
+        .select('user_id, profiles!user_id(display_name, avatar_url)')
+        .eq('recipe_id', id)
+      const collabs = (collabData ?? []) as unknown as Collaborator[]
+      setCollaborators(collabs)
+      if (currentUserId) {
+        setIsCollaborator(collabs.some((c) => c.user_id === currentUserId))
       }
 
       setLoading(false)
@@ -236,6 +251,34 @@ export default function RecipeDetailPage() {
           הוסיף/ה: {recipe.profiles?.display_name ?? 'משתמש/ת'} · {formatDate(recipe.created_at)}
         </p>
 
+        {/* Collaborators */}
+        {collaborators.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+            <span>שותפים:</span>
+            {collaborators.map((c) => (
+              <span key={c.user_id} className="flex items-center gap-1">
+                {c.profiles?.avatar_url ? (
+                  <Image
+                    src={c.profiles.avatar_url}
+                    alt={c.profiles.display_name}
+                    width={20}
+                    height={20}
+                    className="h-5 w-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                    style={{ background: getAvatarGradient(c.user_id) }}
+                  >
+                    {c.profiles?.display_name?.charAt(0) ?? '?'}
+                  </span>
+                )}
+                <span>{c.profiles?.display_name}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Rating */}
         {userId && (
           <div className="mt-4">
@@ -260,13 +303,15 @@ export default function RecipeDetailPage() {
             <span className="material-symbols-outlined text-base">skillet</span>
             מצב בישול
           </button>
-          <Link
-            href={`/recipe/${recipe.id}/edit`}
-            className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
-          >
-            <span className="material-symbols-outlined text-base">edit</span>
-            עריכה
-          </Link>
+          {(userId === recipe.created_by || isCollaborator || isAdmin) && (
+            <Link
+              href={`/recipe/${recipe.id}/edit`}
+              className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
+            >
+              <span className="material-symbols-outlined text-base">edit</span>
+              עריכה
+            </Link>
+          )}
           {(userId === recipe.created_by || isAdmin) && (
             <button
               onClick={() => {
@@ -341,6 +386,19 @@ export default function RecipeDetailPage() {
             ייצוא תמונה
           </button>
         </div>
+
+        {/* Manage collaborators (owner only) */}
+        {userId === recipe.created_by && (
+          <ManageCollaborators
+            recipeId={recipe.id}
+            ownerId={recipe.created_by}
+            collaborators={collaborators}
+            onUpdate={(updated) => {
+              setCollaborators(updated)
+              setIsCollaborator(updated.some((c) => c.user_id === userId))
+            }}
+          />
+        )}
 
         {/* Ingredients */}
         <motion.section

@@ -241,3 +241,16 @@ create trigger recipes_updated_at
   before update on recipes
   for each row
   execute function update_updated_at();
+
+-- Recipe collaborators
+CREATE TABLE IF NOT EXISTS recipe_collaborators (
+  recipe_id uuid REFERENCES recipes(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+  added_at timestamptz DEFAULT now(),
+  PRIMARY KEY (recipe_id, user_id)
+);
+ALTER TABLE recipe_collaborators ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read collaborators" ON recipe_collaborators FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Recipe owner can manage collaborators" ON recipe_collaborators FOR ALL TO authenticated USING (
+  EXISTS (SELECT 1 FROM recipes WHERE id = recipe_id AND created_by = auth.uid())
+);

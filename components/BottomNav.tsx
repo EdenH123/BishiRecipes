@@ -8,6 +8,7 @@ export default function BottomNav() {
 
   const isHome = pathname === '/'
   const isNew = pathname === '/recipe/new'
+  const isLeaderboard = pathname === '/leaderboard'
   const isProfile = pathname === '/profile'
 
   return (
@@ -39,6 +40,23 @@ export default function BottomNav() {
       >
         <span className="material-symbols-outlined">add_circle</span>
         <span className="text-xs mt-1">הוספה</span>
+      </Link>
+
+      <Link
+        href="/leaderboard"
+        className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-200 ${
+          isLeaderboard
+            ? 'bg-primary/10 text-primary scale-110'
+            : 'text-on-surface-variant hover:text-primary'
+        }`}
+      >
+        <span
+          className="material-symbols-outlined"
+          style={isLeaderboard ? { fontVariationSettings: "'FILL' 1" } : undefined}
+        >
+          emoji_events
+        </span>
+        <span className="text-xs mt-1">לידרבורד</span>
       </Link>
 
       <Link

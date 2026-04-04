@@ -18,22 +18,50 @@ export default function EditRecipePage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [unauthorized, setUnauthorized] = useState(false)
 
   useEffect(() => {
     async function load() {
-      const { data, error: fetchError } = await supabase
-        .from('recipes')
-        .select('*, profiles!created_by(id, display_name, avatar_url)')
-        .eq('id', id)
-        .single()
+      const [recipeRes, userRes] = await Promise.all([
+        supabase
+          .from('recipes')
+          .select('*, profiles!created_by(id, display_name, avatar_url)')
+          .eq('id', id)
+          .single(),
+        supabase.auth.getUser(),
+      ])
 
-      if (fetchError || !data) {
+      if (recipeRes.error || !recipeRes.data) {
         setError(true)
         setLoading(false)
         return
       }
 
-      setRecipe(data as Recipe)
+      const recipeData = recipeRes.data as Recipe
+      const currentUserId = userRes.data.user?.id ?? null
+
+      // Permission check: owner, collaborator, or admin
+      let allowed = false
+      if (currentUserId) {
+        if (currentUserId === recipeData.created_by) {
+          allowed = true
+        } else {
+          const [profileRes, collabRes] = await Promise.all([
+            supabase.from('profiles').select('is_admin').eq('id', currentUserId).single(),
+            supabase.from('recipe_collaborators').select('user_id').eq('recipe_id', id).eq('user_id', currentUserId).maybeSingle(),
+          ])
+          if (profileRes.data?.is_admin) allowed = true
+          if (collabRes.data) allowed = true
+        }
+      }
+
+      if (!allowed) {
+        setUnauthorized(true)
+        setLoading(false)
+        return
+      }
+
+      setRecipe(recipeData)
       setLoading(false)
     }
 
@@ -52,12 +80,30 @@ export default function EditRecipePage() {
     )
   }
 
+  if (unauthorized) {
+    return (
+      <div className="min-h-screen bg-surface pt-20 pb-28">
+        <Navbar />
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 font-rubik" dir="rtl">
+          <p className="text-xl text-gray-600">אין לך הרשאה לערוך מתכון זה</p>
+          <Link
+            href={`/recipe/${id}`}
+            className="rounded-lg bg-primary px-6 py-2 text-white transition-opacity hover:opacity-90"
+          >
+            חזרה למתכון
+          </Link>
+        </div>
+        <BottomNav />
+      </div>
+    )
+  }
+
   if (error || !recipe) {
     return (
       <div className="min-h-screen bg-surface pt-20 pb-28">
         <Navbar />
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 font-rubik" dir="rtl">
-          <p className="text-xl text-gray-600">המתכון לא נמצא 😕</p>
+          <p className="text-xl text-gray-600">המתכון לא נמצא</p>
           <Link
             href="/"
             className="rounded-lg bg-primary px-6 py-2 text-white transition-opacity hover:opacity-90"

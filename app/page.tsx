@@ -286,6 +286,12 @@ export default function HomePage() {
                 <span className="font-bold text-primary text-lg">{animatedCount}</span> מתכונים
               </span>
             )}
+            <Link
+              href="/leaderboard"
+              className="flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+            >
+              לידרבורד 🏆
+            </Link>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex rounded-full bg-surface-container-low overflow-hidden">
