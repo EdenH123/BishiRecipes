@@ -2,74 +2,56 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion } from 'framer-motion'
+
+const NAV_ITEMS = [
+  { href: '/', icon: 'home', label: 'בית', fillOnActive: true },
+  { href: '/recipe/new', icon: 'add_circle', label: 'הוספה', fillOnActive: false },
+  { href: '/leaderboard', icon: 'emoji_events', label: 'לידרבורד', fillOnActive: true },
+  { href: '/profile', icon: 'person', label: 'פרופיל', fillOnActive: false },
+]
 
 export default function BottomNav() {
   const pathname = usePathname()
 
-  const isHome = pathname === '/'
-  const isNew = pathname === '/recipe/new'
-  const isLeaderboard = pathname === '/leaderboard'
-  const isProfile = pathname === '/profile'
+  function isActive(href: string) {
+    return pathname === href
+  }
 
   return (
     <nav className="fixed bottom-0 w-full z-50 bg-surface/90 backdrop-blur-lg border-t border-surface-container-highest/30 shadow-[0_-4px_20px_rgba(180,28,27,0.05)] flex flex-row-reverse justify-around items-center px-4 pt-2 rounded-t-[1.5rem]" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-      <Link
-        href="/"
-        className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-200 ${
-          isHome
-            ? 'bg-primary/10 text-primary scale-110'
-            : 'text-on-surface-variant hover:text-primary'
-        }`}
-      >
-        <span
-          className="material-symbols-outlined"
-          style={isHome ? { fontVariationSettings: "'FILL' 1" } : undefined}
-        >
-          home
-        </span>
-        <span className="text-xs mt-1">בית</span>
-      </Link>
-
-      <Link
-        href="/recipe/new"
-        className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-200 ${
-          isNew
-            ? 'bg-primary/10 text-primary scale-110'
-            : 'text-on-surface-variant hover:text-primary'
-        }`}
-      >
-        <span className="material-symbols-outlined">add_circle</span>
-        <span className="text-xs mt-1">הוספה</span>
-      </Link>
-
-      <Link
-        href="/leaderboard"
-        className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-200 ${
-          isLeaderboard
-            ? 'bg-primary/10 text-primary scale-110'
-            : 'text-on-surface-variant hover:text-primary'
-        }`}
-      >
-        <span
-          className="material-symbols-outlined"
-          style={isLeaderboard ? { fontVariationSettings: "'FILL' 1" } : undefined}
-        >
-          emoji_events
-        </span>
-        <span className="text-xs mt-1">לידרבורד</span>
-      </Link>
-
-      <Link
-        href="/profile"
-        className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-200 ${
-          isProfile
-            ? 'bg-primary/10 text-primary scale-110'
-            : 'text-on-surface-variant hover:text-primary'
-        }`}
-      >
-        <span className="material-symbols-outlined">person</span>
-        <span className="text-xs mt-1">פרופיל</span>
-      </Link>
+      {NAV_ITEMS.map((item) => {
+        const active = isActive(item.href)
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="relative flex flex-col items-center justify-center p-3 rounded-2xl transition-colors duration-200 text-on-surface-variant hover:text-primary"
+          >
+            {active && (
+              <motion.div
+                layoutId="bottomNavIndicator"
+                className="absolute inset-0 rounded-2xl bg-primary/10"
+                transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+              />
+            )}
+            <motion.span
+              className={`material-symbols-outlined relative z-10 ${active ? 'text-primary' : ''}`}
+              style={active && item.fillOnActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
+              whileTap={{ scale: 0.8 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+            >
+              {item.icon}
+            </motion.span>
+            <motion.span
+              className={`text-xs mt-1 relative z-10 ${active ? 'text-primary font-bold' : ''}`}
+              whileTap={{ scale: 0.9 }}
+            >
+              {item.label}
+            </motion.span>
+          </Link>
+        )
+      })}
     </nav>
   )
 }
