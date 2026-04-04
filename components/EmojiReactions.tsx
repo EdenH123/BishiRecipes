@@ -4,9 +4,8 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 
-const DEFAULT_EMOJIS = ['😋', '🔥', '❤️', '👏', '🤤'] as const
-
 const EMOJI_PICKER_OPTIONS = [
+  '😋', '🔥', '❤️', '👏', '🤤',
   '😍', '🥰', '😎', '🤩', '🥳',
   '🍕', '🍔', '🌮', '🍰', '🍩',
   '🎉', '💯', '✨', '🙌', '👌',
@@ -104,11 +103,8 @@ export default function EmojiReactions({ recipeId, userId }: EmojiReactionsProps
     }
   }
 
-  // Build the list of emojis to display: defaults + any extra that have counts
-  const visibleEmojis = Array.from(new Set([
-    ...DEFAULT_EMOJIS,
-    ...Object.keys(counts).filter((e) => (counts[e] || 0) > 0),
-  ]))
+  // Only show emojis that have at least one reaction
+  const visibleEmojis = Object.keys(counts).filter((e) => (counts[e] || 0) > 0)
 
   return (
     <div className="flex flex-wrap items-center gap-2" dir="ltr">
@@ -150,7 +146,7 @@ export default function EmojiReactions({ recipeId, userId }: EmojiReactionsProps
         {pickerOpen && (
           <div className="absolute bottom-full mb-2 left-0 z-50 rounded-xl bg-surface-container-lowest border border-outline-variant shadow-lg p-2 w-[220px]">
             <div className="grid grid-cols-5 gap-1">
-              {EMOJI_PICKER_OPTIONS.filter((e) => !DEFAULT_EMOJIS.includes(e as typeof DEFAULT_EMOJIS[number])).map((emoji) => (
+              {EMOJI_PICKER_OPTIONS.map((emoji) => (
                 <button
                   key={emoji}
                   type="button"
