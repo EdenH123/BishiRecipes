@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
@@ -15,6 +15,7 @@ import BottomNav from '@/components/BottomNav'
 import FavoriteButton from '@/components/FavoriteButton'
 import CommentSection from '@/components/CommentSection'
 import RatingStars from '@/components/RatingStars'
+import EmojiReactions from '@/components/EmojiReactions'
 import CookingMode from '@/components/CookingMode'
 import UnitConverter from '@/components/UnitConverter'
 import { AnimatePresence } from 'framer-motion'
@@ -59,6 +60,7 @@ export default function RecipeDetailPage() {
   const [servingsMultiplier, setServingsMultiplier] = useState(1)
   const [cookingMode, setCookingMode] = useState(false)
   const [relatedRecipes, setRelatedRecipes] = useState<Recipe[]>([])
+  const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -240,6 +242,13 @@ export default function RecipeDetailPage() {
           </div>
         )}
 
+        {/* Emoji Reactions */}
+        {userId && (
+          <div className="mt-3">
+            <EmojiReactions recipeId={recipe.id} userId={userId} />
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="mt-4 flex items-center gap-4">
           {userId && <FavoriteButton recipeId={recipe.id} userId={userId} />}
@@ -259,18 +268,34 @@ export default function RecipeDetailPage() {
           </Link>
           {(userId === recipe.created_by || isAdmin) && (
             <button
-              onClick={async () => {
+              onClick={() => {
                 if (!confirm('למחוק את המתכון?')) return
-                const { error } = await supabase
-                  .from('recipes')
-                  .delete()
-                  .eq('id', recipe.id)
-                if (error) {
-                  toast.error('שגיאה במחיקת המתכון')
-                  return
-                }
-                toast.success('המתכון נמחק')
+                const recipeId = recipe.id
                 router.push('/')
+                const timeoutId = setTimeout(async () => {
+                  deleteTimeoutRef.current = null
+                  const { error } = await supabase
+                    .from('recipes')
+                    .delete()
+                    .eq('id', recipeId)
+                  if (error) {
+                    toast.error('שגיאה במחיקת המתכון')
+                  }
+                }, 5000)
+                deleteTimeoutRef.current = timeoutId
+                toast('המתכון נמחק', {
+                  duration: 5000,
+                  action: {
+                    label: 'ביטול',
+                    onClick: () => {
+                      if (deleteTimeoutRef.current) {
+                        clearTimeout(deleteTimeoutRef.current)
+                        deleteTimeoutRef.current = null
+                      }
+                      router.push(`/recipe/${recipeId}`)
+                    },
+                  },
+                })
               }}
               className="flex items-center gap-1 rounded-lg border border-error/30 px-4 py-2 text-sm text-error transition-colors hover:bg-error/10"
             >

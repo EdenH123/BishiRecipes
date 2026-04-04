@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase'
 import type { Recipe, Profile } from '@/lib/types'
 import { CATEGORIES, DEFAULT_TAGS, getUserBadge } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
+import { getAvatarGradient } from '@/lib/avatar-gradient'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import RecipeCard from '@/components/RecipeCard'
@@ -254,7 +255,10 @@ export default function ProfilePage() {
                 className="h-20 w-20 rounded-full object-cover"
               />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary-container text-3xl font-bold text-on-secondary-container">
+              <div
+                className="flex h-20 w-20 items-center justify-center rounded-full text-3xl font-bold text-white"
+                style={{ background: getAvatarGradient(profile?.id || '') }}
+              >
                 {profile?.display_name?.charAt(0) || '?'}
               </div>
             )}

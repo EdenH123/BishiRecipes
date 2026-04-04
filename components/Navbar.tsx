@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { Profile } from '@/lib/types'
+import { getAvatarGradient } from '@/lib/avatar-gradient'
 
 export default function Navbar() {
   const router = useRouter()
@@ -50,7 +51,10 @@ export default function Navbar() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="flex w-full h-full items-center justify-center bg-secondary-container text-on-secondary-container text-sm font-bold">
+                <span
+                  className="flex w-full h-full items-center justify-center text-white text-sm font-bold"
+                  style={{ background: getAvatarGradient(profile.id) }}
+                >
                   {profile.display_name?.charAt(0) || '?'}
                 </span>
               )}

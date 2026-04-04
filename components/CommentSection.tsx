@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { getAvatarGradient } from '@/lib/avatar-gradient'
 
 interface Comment {
   id: string
@@ -129,7 +130,10 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
                   className="h-9 w-9 shrink-0 rounded-full object-cover"
                 />
               ) : (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary-container text-sm font-bold text-on-secondary-container">
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                  style={{ background: getAvatarGradient(comment.user_id) }}
+                >
                   {comment.profiles.display_name?.charAt(0) || '?'}
                 </span>
               )}

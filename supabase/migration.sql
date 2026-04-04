@@ -175,6 +175,31 @@ create policy "Users can update own ratings"
   to authenticated
   using (auth.uid() = user_id);
 
+-- Reactions table (emoji reactions on recipes)
+create table if not exists reactions (
+  recipe_id uuid references recipes(id) on delete cascade,
+  user_id uuid references profiles(id) on delete cascade,
+  emoji text not null,
+  primary key (recipe_id, user_id, emoji)
+);
+
+alter table reactions enable row level security;
+
+create policy "Anyone can view reactions"
+  on reactions for select
+  to authenticated
+  using (true);
+
+create policy "Users can insert own reactions"
+  on reactions for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "Users can delete own reactions"
+  on reactions for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
 -- Hidden filters table (admin can hide categories/tags)
 create table if not exists hidden_filters (
   id uuid primary key default gen_random_uuid(),
