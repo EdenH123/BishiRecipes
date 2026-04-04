@@ -76,7 +76,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 {recipe.tags?.slice(0, 3).map((tag) => (
                   <span
                     key={tag}
-                    className="text-[9px] bg-surface-container px-1.5 py-0.5 rounded text-outline"
+                    className="text-[11px] bg-surface-container px-1.5 py-0.5 rounded text-outline"
                   >
                     {tag}
                   </span>
@@ -84,7 +84,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
               </div>
 
               {recipe.profiles?.display_name && (
-                <p className="text-[10px] text-outline italic">
+                <p className="text-[11px] text-outline italic">
                   הוסיף/ה: {recipe.profiles.display_name}
                 </p>
               )}
@@ -94,7 +94,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
             <button
               type="button"
               onClick={handleFlip}
-              className="absolute bottom-2 left-2 w-7 h-7 rounded-full bg-primary/80 text-white flex items-center justify-center text-xs shadow-md hover:bg-primary transition-colors"
+              className="absolute bottom-2 left-2 w-9 h-9 rounded-full bg-primary/80 text-white flex items-center justify-center text-sm shadow-md hover:bg-primary transition-colors active:scale-95"
               aria-label="Show ingredients"
             >
               i
@@ -137,7 +137,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
             <button
               type="button"
               onClick={handleFlip}
-              className="absolute bottom-2 left-2 w-7 h-7 rounded-full bg-primary/80 text-white flex items-center justify-center text-xs shadow-md hover:bg-primary transition-colors"
+              className="absolute bottom-2 left-2 w-9 h-9 rounded-full bg-primary/80 text-white flex items-center justify-center text-sm shadow-md hover:bg-primary transition-colors active:scale-95"
               aria-label="Show front"
             >
               &#x21A9;

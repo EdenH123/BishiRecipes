@@ -179,14 +179,14 @@ export default function RecipeDetailPage() {
       <Navbar />
 
       {/* Hero image */}
-      <div className="relative w-full max-h-[400px] overflow-hidden rounded-b-2xl bg-secondary-container/30">
+      <div className="relative w-full max-h-[250px] sm:max-h-[400px] overflow-hidden rounded-b-2xl bg-secondary-container/30">
         {recipe.image_url ? (
           <Image
             src={recipe.image_url}
             alt={recipe.title}
             width={1200}
             height={400}
-            className="h-full max-h-[400px] w-full object-cover"
+            className="h-full max-h-[250px] sm:max-h-[400px] w-full object-cover"
             priority
           />
         ) : (
@@ -251,18 +251,18 @@ export default function RecipeDetailPage() {
         )}
 
         {/* Action buttons */}
-        <div className="mt-4 flex items-center gap-4">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           {userId && <FavoriteButton recipeId={recipe.id} userId={userId} />}
           <button
             onClick={() => setCookingMode(true)}
-            className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+            className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
           >
             <span className="material-symbols-outlined text-base">skillet</span>
             מצב בישול
           </button>
           <Link
             href={`/recipe/${recipe.id}/edit`}
-            className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+            className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
           >
             <span className="material-symbols-outlined text-base">edit</span>
             עריכה
@@ -307,7 +307,7 @@ export default function RecipeDetailPage() {
         </div>
 
         {/* Share */}
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
             onClick={() => {
               const url = window.location.href
@@ -354,7 +354,7 @@ export default function RecipeDetailPage() {
             <div className="flex items-center gap-2 rounded-full bg-surface-container-low px-2 py-1">
               <button
                 onClick={() => setServingsMultiplier((m) => Math.max(0.5, m - 0.5))}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95"
               >
                 <span className="material-symbols-outlined text-base">remove</span>
               </button>
@@ -363,7 +363,7 @@ export default function RecipeDetailPage() {
               </span>
               <button
                 onClick={() => setServingsMultiplier((m) => m + 0.5)}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95"
               >
                 <span className="material-symbols-outlined text-base">add</span>
               </button>

@@ -137,14 +137,14 @@ export default function EmojiReactions({ recipeId, userId }: EmojiReactionsProps
         <button
           type="button"
           onClick={() => setPickerOpen((v) => !v)}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container transition-colors text-on-surface-variant"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container transition-colors text-on-surface-variant active:scale-95"
           aria-label="Add emoji"
         >
           <span className="material-symbols-outlined text-lg">add_reaction</span>
         </button>
 
         {pickerOpen && (
-          <div className="absolute bottom-full mb-2 left-0 z-50 rounded-xl bg-surface-container-lowest border border-outline-variant shadow-lg p-2 w-[220px]">
+          <div className="absolute bottom-full mb-2 left-0 z-50 rounded-xl bg-surface-container-lowest border border-outline-variant shadow-lg p-2 w-[260px]">
             <div className="grid grid-cols-5 gap-1">
               {EMOJI_PICKER_OPTIONS.map((emoji) => (
                 <button
@@ -154,7 +154,7 @@ export default function EmojiReactions({ recipeId, userId }: EmojiReactionsProps
                     toggle(emoji)
                     setPickerOpen(false)
                   }}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors hover:bg-surface-container ${
+                  className={`flex h-11 w-11 items-center justify-center rounded-lg text-xl transition-colors hover:bg-surface-container active:scale-95 ${
                     myReactions.has(emoji) ? 'bg-primary/15' : ''
                   }`}
                 >

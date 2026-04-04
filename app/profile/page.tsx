@@ -302,7 +302,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Tab switcher */}
-        <div className="mt-8 flex justify-center gap-8 border-b border-gray-200">
+        <div className="mt-8 flex justify-center gap-4 sm:gap-8 border-b border-gray-200">
           <button
             onClick={() => setActiveTab('recipes')}
             className={`pb-3 text-base font-rubik transition-colors ${

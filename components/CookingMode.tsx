@@ -95,7 +95,7 @@ export default function CookingMode({ steps, title, onClose }: CookingModeProps)
         >
           <span className="material-symbols-outlined">close</span>
         </button>
-        <h2 className="text-lg font-bold truncate max-w-[60%]">{title}</h2>
+        <h2 className="text-base sm:text-lg font-bold truncate max-w-[50%] sm:max-w-[60%]">{title}</h2>
         <span className="text-sm text-white/60">
           {current + 1} / {steps.length}
         </span>
@@ -138,7 +138,7 @@ export default function CookingMode({ steps, title, onClose }: CookingModeProps)
             <span className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold">
               {current + 1}
             </span>
-            <p className="mt-6 text-2xl leading-relaxed font-medium">
+            <p className="mt-6 text-xl sm:text-2xl leading-relaxed font-medium">
               {steps[current]}
             </p>
           </motion.div>

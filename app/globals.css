@@ -5,6 +5,8 @@
 @layer base {
   body {
     @apply bg-surface text-on-surface font-rubik;
+    -webkit-tap-highlight-color: transparent;
+    padding-top: env(safe-area-inset-top);
   }
 }
 
@@ -20,4 +22,11 @@
 
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Safe area support for bottom nav */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }

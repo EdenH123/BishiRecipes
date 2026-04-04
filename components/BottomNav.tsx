@@ -11,7 +11,7 @@ export default function BottomNav() {
   const isProfile = pathname === '/profile'
 
   return (
-    <nav className="fixed bottom-0 w-full z-50 bg-surface/90 backdrop-blur-lg border-t border-surface-container-highest/30 shadow-[0_-4px_20px_rgba(180,28,27,0.05)] flex flex-row-reverse justify-around items-center px-6 pb-4 pt-2 rounded-t-[1.5rem]">
+    <nav className="fixed bottom-0 w-full z-50 bg-surface/90 backdrop-blur-lg border-t border-surface-container-highest/30 shadow-[0_-4px_20px_rgba(180,28,27,0.05)] flex flex-row-reverse justify-around items-center px-4 pt-2 rounded-t-[1.5rem]" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
       <Link
         href="/"
         className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all duration-200 ${

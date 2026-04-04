@@ -153,7 +153,7 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
               {(comment.user_id === userId || isAdmin) && (
               <button
                 onClick={() => handleDelete(comment.id)}
-                className="shrink-0 cursor-pointer text-lg text-gray-400 transition-colors hover:text-red-500"
+                className="shrink-0 cursor-pointer p-2 text-lg text-gray-400 transition-colors hover:text-red-500 active:scale-95"
                 aria-label="מחק תגובה"
               >
                 🗑️
@@ -171,12 +171,12 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="הוסיפו תגובה..."
-          className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none transition-colors focus:border-primary"
+          className="flex-1 rounded-lg border border-gray-200 px-4 py-3 text-base outline-none transition-colors focus:border-primary"
         />
         <button
           type="submit"
           disabled={submitting || !newComment.trim()}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition-opacity disabled:opacity-40 cursor-pointer"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition-opacity disabled:opacity-40 cursor-pointer active:scale-95"
           aria-label="שלח תגובה"
         >
           <svg
