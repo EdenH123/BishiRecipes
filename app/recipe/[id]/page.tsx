@@ -236,26 +236,94 @@ export default function RecipeDetailPage() {
 
       setLoading(false)
 
-      // Fetch related recipes (same category or overlapping tags)
+      // Fetch related recipes with improved scoring
       if (recipeRes.data) {
         const r = recipeRes.data
-        const { data: candidates } = await supabase
-          .from('recipes')
-          .select('*, profiles!created_by(id, display_name, avatar_url)')
-          .neq('id', id)
-          .limit(20)
+        const currentIngredients = (r.ingredients || []).map((raw: string) => {
+          try {
+            const parsed = JSON.parse(raw)
+            return (parsed.name || '').trim().toLowerCase()
+          } catch { return raw.trim().toLowerCase() }
+        }).filter(Boolean)
 
-        if (candidates) {
-          const scored = candidates.map((c) => {
+        // Fetch more candidates and include ratings/favorites for popularity scoring
+        const [candidatesRes, ratingsRes, favoritesRes] = await Promise.all([
+          supabase
+            .from('recipes')
+            .select('*, profiles!created_by(id, display_name, avatar_url)')
+            .neq('id', id)
+            .limit(50),
+          supabase
+            .from('ratings')
+            .select('recipe_id, score'),
+          supabase
+            .from('favorites')
+            .select('recipe_id'),
+        ])
+
+        if (candidatesRes.data) {
+          // Build popularity maps
+          const avgRatings = new Map<string, number>()
+          const favCounts = new Map<string, number>()
+          if (ratingsRes.data) {
+            const sums = new Map<string, { total: number; count: number }>()
+            for (const rt of ratingsRes.data) {
+              const prev = sums.get(rt.recipe_id) || { total: 0, count: 0 }
+              sums.set(rt.recipe_id, { total: prev.total + rt.score, count: prev.count + 1 })
+            }
+            Array.from(sums.entries()).forEach(([rid, { total, count }]) => avgRatings.set(rid, total / count))
+          }
+          if (favoritesRes.data) {
+            for (const fv of favoritesRes.data) {
+              favCounts.set(fv.recipe_id, (favCounts.get(fv.recipe_id) || 0) + 1)
+            }
+          }
+
+          const scored = candidatesRes.data.map((c) => {
             let score = 0
-            if (r.category && c.category === r.category) score += 2
+
+            // Category match (strong signal)
+            if (r.category && c.category === r.category) score += 3
+
+            // Tag overlap
             if (r.tags && c.tags) {
-              for (const t of r.tags) {
-                if (c.tags.includes(t)) score += 1
+              const overlap = r.tags.filter((t: string) => c.tags.includes(t)).length
+              score += overlap * 2
+            }
+
+            // Ingredient overlap — compare ingredient names
+            if (currentIngredients.length > 0 && c.ingredients) {
+              const cIngredients = (c.ingredients as string[]).map((raw: string) => {
+                try {
+                  const parsed = JSON.parse(raw)
+                  return (parsed.name || '').trim().toLowerCase()
+                } catch { return raw.trim().toLowerCase() }
+              }).filter(Boolean)
+
+              let ingredientOverlap = 0
+              for (const ing of currentIngredients) {
+                if (cIngredients.some((ci: string) => ci.includes(ing) || ing.includes(ci))) {
+                  ingredientOverlap++
+                }
+              }
+              // Normalize by total ingredients to avoid bias toward large recipes
+              if (currentIngredients.length > 0) {
+                score += (ingredientOverlap / currentIngredients.length) * 3
               }
             }
+
+            // Same author bonus (family recipes tend to be related)
+            if (c.created_by === r.created_by) score += 1
+
+            // Popularity bonus (small, to prefer relevant + popular)
+            const rating = avgRatings.get(c.id) || 0
+            const favs = favCounts.get(c.id) || 0
+            score += Math.min(rating / 5, 1) * 0.5 // up to 0.5
+            score += Math.min(favs / 10, 1) * 0.5   // up to 0.5
+
             return { recipe: c as Recipe, score }
           })
+
           const related = scored
             .filter((s) => s.score > 0)
             .sort((a, b) => b.score - a.score)
