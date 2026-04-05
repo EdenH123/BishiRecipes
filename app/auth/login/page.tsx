@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase'
@@ -61,8 +62,9 @@ export default function LoginPage() {
       >
         <div className="bg-white rounded-card shadow-lg shadow-black/8 border border-secondary-container/20 p-8">
           <div className="text-center mb-8">
+            <Image src="/logo.png" alt="BISHILicious" width={80} height={80} className="rounded-full mx-auto mb-3" priority />
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              🍳 בישי מתכונים
+              BISHILicious
             </h1>
             <p className="text-gray-500 text-sm">
               התחברו כדי לגלות מתכונים מדהימים
