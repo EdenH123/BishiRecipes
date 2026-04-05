@@ -114,7 +114,10 @@ export function formatAmount(amount: string): string {
 }
 
 export function displayIngredient(ing: Ingredient): string {
-  const parts = [formatAmount(ing.amount), ing.unit, ing.name].filter(Boolean)
+  const amount = formatAmount(ing.amount)
+  // Wrap amount with LTR marks so "4½" doesn't flip to "½4" in RTL context
+  const ltrAmount = amount ? `\u200E${amount}\u200E` : ''
+  const parts = [ltrAmount, ing.unit, ing.name].filter(Boolean)
   return parts.join(' ')
 }
 

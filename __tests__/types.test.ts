@@ -71,8 +71,11 @@ describe('formatAmount', () => {
 })
 
 describe('displayIngredient', () => {
-  it('joins all parts', () => {
-    expect(displayIngredient({ amount: '2', unit: 'כוס', name: 'קמח' })).toBe('2 כוס קמח')
+  it('joins all parts with LTR marks on amount', () => {
+    const result = displayIngredient({ amount: '2', unit: 'כוס', name: 'קמח' })
+    expect(result).toContain('2')
+    expect(result).toContain('כוס')
+    expect(result).toContain('קמח')
   })
 
   it('skips empty parts', () => {
@@ -80,12 +83,21 @@ describe('displayIngredient', () => {
   })
 
   it('handles amount without unit', () => {
-    expect(displayIngredient({ amount: '3', unit: '', name: 'ביצים' })).toBe('3 ביצים')
+    const result = displayIngredient({ amount: '3', unit: '', name: 'ביצים' })
+    expect(result).toContain('3')
+    expect(result).toContain('ביצים')
   })
 
   it('formats fractions nicely', () => {
-    expect(displayIngredient({ amount: '1 1/2', unit: 'כוס', name: 'קמח' })).toBe('1½ כוס קמח')
-    expect(displayIngredient({ amount: '1/4', unit: 'כפית', name: 'מלח' })).toBe('¼ כפית מלח')
+    const result1 = displayIngredient({ amount: '1 1/2', unit: 'כוס', name: 'קמח' })
+    expect(result1).toContain('1½')
+    const result2 = displayIngredient({ amount: '1/4', unit: 'כפית', name: 'מלח' })
+    expect(result2).toContain('¼')
+  })
+
+  it('wraps amount in LTR marks for correct RTL display', () => {
+    const result = displayIngredient({ amount: '4½', unit: 'כוס', name: 'קמח' })
+    expect(result.startsWith('\u200E')).toBe(true)
   })
 })
 

@@ -523,23 +523,32 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         </label>
         <div className="space-y-2">
           {steps.map((step, index) => (
-            <div key={index} className="flex gap-2 items-center">
-              <span className="shrink-0 w-7 h-7 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-sm font-medium">
+            <div key={index} className="flex gap-2 items-start">
+              <span className="shrink-0 w-7 h-7 mt-2.5 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-sm font-medium">
                 {index + 1}
               </span>
-              <input
-                type="text"
+              <textarea
                 value={step}
-                onChange={(e) => updateStep(index, e.target.value)}
+                onChange={(e) => {
+                  updateStep(index, e.target.value)
+                  // Auto-grow
+                  e.target.style.height = 'auto'
+                  e.target.style.height = e.target.scrollHeight + 'px'
+                }}
+                onFocus={(e) => {
+                  e.target.style.height = 'auto'
+                  e.target.style.height = e.target.scrollHeight + 'px'
+                }}
                 placeholder={`שלב ${index + 1}`}
                 spellCheck
-                className={inputClass}
+                rows={1}
+                className={`${inputClass} resize-none overflow-hidden`}
               />
               {steps.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeStep(index)}
-                  className="shrink-0 text-gray-400 hover:text-primary text-lg transition-colors"
+                  className="shrink-0 mt-2.5 text-gray-400 hover:text-primary text-lg transition-colors"
                 >
                   ✕
                 </button>
