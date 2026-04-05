@@ -88,8 +88,33 @@ export function serializeIngredient(ing: Ingredient): string {
   return JSON.stringify({ amount: ing.amount, unit: ing.unit, name: ing.name })
 }
 
+const FRACTION_MAP: Record<string, string> = {
+  '1/4': '¼',
+  '1/2': '½',
+  '3/4': '¾',
+  '1/3': '⅓',
+  '2/3': '⅔',
+  '1/8': '⅛',
+  '3/8': '⅜',
+  '5/8': '⅝',
+  '7/8': '⅞',
+}
+
+export function formatAmount(amount: string): string {
+  if (!amount) return ''
+  // Replace fraction patterns like "1 1/2" → "1½", "1/4" → "¼"
+  let result = amount.trim()
+  for (const [fraction, unicode] of Object.entries(FRACTION_MAP)) {
+    // Whole number + fraction: "1 1/2" → "1½"
+    result = result.replace(new RegExp(`(\\d+)\\s+${fraction.replace('/', '\\/')}`, 'g'), `$1${unicode}`)
+    // Standalone fraction: "1/2" → "½"
+    result = result.replace(new RegExp(`(?<!\\d)${fraction.replace('/', '\\/')}(?!\\d)`, 'g'), unicode)
+  }
+  return result
+}
+
 export function displayIngredient(ing: Ingredient): string {
-  const parts = [ing.amount, ing.unit, ing.name].filter(Boolean)
+  const parts = [formatAmount(ing.amount), ing.unit, ing.name].filter(Boolean)
   return parts.join(' ')
 }
 

@@ -449,14 +449,33 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
               className={`flex gap-2 items-center transition-opacity ${dragIngredient === index ? 'opacity-40' : ''}`}
             >
               <span className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg">drag_indicator</span>
-              <input
-                type="text"
-                value={ingredient.amount}
-                onChange={(e) => updateIngredient(index, 'amount', e.target.value)}
-                placeholder="2"
-                className="w-16 rounded-lg border border-gray-200 p-3 text-center focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                dir="ltr"
-              />
+              <div className="relative group">
+                <input
+                  type="text"
+                  value={ingredient.amount}
+                  onChange={(e) => updateIngredient(index, 'amount', e.target.value)}
+                  placeholder="2"
+                  className="w-20 rounded-lg border border-gray-200 p-3 text-center focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  dir="ltr"
+                />
+                <div className="hidden group-focus-within:flex absolute top-full left-0 mt-1 z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-1 gap-0.5">
+                  {['¼','⅓','½','⅔','¾'].map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        const cur = ingredient.amount.trim()
+                        const newVal = cur && !cur.includes(f) ? `${cur}${f}` : f
+                        updateIngredient(index, 'amount', newVal)
+                      }}
+                      className="w-8 h-8 rounded text-sm hover:bg-primary/10 hover:text-primary transition-colors font-medium"
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <select
                 value={ingredient.unit}
                 onChange={(e) => updateIngredient(index, 'unit', e.target.value)}

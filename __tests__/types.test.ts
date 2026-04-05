@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseIngredient, serializeIngredient, displayIngredient, getUserBadge } from '@/lib/types'
+import { parseIngredient, serializeIngredient, displayIngredient, formatAmount, getUserBadge } from '@/lib/types'
 
 describe('parseIngredient', () => {
   it('parses JSON ingredient', () => {
@@ -40,6 +40,36 @@ describe('serializeIngredient', () => {
   })
 })
 
+describe('formatAmount', () => {
+  it('converts simple fractions to unicode', () => {
+    expect(formatAmount('1/2')).toBe('½')
+    expect(formatAmount('1/4')).toBe('¼')
+    expect(formatAmount('3/4')).toBe('¾')
+    expect(formatAmount('1/3')).toBe('⅓')
+    expect(formatAmount('2/3')).toBe('⅔')
+  })
+
+  it('converts mixed numbers with fractions', () => {
+    expect(formatAmount('1 1/2')).toBe('1½')
+    expect(formatAmount('2 1/4')).toBe('2¼')
+    expect(formatAmount('3 3/4')).toBe('3¾')
+  })
+
+  it('leaves whole numbers unchanged', () => {
+    expect(formatAmount('2')).toBe('2')
+    expect(formatAmount('10')).toBe('10')
+  })
+
+  it('returns empty for empty input', () => {
+    expect(formatAmount('')).toBe('')
+  })
+
+  it('passes through unicode fractions unchanged', () => {
+    expect(formatAmount('1½')).toBe('1½')
+    expect(formatAmount('¼')).toBe('¼')
+  })
+})
+
 describe('displayIngredient', () => {
   it('joins all parts', () => {
     expect(displayIngredient({ amount: '2', unit: 'כוס', name: 'קמח' })).toBe('2 כוס קמח')
@@ -51,6 +81,11 @@ describe('displayIngredient', () => {
 
   it('handles amount without unit', () => {
     expect(displayIngredient({ amount: '3', unit: '', name: 'ביצים' })).toBe('3 ביצים')
+  })
+
+  it('formats fractions nicely', () => {
+    expect(displayIngredient({ amount: '1 1/2', unit: 'כוס', name: 'קמח' })).toBe('1½ כוס קמח')
+    expect(displayIngredient({ amount: '1/4', unit: 'כפית', name: 'מלח' })).toBe('¼ כפית מלח')
   })
 })
 

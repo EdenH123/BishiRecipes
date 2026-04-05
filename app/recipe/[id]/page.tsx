@@ -101,21 +101,59 @@ const commentsSectionVariants = {
 
 // --- Helpers ---
 
-function scaleAmount(amount: string, multiplier: number): string {
-  if (!amount || multiplier === 1) return amount
-  // Try to parse as a number (supports fractions like "1/2")
-  let num: number
-  if (amount.includes('/')) {
-    const [n, d] = amount.split('/')
-    num = parseFloat(n) / parseFloat(d)
-  } else {
-    num = parseFloat(amount)
+const UNICODE_FRACTION_VALUES: Record<string, number> = {
+  '¼': 0.25, '½': 0.5, '¾': 0.75, '⅓': 1/3, '⅔': 2/3,
+  '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875,
+}
+
+const VALUE_TO_UNICODE: [number, string][] = [
+  [0.125, '⅛'], [0.25, '¼'], [1/3, '⅓'], [0.375, '⅜'],
+  [0.5, '½'], [0.625, '⅝'], [2/3, '⅔'], [0.75, '¾'], [0.875, '⅞'],
+]
+
+function parseAmount(amount: string): number {
+  let str = amount.trim()
+  let total = 0
+  // Extract leading whole number
+  const wholeMatch = str.match(/^(\d+)/)
+  if (wholeMatch) {
+    total += parseFloat(wholeMatch[1])
+    str = str.slice(wholeMatch[0].length).trim()
   }
+  // Check for Unicode fraction
+  for (const [char, val] of Object.entries(UNICODE_FRACTION_VALUES)) {
+    if (str.includes(char)) return total + val
+  }
+  // Check for slash fraction like "1/2"
+  const fracMatch = str.match(/(\d+)\s*\/\s*(\d+)/)
+  if (fracMatch) return total + parseFloat(fracMatch[1]) / parseFloat(fracMatch[2])
+  // Plain number
+  if (!wholeMatch) {
+    const n = parseFloat(str)
+    return isNaN(n) ? NaN : n
+  }
+  return total
+}
+
+function formatNumber(n: number): string {
+  const whole = Math.floor(n)
+  const frac = n - whole
+  // Find closest unicode fraction (within tolerance)
+  for (const [val, char] of VALUE_TO_UNICODE) {
+    if (Math.abs(frac - val) < 0.01) {
+      return whole > 0 ? `${whole}${char}` : char
+    }
+  }
+  if (frac === 0) return String(whole)
+  return n % 1 === 0 ? String(n) : n.toFixed(1).replace(/\.0$/, '')
+}
+
+function scaleAmount(amount: string, multiplier: number): string {
+  if (!amount) return amount
+  const num = parseAmount(amount)
   if (isNaN(num)) return amount
-  const result = num * multiplier
-  // Show nice fractions for common values
-  if (result === Math.floor(result)) return String(result)
-  return result % 1 === 0.5 ? `${result}` : result.toFixed(1).replace(/\.0$/, '')
+  if (multiplier === 1) return formatNumber(num)
+  return formatNumber(num * multiplier)
 }
 
 function formatDate(dateStr: string): string {
