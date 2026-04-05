@@ -158,17 +158,17 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                   <li className="text-outline italic">אין מצרכים</li>
                 )}
               </ul>
+              <div className="flex justify-start pt-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleFlip}
+                  className="w-8 h-8 rounded-full bg-primary/80 text-white flex items-center justify-center text-sm shadow-md hover:bg-primary transition-colors active:scale-95"
+                  aria-label="Show front"
+                >
+                  &#x21A9;
+                </button>
+              </div>
             </div>
-
-            {/* Flip button - back */}
-            <button
-              type="button"
-              onClick={handleFlip}
-              className="absolute bottom-2 left-2 w-9 h-9 rounded-full bg-primary/80 text-white flex items-center justify-center text-sm shadow-md hover:bg-primary transition-colors active:scale-95"
-              aria-label="Show front"
-            >
-              &#x21A9;
-            </button>
           </div>
         </div>
       </motion.div>
