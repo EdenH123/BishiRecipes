@@ -458,7 +458,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                   className="w-20 rounded-lg border border-gray-200 p-3 text-center focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   dir="ltr"
                 />
-                <div className="hidden group-focus-within:flex absolute top-full left-0 mt-1 z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-1 gap-0.5">
+                <div dir="ltr" className="hidden group-focus-within:flex absolute top-full right-0 mt-1 z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-1.5 gap-1">
                   {['¼','⅓','½','⅔','¾'].map((f) => (
                     <button
                       key={f}
@@ -469,7 +469,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                         const newVal = cur && !cur.includes(f) ? `${cur}${f}` : f
                         updateIngredient(index, 'amount', newVal)
                       }}
-                      className="w-8 h-8 rounded text-sm hover:bg-primary/10 hover:text-primary transition-colors font-medium"
+                      className="w-9 h-9 rounded-md text-base hover:bg-primary/10 hover:text-primary transition-colors font-semibold"
                     >
                       {f}
                     </button>
