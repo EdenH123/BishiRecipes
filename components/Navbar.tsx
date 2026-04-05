@@ -111,7 +111,7 @@ export default function Navbar() {
             onTap={() => setLogoSpin((prev) => prev + 360)}
             className="cursor-pointer"
           >
-            <Image src="/logo.png" alt="BISHILicious" width={40} height={40} className="rounded-full" priority />
+            <Image src="/logo.png" alt="BISHILicious" width={52} height={52} className="rounded-full" priority />
           </motion.div>
           <h1 className="text-xl font-bold text-primary">BISHILicious</h1>
         </div>
