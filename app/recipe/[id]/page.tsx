@@ -484,14 +484,14 @@ export default function RecipeDetailPage() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setShareSheetOpen(false)}
-                className="fixed inset-0 bg-black/40 z-50"
+                className="fixed inset-0 bg-black/40 z-[60]"
               />
               <motion.div
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-surface p-5 pb-10 shadow-xl"
+                className="fixed bottom-0 left-0 right-0 z-[60] rounded-t-2xl bg-surface p-5 pb-20 shadow-xl"
               >
                 <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-outline-variant/40" />
                 <h3 className="text-center font-bold text-on-surface font-rubik mb-5">שיתוף</h3>
