@@ -254,3 +254,34 @@ CREATE POLICY "Anyone can read collaborators" ON recipe_collaborators FOR SELECT
 CREATE POLICY "Recipe owner can manage collaborators" ON recipe_collaborators FOR ALL TO authenticated USING (
   EXISTS (SELECT 1 FROM recipes WHERE id = recipe_id AND created_by = auth.uid())
 );
+
+-- Feedback / suggestions table
+CREATE TABLE IF NOT EXISTS feedback (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+  type text NOT NULL CHECK (type IN ('suggestion', 'bug', 'improvement')),
+  title text NOT NULL,
+  description text DEFAULT '',
+  status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'done', 'rejected')),
+  votes integer DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view feedback" ON feedback FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Users can insert feedback" ON feedback FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own feedback" ON feedback FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own feedback" ON feedback FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+-- Feedback votes table
+CREATE TABLE IF NOT EXISTS feedback_votes (
+  feedback_id uuid REFERENCES feedback(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at timestamptz DEFAULT now(),
+  PRIMARY KEY (feedback_id, user_id)
+);
+
+ALTER TABLE feedback_votes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view feedback votes" ON feedback_votes FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Users can insert own votes" ON feedback_votes FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete own votes" ON feedback_votes FOR DELETE TO authenticated USING (auth.uid() = user_id);

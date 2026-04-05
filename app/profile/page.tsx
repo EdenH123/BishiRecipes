@@ -499,6 +499,17 @@ export default function ProfilePage() {
           </AnimatePresence>
         </div>
 
+        {/* Feedback link */}
+        <div className="mt-8 flex justify-center">
+          <Link
+            href="/feedback"
+            className="flex items-center gap-2 rounded-xl border border-outline-variant px-5 py-3 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low font-rubik"
+          >
+            <span className="material-symbols-outlined text-lg">feedback</span>
+            📋 הצעות ושיפורים
+          </Link>
+        </div>
+
         {/* Sign out */}
         <div className="mt-12 flex justify-center pb-8">
           <button
