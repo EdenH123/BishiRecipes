@@ -16,19 +16,19 @@ export interface ShopItem {
   name: string
   description: string
   price: number
-  preview: string // inline border color for frame, or text for title
-  decorations?: string[] // emoji decorations around frame
+  preview: string // gradient for frame border, or text for title
+  glow?: string // box-shadow glow color
   minLevel?: number
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
   // --- Avatar Frames ---
-  { id: 'frame_gold', type: 'frame', name: 'מסגרת זהב', description: 'זוהר זהוב מפואר ✨', price: 50, preview: 'linear-gradient(135deg, #fbbf24, #f59e0b, #fde68a, #f59e0b)', decorations: ['✨', '⭐', '✨'] },
-  { id: 'frame_fire', type: 'frame', name: 'מסגרת אש', description: 'להבות בוערות 🔥', price: 80, preview: 'linear-gradient(135deg, #ef4444, #f97316, #fbbf24, #ef4444)', decorations: ['🔥', '🔥', '🔥', '🔥'] },
-  { id: 'frame_ice', type: 'frame', name: 'מסגרת קרח', description: 'קפואה ומנצנצת ❄️', price: 80, preview: 'linear-gradient(135deg, #67e8f9, #06b6d4, #a5f3fc, #06b6d4)', decorations: ['❄️', '❄️', '❄️'] },
-  { id: 'frame_rainbow', type: 'frame', name: 'מסגרת קשת', description: 'כל הצבעים! 🌈', price: 120, preview: 'conic-gradient(#ef4444, #f97316, #facc15, #22c55e, #3b82f6, #a855f7, #ef4444)', decorations: ['🌈', '🦋', '🌸'] },
-  { id: 'frame_diamond', type: 'frame', name: 'מסגרת יהלום', description: 'יוקרה אמיתית 💎', price: 200, preview: 'linear-gradient(135deg, #e0f2fe, #7dd3fc, #bae6fd, #38bdf8, #e0f2fe)', decorations: ['💎', '💎', '💎'], minLevel: 5 },
-  { id: 'frame_crown', type: 'frame', name: 'מסגרת מלכותית', description: 'למלך/ת המטבח 👑', price: 300, preview: 'linear-gradient(135deg, #c084fc, #7c3aed, #ddd6fe, #7c3aed, #c084fc)', decorations: ['👑', '💜', '👑'], minLevel: 7 },
+  { id: 'frame_gold', type: 'frame', name: 'מסגרת זהב', description: 'זוהר זהוב מפואר', price: 50, preview: 'linear-gradient(135deg, #d4a017, #f5d060, #d4a017, #f5d060, #d4a017)', glow: '0 0 12px rgba(212,160,23,0.5)' },
+  { id: 'frame_fire', type: 'frame', name: 'מסגרת אש', description: 'להבות בוערות', price: 80, preview: 'linear-gradient(0deg, #ff4500, #ff6a00, #ff9500, #ff6a00, #ff4500)', glow: '0 0 14px rgba(255,69,0,0.5)' },
+  { id: 'frame_ice', type: 'frame', name: 'מסגרת קרח', description: 'קפואה ומנצנצת', price: 80, preview: 'linear-gradient(135deg, #b0e0e6, #e0f7fa, #87ceeb, #e0f7fa, #b0e0e6)', glow: '0 0 12px rgba(135,206,235,0.5)' },
+  { id: 'frame_rainbow', type: 'frame', name: 'מסגרת קשת', description: 'כל הצבעים', price: 120, preview: 'conic-gradient(#e74c3c, #e67e22, #f1c40f, #2ecc71, #3498db, #9b59b6, #e74c3c)', glow: '0 0 10px rgba(155,89,182,0.3)' },
+  { id: 'frame_diamond', type: 'frame', name: 'מסגרת יהלום', description: 'יוקרה טהורה', price: 200, preview: 'linear-gradient(135deg, #a8d8ea, #ffffff, #a8d8ea, #d4f1f9, #ffffff, #a8d8ea)', glow: '0 0 16px rgba(168,216,234,0.6), inset 0 0 8px rgba(255,255,255,0.3)', minLevel: 5 },
+  { id: 'frame_crown', type: 'frame', name: 'מסגרת מלכותית', description: 'למלך/ת המטבח', price: 300, preview: 'linear-gradient(135deg, #4a0e4e, #8e44ad, #c39bd3, #8e44ad, #4a0e4e)', glow: '0 0 18px rgba(142,68,173,0.5)', minLevel: 7 },
 
   // --- Titles ---
   { id: 'title_foodie', type: 'title', name: 'פודי אמיתי/ת', description: 'תואר שמופיע ליד השם', price: 30, preview: '🍕 פודי אמיתי/ת' },

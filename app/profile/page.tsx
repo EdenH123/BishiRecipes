@@ -294,55 +294,35 @@ export default function ProfilePage() {
           <motion.button
             onClick={() => avatarInputRef.current?.click()}
             disabled={uploadingAvatar}
-            className="relative group w-[96px] h-[96px] flex items-center justify-center"
+            className="relative group"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           >
-            {equippedFrame && (
-              <>
-                <div
-                  className="absolute inset-0 rounded-full p-[2.5px]"
-                  style={{ background: getShopItem(equippedFrame)?.preview }}
-                >
-                  <div className="w-full h-full rounded-full bg-surface" />
-                </div>
-                {getShopItem(equippedFrame)?.decorations?.map((deco, di) => {
-                  const count = getShopItem(equippedFrame)?.decorations?.length ?? 1
-                  const angle = (di / count) * Math.PI * 2 - Math.PI / 2
-                  const radius = 44
-                  return (
-                    <span
-                      key={di}
-                      className="absolute z-30 flex items-center justify-center w-5 h-5 rounded-full text-[11px] leading-none pointer-events-none"
-                      style={{
-                        left: `calc(50% + ${Math.cos(angle) * radius}px - 10px)`,
-                        top: `calc(50% + ${Math.sin(angle) * radius}px - 10px)`,
-                        background: getShopItem(equippedFrame)?.preview,
-                      }}
-                    >
-                      {deco}
-                    </span>
-                  )
-                })}
-              </>
-            )}
-            <div className="relative z-10 w-[84px] h-[84px] rounded-full overflow-hidden">
-              {profile?.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.display_name}
-                  loading="lazy"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div
-                  className="flex w-full h-full items-center justify-center text-3xl font-bold text-white"
-                  style={{ background: getAvatarGradient(profile?.id || '') }}
-                >
-                  {profile?.display_name?.charAt(0) || '?'}
-                </div>
-              )}
+            <div
+              className="w-[88px] h-[88px] rounded-full p-[3px]"
+              style={equippedFrame ? {
+                background: getShopItem(equippedFrame)?.preview,
+                boxShadow: getShopItem(equippedFrame)?.glow,
+              } : {}}
+            >
+              <div className="w-full h-full rounded-full overflow-hidden">
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.display_name}
+                    loading="lazy"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="flex w-full h-full items-center justify-center text-3xl font-bold text-white"
+                    style={{ background: getAvatarGradient(profile?.id || '') }}
+                  >
+                    {profile?.display_name?.charAt(0) || '?'}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
               {uploadingAvatar ? (
