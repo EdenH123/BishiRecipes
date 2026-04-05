@@ -70,6 +70,7 @@ export default function HomePage() {
   const [members, setMembers] = useState<{ id: string; display_name: string }[]>([])
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alpha'>('newest')
   const [loading, setLoading] = useState(true)
+  const [filterChanging, setFilterChanging] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
@@ -229,11 +230,15 @@ export default function HomePage() {
     [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy]
   )
 
+  const isFirstLoad = useRef(true)
+
   // Fetch a page of recipes
   const fetchRecipesPage = useCallback(
     async (pageNum: number, isInitial: boolean) => {
-      if (isInitial) {
+      if (isInitial && isFirstLoad.current) {
         setLoading(true)
+      } else if (isInitial) {
+        setFilterChanging(true)
       } else {
         setLoadingMore(true)
       }
@@ -266,8 +271,11 @@ export default function HomePage() {
       setHasMore(fetchedCount === PAGE_SIZE)
       setPage(pageNum)
 
-      if (isInitial) {
+      if (isInitial && isFirstLoad.current) {
         setLoading(false)
+        isFirstLoad.current = false
+      } else if (isInitial) {
+        setFilterChanging(false)
       } else {
         setLoadingMore(false)
       }
@@ -277,7 +285,6 @@ export default function HomePage() {
 
   // Initial fetch + refetch when filters/sort change
   useEffect(() => {
-    setRecipes([])
     setPage(0)
     setHasMore(true)
     fetchRecipesPage(0, true)
@@ -430,14 +437,14 @@ export default function HomePage() {
         </div>
 
         {/* Recipe grid */}
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto relative">
           {loading ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <SkeletonCard key={i} />
               ))}
             </div>
-          ) : recipes.length === 0 && !hasMore ? (
+          ) : recipes.length === 0 && !hasMore && !filterChanging ? (
             totalCount === 0 && !selectedCategory && !selectedMember && !search && selectedTags.length === 0 && !showFavoritesOnly ? (
               <p className="mt-16 text-center text-lg text-on-surface-variant">
                 עדיין אין מתכונים — הוסיפו את הראשון! 🍽️
@@ -449,10 +456,14 @@ export default function HomePage() {
             )
           ) : (
             <>
+              <motion.div
+                animate={{ opacity: filterChanging ? 0.4 : 1 }}
+                transition={{ duration: 0.2 }}
+              >
               <AnimatePresence mode="popLayout">
                 {viewMode === 'grid' ? (
                   <motion.div
-                    key={`grid-${selectedCategory}-${selectedMember}-${selectedTags.join(',')}-${showFavoritesOnly}-${sortBy}`}
+                    key="grid-view"
                     className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
                     variants={gridContainerVariants}
                     initial="hidden"
@@ -472,7 +483,7 @@ export default function HomePage() {
                   </motion.div>
                 ) : (
                   <motion.div
-                    key={`list-${selectedCategory}-${selectedMember}-${selectedTags.join(',')}-${showFavoritesOnly}-${sortBy}`}
+                    key="list-view"
                     className="flex flex-col gap-3"
                     variants={gridContainerVariants}
                     initial="hidden"
@@ -513,6 +524,7 @@ export default function HomePage() {
                   </motion.div>
                 )}
               </AnimatePresence>
+              </motion.div>
               <div ref={loadMoreRef} className="flex justify-center py-8">
                 {loadingMore && (
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-surface-container border-t-primary" />
