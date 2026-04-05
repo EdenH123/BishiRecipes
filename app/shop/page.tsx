@@ -172,24 +172,27 @@ export default function ShopPage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center mb-8"
         >
-          <div className="relative w-28 h-28 flex items-center justify-center mb-3">
+          <div className="relative w-[104px] h-[104px] flex items-center justify-center mb-3">
             {equippedFrame && (
               <>
                 <div
-                  className="absolute inset-0 rounded-full shadow-lg"
+                  className="absolute inset-0 rounded-full p-[2.5px]"
                   style={{ background: getShopItem(equippedFrame)?.preview }}
-                />
+                >
+                  <div className="w-full h-full rounded-full bg-surface" />
+                </div>
                 {getShopItem(equippedFrame)?.decorations?.map((deco, di) => {
                   const count = getShopItem(equippedFrame)?.decorations?.length ?? 1
                   const angle = (di / count) * Math.PI * 2 - Math.PI / 2
-                  const radius = 50
+                  const radius = 48
                   return (
                     <span
                       key={di}
-                      className="absolute z-20 text-sm leading-none drop-shadow-sm pointer-events-none"
+                      className="absolute z-30 flex items-center justify-center w-6 h-6 rounded-full text-xs leading-none pointer-events-none"
                       style={{
-                        left: `calc(50% + ${Math.cos(angle) * radius}px - 8px)`,
-                        top: `calc(50% + ${Math.sin(angle) * radius}px - 8px)`,
+                        left: `calc(50% + ${Math.cos(angle) * radius}px - 12px)`,
+                        top: `calc(50% + ${Math.sin(angle) * radius}px - 12px)`,
+                        background: getShopItem(equippedFrame)?.preview,
                       }}
                     >
                       {deco}
@@ -198,7 +201,7 @@ export default function ShopPage() {
                 })}
               </>
             )}
-            <div className="relative z-10 w-[88px] h-[88px] rounded-full overflow-hidden border-2 border-white/80">
+            <div className="relative z-10 w-[92px] h-[92px] rounded-full overflow-hidden">
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -285,32 +288,35 @@ export default function ShopPage() {
                   {/* Preview */}
                   <div className="flex justify-center mb-3">
                     {item.type === 'frame' ? (
-                      <div className="relative w-24 h-24 flex items-center justify-center">
-                        {/* Gradient ring */}
+                      <div className="relative w-[88px] h-[88px] flex items-center justify-center">
+                        {/* Thin gradient ring */}
                         <div
-                          className="absolute inset-0 rounded-full shadow-lg"
+                          className="absolute inset-0 rounded-full p-[2.5px]"
                           style={{ background: item.preview }}
-                        />
-                        {/* Embedded decorations along the ring */}
+                        >
+                          <div className="w-full h-full rounded-full bg-surface-container-lowest" />
+                        </div>
+                        {/* Decorations embedded on the ring */}
                         {item.decorations?.map((deco, di) => {
                           const count = item.decorations?.length ?? 1
                           const angle = (di / count) * Math.PI * 2 - Math.PI / 2
-                          const radius = 42
+                          const radius = 40
                           return (
                             <span
                               key={di}
-                              className="absolute z-20 text-xs leading-none drop-shadow-sm pointer-events-none"
+                              className="absolute z-30 flex items-center justify-center w-5 h-5 rounded-full text-[11px] leading-none pointer-events-none"
                               style={{
-                                left: `calc(50% + ${Math.cos(angle) * radius}px - 7px)`,
-                                top: `calc(50% + ${Math.sin(angle) * radius}px - 7px)`,
+                                left: `calc(50% + ${Math.cos(angle) * radius}px - 10px)`,
+                                top: `calc(50% + ${Math.sin(angle) * radius}px - 10px)`,
+                                background: item.preview,
                               }}
                             >
                               {deco}
                             </span>
                           )
                         })}
-                        {/* Avatar inner circle */}
-                        <div className="relative z-10 w-[76px] h-[76px] rounded-full overflow-hidden border-2 border-white/80">
+                        {/* Avatar */}
+                        <div className="relative z-10 w-[78px] h-[78px] rounded-full overflow-hidden">
                           {profile?.avatar_url ? (
                             <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                           ) : (

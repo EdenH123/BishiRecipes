@@ -294,7 +294,7 @@ export default function ProfilePage() {
           <motion.button
             onClick={() => avatarInputRef.current?.click()}
             disabled={uploadingAvatar}
-            className="relative group w-24 h-24 flex items-center justify-center"
+            className="relative group w-[96px] h-[96px] flex items-center justify-center"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
@@ -302,9 +302,11 @@ export default function ProfilePage() {
             {equippedFrame && (
               <>
                 <div
-                  className="absolute inset-0 rounded-full shadow-lg"
+                  className="absolute inset-0 rounded-full p-[2.5px]"
                   style={{ background: getShopItem(equippedFrame)?.preview }}
-                />
+                >
+                  <div className="w-full h-full rounded-full bg-surface" />
+                </div>
                 {getShopItem(equippedFrame)?.decorations?.map((deco, di) => {
                   const count = getShopItem(equippedFrame)?.decorations?.length ?? 1
                   const angle = (di / count) * Math.PI * 2 - Math.PI / 2
@@ -312,10 +314,11 @@ export default function ProfilePage() {
                   return (
                     <span
                       key={di}
-                      className="absolute z-20 text-xs leading-none drop-shadow-sm pointer-events-none"
+                      className="absolute z-30 flex items-center justify-center w-5 h-5 rounded-full text-[11px] leading-none pointer-events-none"
                       style={{
-                        left: `calc(50% + ${Math.cos(angle) * radius}px - 7px)`,
-                        top: `calc(50% + ${Math.sin(angle) * radius}px - 7px)`,
+                        left: `calc(50% + ${Math.cos(angle) * radius}px - 10px)`,
+                        top: `calc(50% + ${Math.sin(angle) * radius}px - 10px)`,
+                        background: getShopItem(equippedFrame)?.preview,
                       }}
                     >
                       {deco}
@@ -324,7 +327,7 @@ export default function ProfilePage() {
                 })}
               </>
             )}
-            <div className="relative z-10 w-20 h-20 rounded-full overflow-hidden border-2 border-white/80">
+            <div className="relative z-10 w-[84px] h-[84px] rounded-full overflow-hidden">
               {profile?.avatar_url ? (
                 <img
                   src={profile.avatar_url}
