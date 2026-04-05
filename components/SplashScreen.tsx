@@ -154,9 +154,10 @@ export default function SplashScreen() {
             initial={{ opacity: 0, scale: 0.3, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ delay: 1.1, type: 'spring', stiffness: 250, damping: 15 }}
-            className="flex flex-col items-center mt-2"
+            className="flex items-center gap-3 mt-2"
           >
-            <Image src="/logo.png" alt="BISHILicious" width={160} height={160} className="rounded-full drop-shadow-2xl" priority />
+            <Image src="/logo.png" alt="BISHILicious" width={56} height={56} className="rounded-full drop-shadow-lg" priority />
+            <h1 className="text-4xl font-bold text-primary font-rubik">BISHILicious</h1>
           </motion.div>
 
           {/* Subtitle with heart pulse */}

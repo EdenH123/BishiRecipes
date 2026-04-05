@@ -103,7 +103,7 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="BISHILicious" width={36} height={36} className="rounded-full" priority />
+          <Image src="/logo.png" alt="BISHILicious" width={40} height={40} className="rounded-full" priority />
           <h1 className="text-xl font-bold text-primary">BISHILicious</h1>
         </div>
       </div>
