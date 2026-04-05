@@ -436,7 +436,7 @@ export default function HomePage() {
             whileTap={{ scale: 0.9 }}
             whileHover={{ rotate: [0, -10, 10, -10, 0] }}
             transition={{ duration: 0.4 }}
-            className="shrink-0 flex items-center justify-center h-[52px] w-[52px] rounded-full bg-primary/80 text-white shadow-md hover:bg-primary transition-colors disabled:opacity-50"
+            className="shrink-0 flex items-center justify-center h-[52px] w-[52px] rounded-full bg-primary text-white shadow-md hover:bg-primary-container transition-colors disabled:opacity-50"
             title="הפתע אותי!"
           >
             <span className="text-2xl">{surpriseLoading ? '⏳' : '🎲'}</span>
