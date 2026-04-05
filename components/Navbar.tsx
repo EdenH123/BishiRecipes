@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 import type { Profile } from '@/lib/types'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
@@ -102,7 +103,8 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold text-primary">🍳 BISHILicious</h1>
+          <Image src="/logo.png" alt="BISHILicious" width={36} height={36} className="rounded-full" priority />
+          <h1 className="text-xl font-bold text-primary">BISHILicious</h1>
         </div>
       </div>
     </header>
