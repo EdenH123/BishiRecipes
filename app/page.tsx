@@ -436,12 +436,10 @@ export default function HomePage() {
             whileTap={{ scale: 0.9 }}
             whileHover={{ rotate: [0, -10, 10, -10, 0] }}
             transition={{ duration: 0.4 }}
-            className="shrink-0 flex items-center justify-center h-[52px] w-[52px] rounded-full bg-tertiary-container text-on-tertiary-container shadow-sm hover:shadow-md transition-shadow disabled:opacity-50"
+            className="shrink-0 flex items-center justify-center h-[52px] w-[52px] rounded-full bg-primary/80 text-white shadow-md hover:bg-primary transition-colors disabled:opacity-50"
             title="הפתע אותי!"
           >
-            <span className="material-symbols-outlined text-2xl">
-              {surpriseLoading ? 'hourglass_empty' : 'casino'}
-            </span>
+            <span className="text-2xl">{surpriseLoading ? '⏳' : '🎲'}</span>
           </motion.button>
         </div>
 
