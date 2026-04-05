@@ -540,13 +540,19 @@ export default function ProfilePage() {
           </AnimatePresence>
         </div>
 
-        {/* Shop + Feedback links */}
-        <div className="mt-8 flex justify-center gap-3">
+        {/* Shop + Family + Feedback links */}
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
             href="/shop"
             className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-3 text-sm text-amber-700 transition-colors hover:bg-amber-100 font-rubik font-medium"
           >
             חנות המטבח 💰
+          </Link>
+          <Link
+            href="/family"
+            className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-5 py-3 text-sm text-primary transition-colors hover:bg-primary/10 font-rubik font-medium"
+          >
+            המשפחה שלי 👨‍👩‍👧‍👦
           </Link>
           <Link
             href="/feedback"
