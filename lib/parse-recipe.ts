@@ -24,7 +24,7 @@ const UNITS_LIST = MEASUREMENT_UNITS.filter(Boolean)
 function cleanLine(line: string): string {
   return line
     .replace(/^[\s\-•●○◦▪▸►→·∙★☆✓✔⁃–—]+/, '') // strip bullets/dashes
-    .replace(/^\d+[\.\)]\s*/, '') // strip numbering like "1. " or "2) "
+    .replace(/^\d+[\.\)]\s+/, '') // strip numbering like "1. " or "2) " (require space to avoid eating decimals like "2.5")
     .replace(/^כותרת[:\s]+/i, '') // strip "כותרת:" prefix
     .trim()
 }
@@ -51,6 +51,41 @@ const HEBREW_COMPOUND_AMOUNTS: [string, string][] = [
   ['שני שלישי', '0.67'],
 ]
 
+const DECIMAL_TO_FRACTION: [number, string][] = [
+  [0.125, '⅛'], [0.25, '¼'], [0.33, '⅓'], [0.375, '⅜'],
+  [0.5, '½'], [0.625, '⅝'], [0.67, '⅔'], [0.75, '¾'], [0.875, '⅞'],
+]
+
+function evaluateAmount(value: string): number {
+  // Handle "1/2", "3/4" etc.
+  if (value.includes('/')) {
+    const parts = value.split('/')
+    if (parts.length === 2) {
+      const n = parseFloat(parts[0])
+      const d = parseFloat(parts[1])
+      if (!isNaN(n) && !isNaN(d) && d !== 0) return n / d
+    }
+  }
+  return parseFloat(value)
+}
+
+function decimalToFraction(value: string): string {
+  const num = evaluateAmount(value)
+  if (isNaN(num)) return value
+  const whole = Math.floor(num)
+  const frac = num - whole
+
+  // Find closest fraction
+  for (const [dec, symbol] of DECIMAL_TO_FRACTION) {
+    if (Math.abs(frac - dec) < 0.02) {
+      return whole > 0 ? `${whole}${symbol}` : symbol
+    }
+  }
+  // No matching fraction — return as-is
+  if (frac === 0) return String(whole)
+  return value
+}
+
 function parseIngredientLine(line: string): Ingredient {
   const clean = cleanLine(line)
   if (!clean) return { amount: '', unit: '', name: '' }
@@ -58,11 +93,21 @@ function parseIngredientLine(line: string): Ingredient {
   let amount = ''
   let remaining = clean
 
-  // 1. Try numeric amount first: "3 כפות סוכר", "1.5 כוס קמח", "1/2 כפית"
-  const fractionPattern = /^(\d+(?:[\/\.]\d+)?(?:\s*[-–]\s*\d+(?:[\/\.]\d+)?)?)\s*/
-  const numMatch = remaining.match(fractionPattern)
+  // 1. Try numeric amount: "3 כפות", "1.5 כוס", "1/2 כפית", "1 1/2 כוס"
+  // Mixed number: "1 1/2" or "2 3/4"
+  const mixedPattern = /^(\d+)\s+(\d+\/\d+)\s+/
+  const mixedMatch = remaining.match(mixedPattern)
+  // Simple: "3", "1.5", "1/2", range "1-2"
+  const fractionPattern = /^(\d+(?:[\/\.]\d+)?(?:\s*[-–]\s*\d+(?:[\/\.]\d+)?)?)\s+/
+  const numMatch = mixedMatch || remaining.match(fractionPattern)
 
-  if (numMatch) {
+  if (mixedMatch) {
+    // Combine whole + fraction: "1 1/2" → evaluate as 1.5
+    const whole = parseInt(mixedMatch[1])
+    const [n, d] = mixedMatch[2].split('/').map(Number)
+    amount = String(whole + n / d)
+    remaining = remaining.slice(mixedMatch[0].length)
+  } else if (numMatch) {
     amount = numMatch[1].replace('–', '-')
     remaining = remaining.slice(numMatch[0].length)
   } else {
@@ -117,7 +162,7 @@ function parseIngredientLine(line: string): Ingredient {
   // Remove "של" connector
   remaining = remaining.replace(/^של\s+/, '')
 
-  return { amount, unit, name: remaining }
+  return { amount: amount ? decimalToFraction(amount) : '', unit, name: remaining }
 }
 
 export function guessCategory(title: string, ingredients: string[], steps: string[]): string {

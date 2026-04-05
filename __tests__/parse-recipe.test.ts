@@ -42,7 +42,7 @@ describe('parseRecipeText', () => {
     const result = parseRecipeText(text)
     expect(result.ingredients[0].amount).toBe('2')
     expect(result.ingredients[0].unit).toBe('כוס')
-    expect(result.ingredients[1].amount).toBe('0.5')
+    expect(result.ingredients[1].amount).toBe('½')
     expect(result.ingredients[1].unit).toBe('כפית')
   })
 
