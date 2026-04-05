@@ -265,36 +265,71 @@ export default function ShopPage() {
                   {/* Preview */}
                   <div className="flex justify-center mb-3">
                     {item.type === 'frame' ? (
-                      <motion.div
-                        className="w-20 h-20 rounded-full p-[3px] shadow-lg"
-                        style={{ background: item.preview }}
-                        animate={
-                          item.id === 'frame_rainbow' || item.id === 'frame_crown'
-                            ? { rotate: 360 }
-                            : item.id === 'frame_fire'
-                            ? { scale: [1, 1.05, 1] }
-                            : {}
-                        }
-                        transition={
-                          item.id === 'frame_rainbow' || item.id === 'frame_crown'
-                            ? { duration: 3, repeat: Infinity, ease: 'linear' }
-                            : item.id === 'frame_fire'
-                            ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' }
-                            : {}
-                        }
-                      >
-                        <div className="w-full h-full rounded-full overflow-hidden bg-surface">
-                          <div className="w-full h-full rounded-full overflow-hidden">
-                            {profile?.avatar_url ? (
-                              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
-                                {profile?.display_name?.charAt(0) ?? '?'}
-                              </div>
-                            )}
+                      <div className="relative w-24 h-24 flex items-center justify-center">
+                        {/* Floating decorations */}
+                        {item.decorations?.map((deco, di) => {
+                          const angle = (di / (item.decorations?.length ?? 1)) * Math.PI * 2 - Math.PI / 2
+                          const radius = 44
+                          return (
+                            <motion.span
+                              key={di}
+                              className="absolute text-sm pointer-events-none z-10"
+                              style={{
+                                left: `calc(50% + ${Math.cos(angle) * radius}px - 8px)`,
+                                top: `calc(50% + ${Math.sin(angle) * radius}px - 8px)`,
+                              }}
+                              animate={
+                                item.id === 'frame_fire'
+                                  ? { y: [0, -6, 0], scale: [1, 1.3, 1], opacity: [0.8, 1, 0.8] }
+                                  : item.id === 'frame_ice'
+                                  ? { rotate: [0, 180, 360], opacity: [0.7, 1, 0.7] }
+                                  : item.id === 'frame_gold'
+                                  ? { scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }
+                                  : { y: [0, -4, 0], scale: [1, 1.15, 1] }
+                              }
+                              transition={{
+                                duration: item.id === 'frame_fire' ? 0.8 : 1.5,
+                                repeat: Infinity,
+                                delay: di * 0.3,
+                                ease: 'easeInOut',
+                              }}
+                            >
+                              {deco}
+                            </motion.span>
+                          )
+                        })}
+                        {/* Frame ring */}
+                        <motion.div
+                          className="w-[72px] h-[72px] rounded-full p-[3px] shadow-lg"
+                          style={{ background: item.preview }}
+                          animate={
+                            item.id === 'frame_rainbow' || item.id === 'frame_crown'
+                              ? { rotate: 360 }
+                              : item.id === 'frame_fire'
+                              ? { scale: [1, 1.05, 1] }
+                              : {}
+                          }
+                          transition={
+                            item.id === 'frame_rainbow' || item.id === 'frame_crown'
+                              ? { duration: 3, repeat: Infinity, ease: 'linear' }
+                              : item.id === 'frame_fire'
+                              ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' }
+                              : {}
+                          }
+                        >
+                          <div className="w-full h-full rounded-full overflow-hidden bg-surface">
+                            <div className="w-full h-full rounded-full overflow-hidden">
+                              {profile?.avatar_url ? (
+                                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
+                                  {profile?.display_name?.charAt(0) ?? '?'}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </motion.div>
+                        </motion.div>
+                      </div>
                     ) : (
                       <div className="h-16 flex items-center justify-center">
                         <span className="text-2xl">{item.preview.split(' ')[0]}</span>

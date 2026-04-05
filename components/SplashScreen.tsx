@@ -5,21 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 const spring = { type: 'spring' as const, stiffness: 300, damping: 18 }
 
-// Floating food particles
-const FOOD_PARTICLES = [
-  { emoji: '🥗', x: 8, y: 15, delay: 0.1, size: 'text-3xl' },
-  { emoji: '🍰', x: 78, y: 12, delay: 0.2, size: 'text-4xl' },
-  { emoji: '🍖', x: 15, y: 70, delay: 0.15, size: 'text-3xl' },
-  { emoji: '🥘', x: 82, y: 65, delay: 0.25, size: 'text-4xl' },
-  { emoji: '🧁', x: 45, y: 8, delay: 0.3, size: 'text-2xl' },
-  { emoji: '🍕', x: 55, y: 80, delay: 0.05, size: 'text-3xl' },
-  { emoji: '🥙', x: 25, y: 40, delay: 0.35, size: 'text-2xl' },
-  { emoji: '🍲', x: 70, y: 42, delay: 0.18, size: 'text-2xl' },
-  { emoji: '🫓', x: 90, y: 35, delay: 0.22, size: 'text-3xl' },
-  { emoji: '🥯', x: 5, y: 50, delay: 0.28, size: 'text-2xl' },
-  { emoji: '🍩', x: 38, y: 88, delay: 0.12, size: 'text-3xl' },
-  { emoji: '🧆', x: 62, y: 22, delay: 0.32, size: 'text-2xl' },
-]
+// Falling food rain
+const RAIN_EMOJIS = ['🍕', '🧁', '🍰', '🥗', '🍖', '🥘', '🍲', '🥙', '🍩', '🧆', '🍔', '🌮', '🥯', '🍳', '🥐', '🍪']
+const RAIN_DROPS = Array.from({ length: 20 }, (_, i) => ({
+  emoji: RAIN_EMOJIS[i % RAIN_EMOJIS.length],
+  x: (i * 5.2 + 2) % 100,
+  delay: i * 0.12,
+  duration: 1.8 + (i % 5) * 0.3,
+  size: i % 3 === 0 ? 'text-2xl' : i % 3 === 1 ? 'text-xl' : 'text-lg',
+}))
 
 const LOADING_TEXTS = [
   'מחממים תנור...',
@@ -69,26 +63,26 @@ export default function SplashScreen() {
             style={{ background: 'radial-gradient(circle, rgba(180,28,27,0.08) 0%, transparent 70%)' }}
           />
 
-          {/* Floating food particles */}
-          {FOOD_PARTICLES.map((p, i) => (
+          {/* Falling food rain */}
+          {RAIN_DROPS.map((drop, i) => (
             <motion.span
               key={i}
-              initial={{ opacity: 0, scale: 0, y: 30 }}
+              initial={{ y: '-10%', opacity: 0, rotate: 0 }}
               animate={{
-                opacity: [0, 0.15, 0.15, 0],
-                scale: [0, 1, 1, 0.8],
-                y: [30, 0, -10, -30],
-                rotate: [0, i % 2 === 0 ? 15 : -15, 0],
+                y: '110vh',
+                opacity: [0, 0.25, 0.25, 0],
+                rotate: i % 2 === 0 ? 360 : -360,
               }}
               transition={{
-                delay: p.delay,
-                duration: 2.8,
-                ease: 'easeInOut',
+                delay: drop.delay,
+                duration: drop.duration,
+                ease: 'linear',
+                repeat: Infinity,
               }}
-              className={`absolute ${p.size} select-none pointer-events-none`}
-              style={{ left: `${p.x}%`, top: `${p.y}%` }}
+              className={`absolute ${drop.size} select-none pointer-events-none`}
+              style={{ left: `${drop.x}%`, top: 0 }}
             >
-              {p.emoji}
+              {drop.emoji}
             </motion.span>
           ))}
 
