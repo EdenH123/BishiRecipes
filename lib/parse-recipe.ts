@@ -34,33 +34,62 @@ function isHeader(line: string, headers: string[]): boolean {
   return headers.some((h) => clean === h || clean.startsWith(h))
 }
 
+// Hebrew fraction modifiers that come AFTER a unit: "כוס וחצי" = 1.5 cups
+const HEBREW_FRACTION_MODIFIERS: [string, string][] = [
+  ['ושלושת רבעי', '0.75'],
+  ['ושלושה רבעי', '0.75'],
+  ['ושני שלישי', '0.67'],
+  ['ורבע', '0.25'],
+  ['ושליש', '0.33'],
+  ['וחצי', '0.5'],
+]
+
+// Hebrew standalone compound amounts: "שלושת רבעי כפית" = 0.75
+const HEBREW_COMPOUND_AMOUNTS: [string, string][] = [
+  ['שלושת רבעי', '0.75'],
+  ['שלושה רבעי', '0.75'],
+  ['שני שלישי', '0.67'],
+]
+
 function parseIngredientLine(line: string): Ingredient {
   const clean = cleanLine(line)
   if (!clean) return { amount: '', unit: '', name: '' }
 
-  // Try to match: [amount] [unit] [name]
-  // Amount can be: digits, fractions (1/2), decimals, Hebrew number words
-  const fractionPattern = /^(\d+(?:[\/\.]\d+)?(?:\s*[-–]\s*\d+(?:[\/\.]\d+)?)?)\s*/
-  const match = clean.match(fractionPattern)
-
   let amount = ''
   let remaining = clean
 
-  if (match) {
-    amount = match[1].replace('–', '-')
-    remaining = clean.slice(match[0].length)
+  // 1. Try numeric amount first: "3 כפות סוכר", "1.5 כוס קמח", "1/2 כפית"
+  const fractionPattern = /^(\d+(?:[\/\.]\d+)?(?:\s*[-–]\s*\d+(?:[\/\.]\d+)?)?)\s*/
+  const numMatch = remaining.match(fractionPattern)
+
+  if (numMatch) {
+    amount = numMatch[1].replace('–', '-')
+    remaining = remaining.slice(numMatch[0].length)
   } else {
-    // Check for Hebrew number words at start
-    for (const [word, num] of Object.entries(HEBREW_NUMBERS)) {
-      if (remaining.startsWith(word + ' ') || remaining === word) {
-        amount = num
-        remaining = remaining.slice(word.length).trim()
+    // 2. Try Hebrew compound amounts: "שלושת רבעי כפית"
+    let foundCompound = false
+    for (const [prefix, val] of HEBREW_COMPOUND_AMOUNTS) {
+      if (remaining.startsWith(prefix + ' ') || remaining === prefix) {
+        amount = val
+        remaining = remaining.slice(prefix.length).trim()
+        foundCompound = true
         break
+      }
+    }
+
+    // 3. Try Hebrew number words: "חצי כפית", "שתי כוסות"
+    if (!foundCompound) {
+      for (const [word, num] of Object.entries(HEBREW_NUMBERS)) {
+        if (remaining.startsWith(word + ' ') || remaining === word) {
+          amount = num
+          remaining = remaining.slice(word.length).trim()
+          break
+        }
       }
     }
   }
 
-  // Try to find unit
+  // 4. Try to find unit
   let unit = ''
   for (const u of UNITS_LIST) {
     if (remaining.startsWith(u + ' ') || remaining === u) {
@@ -69,6 +98,21 @@ function parseIngredientLine(line: string): Ingredient {
       break
     }
   }
+
+  // 5. Check for Hebrew fraction modifier after unit: "כוס וחצי", "כפית ושלושת רבעי"
+  if (unit) {
+    for (const [prefix, val] of HEBREW_FRACTION_MODIFIERS) {
+      if (remaining.startsWith(prefix + ' ') || remaining === prefix) {
+        const base = amount ? parseFloat(amount) : 1
+        amount = String(base + parseFloat(val))
+        remaining = remaining.slice(prefix.length).trim()
+        break
+      }
+    }
+    // If we found a unit but no amount, it means "1 unit" (e.g., "כוס קמח" = 1 cup flour)
+    if (!amount) amount = '1'
+  }
+
 
   // Remove "של" connector
   remaining = remaining.replace(/^של\s+/, '')
