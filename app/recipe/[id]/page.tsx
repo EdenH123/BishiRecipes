@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
@@ -21,7 +21,6 @@ import UnitConverter from '@/components/UnitConverter'
 import BackToTop from '@/components/BackToTop'
 import ManageCollaborators from '@/components/ManageCollaborators'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
-import { detectAllergens } from '@/lib/allergens'
 
 // --- Animation variants ---
 
@@ -145,8 +144,6 @@ export default function RecipeDetailPage() {
   const [isCollaborator, setIsCollaborator] = useState(false)
   const [shareSheetOpen, setShareSheetOpen] = useState(false)
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const allergens = useMemo(() => detectAllergens(recipe?.ingredients ?? []), [recipe?.ingredients])
-
   useEffect(() => {
     async function load() {
       const [recipeRes, userRes] = await Promise.all([
@@ -349,26 +346,6 @@ export default function RecipeDetailPage() {
             </motion.span>
           ))}
         </motion.div>
-
-        {/* Allergen warnings */}
-        {allergens.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="mt-3 flex flex-wrap gap-2"
-          >
-            {allergens.map((a) => (
-              <span
-                key={a.name}
-                className="flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-full text-sm font-medium"
-              >
-                <span>{a.icon}</span>
-                מכיל {a.name}
-              </span>
-            ))}
-          </motion.div>
-        )}
 
         {/* Prep time + Author + date */}
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500">
