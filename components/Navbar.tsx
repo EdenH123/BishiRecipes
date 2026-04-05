@@ -15,27 +15,48 @@ export default function Navbar() {
   const [equippedFrame, setEquippedFrame] = useState<string | null>(null)
 
   useEffect(() => {
+    let userId: string | null = null
+
     async function loadProfile() {
       const {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) return
+      userId = user.id
 
       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (profileData) setProfile(profileData)
 
+      await loadFrame(user.id)
+    }
+
+    async function loadFrame(uid: string) {
       try {
-        const { data: itemsData } = await supabase.from('user_items').select('item_id').eq('user_id', user.id).eq('equipped', true)
+        const { data: itemsData } = await supabase.from('user_items').select('item_id').eq('user_id', uid).eq('equipped', true)
+        let frame: string | null = null
         for (const item of itemsData ?? []) {
           const shopItem = getShopItem(item.item_id)
-          if (shopItem?.type === 'frame') setEquippedFrame(item.item_id)
+          if (shopItem?.type === 'frame') frame = item.item_id
         }
+        setEquippedFrame(frame)
       } catch {
         // user_items table may not exist yet
       }
     }
 
     loadProfile()
+
+    // Listen for changes to user_items in realtime
+    const channel = supabase
+      .channel('navbar-frame')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_items' }, () => {
+        if (userId) loadFrame(userId)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   return (
