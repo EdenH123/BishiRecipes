@@ -294,26 +294,31 @@ export default function ProfilePage() {
           <motion.button
             onClick={() => avatarInputRef.current?.click()}
             disabled={uploadingAvatar}
-            className={`relative group rounded-full ${equippedFrame ? getShopItem(equippedFrame)?.preview ?? '' : ''}`}
+            className="relative group"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           >
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={profile.display_name}
-                loading="lazy"
-                className="h-20 w-20 rounded-full object-cover"
-              />
-            ) : (
-              <div
-                className="flex h-20 w-20 items-center justify-center rounded-full text-3xl font-bold text-white"
-                style={{ background: getAvatarGradient(profile?.id || '') }}
-              >
-                {profile?.display_name?.charAt(0) || '?'}
-              </div>
-            )}
+            <div
+              className="rounded-full p-1 transition-all"
+              style={equippedFrame ? { background: getShopItem(equippedFrame)?.preview } : {}}
+            >
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.display_name}
+                  loading="lazy"
+                  className="h-20 w-20 rounded-full object-cover"
+                />
+              ) : (
+                <div
+                  className="flex h-20 w-20 items-center justify-center rounded-full text-3xl font-bold text-white"
+                  style={{ background: getAvatarGradient(profile?.id || '') }}
+                >
+                  {profile?.display_name?.charAt(0) || '?'}
+                </div>
+              )}
+            </div>
             <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
               {uploadingAvatar ? (
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -530,7 +535,7 @@ export default function ProfilePage() {
             href="/shop"
             className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-3 text-sm text-amber-700 transition-colors hover:bg-amber-100 font-rubik font-medium"
           >
-            חנות המטבח 🪙
+            חנות המטבח 💰
           </Link>
           <Link
             href="/feedback"

@@ -144,7 +144,6 @@ export default function ShopPage() {
     toast('הוסר')
   }
 
-  const frameClass = equippedFrame ? getShopItem(equippedFrame)?.preview ?? '' : ''
   const titleText = equippedTitle ? getShopItem(equippedTitle)?.preview ?? '' : ''
   const gradient = profile ? getAvatarGradient(userId ?? '') : undefined
 
@@ -174,14 +173,19 @@ export default function ShopPage() {
           className="flex flex-col items-center mb-8"
         >
           <div className="relative mb-3">
-            <div className={`w-24 h-24 rounded-full overflow-hidden ${frameClass} transition-all`}>
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold" style={{ background: gradient }}>
-                  {profile?.display_name?.charAt(0) ?? '?'}
-                </div>
-              )}
+            <div
+              className="w-24 h-24 rounded-full p-1 transition-all"
+              style={equippedFrame ? { background: getShopItem(equippedFrame)?.preview } : {}}
+            >
+              <div className="w-full h-full rounded-full overflow-hidden">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold" style={{ background: gradient }}>
+                    {profile?.display_name?.charAt(0) ?? '?'}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <h2 className="text-lg font-bold text-on-surface font-rubik">{profile?.display_name}</h2>
@@ -199,7 +203,7 @@ export default function ShopPage() {
             animate={{ scale: [1, 1.03, 1] }}
             transition={{ repeat: Infinity, duration: 2 }}
           >
-            <span className="text-xl">🪙</span>
+            <span className="text-xl">💰</span>
             <span className="text-lg font-bold text-amber-700">{coins}</span>
             <span className="text-sm text-amber-600">מטבעות</span>
           </motion.div>
@@ -261,28 +265,23 @@ export default function ShopPage() {
                   {/* Preview */}
                   <div className="flex justify-center mb-3">
                     {item.type === 'frame' ? (
-                      <div className={`w-16 h-16 rounded-full overflow-hidden ${item.preview}`}>
-                        {profile?.avatar_url ? (
-                          <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
-                            {profile?.display_name?.charAt(0) ?? '?'}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="w-10 h-10 rounded-full overflow-hidden">
+                      <div
+                        className="w-20 h-20 rounded-full p-1"
+                        style={{ background: item.preview }}
+                      >
+                        <div className="w-full h-full rounded-full overflow-hidden">
                           {profile?.avatar_url ? (
                             <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-sm font-bold text-white" style={{ background: gradient }}>
+                            <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
                               {profile?.display_name?.charAt(0) ?? '?'}
                             </div>
                           )}
                         </div>
-                        <span className="text-xs font-bold text-on-surface">{profile?.display_name}</span>
-                        <span className="text-[10px] font-medium text-primary">{item.preview}</span>
+                      </div>
+                    ) : (
+                      <div className="h-16 flex items-center justify-center">
+                        <span className="text-2xl">{item.preview.split(' ')[0]}</span>
                       </div>
                     )}
                   </div>
@@ -319,7 +318,7 @@ export default function ShopPage() {
                             : 'bg-amber-500 text-white shadow-sm'
                         }`}
                       >
-                        <span>🪙</span>
+                        <span>💰</span>
                         <span>{item.price}</span>
                       </button>
                     )}
@@ -338,7 +337,7 @@ export default function ShopPage() {
           className="mt-8 rounded-2xl bg-surface-container-lowest border border-outline-variant p-4"
         >
           <h3 className="font-bold text-on-surface mb-3 flex items-center gap-2">
-            <span>🪙</span>
+            <span>💰</span>
             איך מרוויחים מטבעות?
           </h3>
           <div className="space-y-2 text-sm">

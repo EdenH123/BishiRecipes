@@ -16,18 +16,18 @@ export interface ShopItem {
   name: string
   description: string
   price: number
-  preview: string // CSS class for frame, or text for title
+  preview: string // inline border color for frame, or text for title
   minLevel?: number
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
   // --- Avatar Frames ---
-  { id: 'frame_gold', type: 'frame', name: 'מסגרת זהב', description: 'מסגרת זהובה מפוארת', price: 50, preview: 'ring-4 ring-yellow-400' },
-  { id: 'frame_fire', type: 'frame', name: 'מסגרת אש', description: 'מסגרת בוערת 🔥', price: 80, preview: 'ring-4 ring-orange-500' },
-  { id: 'frame_ice', type: 'frame', name: 'מסגרת קרח', description: 'מסגרת קפואה ❄️', price: 80, preview: 'ring-4 ring-cyan-400' },
-  { id: 'frame_rainbow', type: 'frame', name: 'מסגרת קשת', description: 'כל הצבעים 🌈', price: 120, preview: 'ring-4 ring-pink-400' },
-  { id: 'frame_diamond', type: 'frame', name: 'מסגרת יהלום', description: 'יוקרה אמיתית 💎', price: 200, preview: 'ring-4 ring-blue-300', minLevel: 5 },
-  { id: 'frame_crown', type: 'frame', name: 'מסגרת מלכותית', description: 'למלך/ת המטבח 👑', price: 300, preview: 'ring-4 ring-purple-500', minLevel: 7 },
+  { id: 'frame_gold', type: 'frame', name: 'מסגרת זהב', description: 'מסגרת זהובה מפוארת', price: 50, preview: '#facc15' },
+  { id: 'frame_fire', type: 'frame', name: 'מסגרת אש', description: 'מסגרת בוערת 🔥', price: 80, preview: '#f97316' },
+  { id: 'frame_ice', type: 'frame', name: 'מסגרת קרח', description: 'מסגרת קפואה ❄️', price: 80, preview: '#22d3ee' },
+  { id: 'frame_rainbow', type: 'frame', name: 'מסגרת קשת', description: 'כל הצבעים 🌈', price: 120, preview: 'linear-gradient(135deg, #ef4444, #f97316, #facc15, #22c55e, #3b82f6, #a855f7)' },
+  { id: 'frame_diamond', type: 'frame', name: 'מסגרת יהלום', description: 'יוקרה אמיתית 💎', price: 200, preview: '#93c5fd', minLevel: 5 },
+  { id: 'frame_crown', type: 'frame', name: 'מסגרת מלכותית', description: 'למלך/ת המטבח 👑', price: 300, preview: '#a855f7', minLevel: 7 },
 
   // --- Titles ---
   { id: 'title_foodie', type: 'title', name: 'פודי אמיתי/ת', description: 'תואר שמופיע ליד השם', price: 30, preview: '🍕 פודי אמיתי/ת' },
