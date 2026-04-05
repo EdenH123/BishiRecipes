@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Toaster } from 'sonner'
 import PageTransition from '@/components/PageTransition'
+import SplashScreen from '@/components/SplashScreen'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -41,6 +42,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-rubik">
+        <SplashScreen />
         <Toaster position="top-center" richColors dir="rtl" />
         <PageTransition>{children}</PageTransition>
       </body>

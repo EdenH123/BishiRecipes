@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import type { Recipe } from '@/lib/types'
 import { parseIngredient, displayIngredient } from '@/lib/types'
+import { detectAllergens } from '@/lib/allergens'
 
 const BLUR_PLACEHOLDER =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIklEQVQYV2N89+7dfwYGBgZGRkYGJgYKABMDhYCRkgAALCQEAf2VlGIAAAAASUVORK5CYII='
@@ -29,6 +30,7 @@ const tagItemVariants = {
 export default function RecipeCard({ recipe }: RecipeCardProps) {
   const [flipped, setFlipped] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
+  const allergens = useMemo(() => detectAllergens(recipe.ingredients ?? []), [recipe.ingredients])
 
   const handleFlip = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -84,6 +86,19 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-medium text-white flex items-center gap-1">
                   <span className="material-symbols-outlined text-xs">schedule</span>
                   {recipe.prep_time} דק׳
+                </div>
+              )}
+              {allergens.length > 0 && (
+                <div className="absolute bottom-2 right-2 flex gap-1">
+                  {allergens.map((a) => (
+                    <span
+                      key={a.name}
+                      className="w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-xs"
+                      title={a.name}
+                    >
+                      {a.icon}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
