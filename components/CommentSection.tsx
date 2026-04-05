@@ -74,7 +74,7 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
 
     setComments((data as Comment[]) || [])
     initialLoadDone.current = true
-  }, [recipeId])
+  }, [supabase, recipeId])
 
   useEffect(() => {
     fetchComments()

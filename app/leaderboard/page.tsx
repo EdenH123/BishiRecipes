@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { getUserBadge } from '@/lib/types'
@@ -8,6 +8,7 @@ import { getAvatarGradient } from '@/lib/avatar-gradient'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 
 type Tab = 'recipes' | 'rated' | 'active'
 
@@ -67,7 +68,7 @@ const top3Variants = {
 }
 
 export default function LeaderboardPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const [activeTab, setActiveTab] = useState<Tab>('recipes')
   const [loading, setLoading] = useState(true)
@@ -201,10 +202,13 @@ export default function LeaderboardPage() {
   function renderAvatar(userId: string, avatarUrl: string | null, displayName: string, size = 'h-10 w-10') {
     if (avatarUrl) {
       return (
-        <img
+        <Image
           src={avatarUrl}
           alt={displayName}
+          width={40}
+          height={40}
           className={`${size} rounded-full object-cover`}
+          sizes="40px"
         />
       )
     }

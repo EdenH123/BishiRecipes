@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
@@ -26,7 +26,7 @@ const tagItemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 }
 
-export default function RecipeCard({ recipe }: RecipeCardProps) {
+function RecipeCard({ recipe }: RecipeCardProps) {
   const [flipped, setFlipped] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
   const handleFlip = (e: React.MouseEvent) => {
@@ -180,3 +180,5 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
     </Link>
   )
 }
+
+export default memo(RecipeCard)

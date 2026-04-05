@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
@@ -10,6 +10,7 @@ import { compressImage } from '@/lib/compress-image'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
 import { getShopItem } from '@/lib/coins'
 import { getFrameDecorations } from '@/components/FrameDecorations'
+import Image from 'next/image'
 import Achievements from '@/components/Achievements'
 import XPProgress from '@/components/XPProgress'
 import Navbar from '@/components/Navbar'
@@ -36,7 +37,7 @@ const cardVariants = {
 }
 
 export default function ProfilePage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -308,13 +309,14 @@ export default function ProfilePage() {
                   boxShadow: getShopItem(equippedFrame)?.glow,
                 } : {}}
               >
-                <div className="w-full h-full rounded-full overflow-hidden">
+                <div className="relative w-full h-full rounded-full overflow-hidden">
                   {profile?.avatar_url ? (
-                    <img
+                    <Image
                       src={profile.avatar_url}
                       alt={profile.display_name}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="88px"
                     />
                   ) : (
                     <div

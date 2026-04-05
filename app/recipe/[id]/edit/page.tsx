@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
@@ -12,7 +12,7 @@ import RecipeForm from '@/components/RecipeForm'
 
 export default function EditRecipePage() {
   const params = useParams()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const id = params.id as string
 
   const [recipe, setRecipe] = useState<Recipe | null>(null)

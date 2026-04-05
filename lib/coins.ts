@@ -43,13 +43,16 @@ export function getShopItem(id: string): ShopItem | undefined {
   return SHOP_ITEMS.find((item) => item.id === id)
 }
 
-export function calculateCoins(stats: { recipeCount: number; commentCount: number; ratingCount: number; favoriteCount: number; reactionCount: number; collaborationCount: number }): number {
+export const ADMIN_COIN_BONUS = 10000
+
+export function calculateCoins(stats: { recipeCount: number; commentCount: number; ratingCount: number; favoriteCount: number; reactionCount: number; collaborationCount: number }, isAdmin = false): number {
   return (
     stats.recipeCount * COIN_VALUES.recipe +
     stats.commentCount * COIN_VALUES.comment +
     stats.ratingCount * COIN_VALUES.rating +
     stats.favoriteCount * COIN_VALUES.favorite +
     stats.reactionCount * COIN_VALUES.reaction +
-    stats.collaborationCount * COIN_VALUES.collaboration
+    stats.collaborationCount * COIN_VALUES.collaboration +
+    (isAdmin ? ADMIN_COIN_BONUS : 0)
   )
 }

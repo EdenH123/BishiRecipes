@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { calculateXP, getLevel, getNextLevel, getLevelProgress } from '@/lib/xp-levels'
 import { ACHIEVEMENTS, getUnlockedAchievements } from '@/lib/achievements'
@@ -14,7 +14,7 @@ interface TestResult {
 }
 
 export default function TestPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [results, setResults] = useState<TestResult[]>([])
   const [running, setRunning] = useState(false)
 

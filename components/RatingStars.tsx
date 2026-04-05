@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { memo, useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 
@@ -9,12 +9,14 @@ interface RatingStarsProps {
   userId: string
 }
 
-export default function RatingStars({ recipeId, userId }: RatingStarsProps) {
+function RatingStars({ recipeId, userId }: RatingStarsProps) {
   const supabase = useMemo(() => createClient(), [])
   const [myRating, setMyRating] = useState<number>(0)
   const [average, setAverage] = useState<number>(0)
   const [count, setCount] = useState<number>(0)
   const [hover, setHover] = useState<number>(0)
+  const userIdRef = useRef(userId)
+  userIdRef.current = userId
 
   const fetchRatings = useCallback(async () => {
     const [myRes, allRes] = await Promise.all([
@@ -22,7 +24,7 @@ export default function RatingStars({ recipeId, userId }: RatingStarsProps) {
         .from('ratings')
         .select('score')
         .eq('recipe_id', recipeId)
-        .eq('user_id', userId)
+        .eq('user_id', userIdRef.current)
         .maybeSingle(),
       supabase
         .from('ratings')
@@ -37,7 +39,7 @@ export default function RatingStars({ recipeId, userId }: RatingStarsProps) {
       setAverage(total / allRes.data.length)
       setCount(allRes.data.length)
     }
-  }, [recipeId, userId])
+  }, [supabase, recipeId])
 
   useEffect(() => {
     fetchRatings()
@@ -100,3 +102,5 @@ export default function RatingStars({ recipeId, userId }: RatingStarsProps) {
     </div>
   )
 }
+
+export default memo(RatingStars)

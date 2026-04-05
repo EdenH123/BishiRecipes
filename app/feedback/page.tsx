@@ -9,6 +9,7 @@ import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import Image from 'next/image'
 
 type FeedbackType = 'suggestion' | 'bug' | 'improvement'
 type FeedbackStatus = 'open' | 'in_progress' | 'done' | 'rejected'
@@ -441,7 +442,7 @@ export default function FeedbackPage() {
 
                       <div className="mt-2 flex items-center gap-2 text-[11px] text-on-surface-variant">
                         {item.profiles?.avatar_url ? (
-                          <img src={item.profiles.avatar_url} alt="" className="h-4 w-4 rounded-full object-cover" loading="lazy" />
+                          <Image src={item.profiles.avatar_url} alt="" width={16} height={16} className="h-4 w-4 rounded-full object-cover" />
                         ) : (
                           <div
                             className="h-4 w-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"

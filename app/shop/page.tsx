@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
-import confetti from 'canvas-confetti'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import { SHOP_ITEMS, type ShopItem, calculateCoins, getShopItem } from '@/lib/coins'
@@ -12,6 +11,7 @@ import { calculateXP, getLevel } from '@/lib/xp-levels'
 import { type UserStats } from '@/lib/achievements'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
 import { getFrameDecorations } from '@/components/FrameDecorations'
+import Image from 'next/image'
 
 const springTransition = { type: 'spring' as const, stiffness: 300, damping: 25 }
 
@@ -19,7 +19,7 @@ export default function ShopPage() {
   const supabase = useMemo(() => createClient(), [])
   const [userId, setUserId] = useState<string | null>(null)
   const [profile, setProfile] = useState<{ display_name: string; avatar_url: string | null } | null>(null)
-  const [coins, setCoins] = useState(0)
+  const [totalCoins, setTotalCoins] = useState(0)
   const [level, setLevel] = useState(1)
   const [purchasedItems, setPurchasedItems] = useState<string[]>([])
   const [equippedFrame, setEquippedFrame] = useState<string | null>(null)
@@ -27,6 +27,8 @@ export default function ShopPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'frame' | 'title'>('frame')
   const [spentCoins, setSpentCoins] = useState(0)
+
+  const coins = totalCoins - spentCoins
 
   useEffect(() => {
     async function load() {
@@ -36,7 +38,7 @@ export default function ShopPage() {
       setUserId(user.id)
 
       const [profileRes, recipesRes, commentsRes, ratingsRes, favoritesRes, reactionsRes, collabsRes, purchasedRes] = await Promise.all([
-        supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single(),
+        supabase.from('profiles').select('display_name, avatar_url, is_admin').eq('id', user.id).single(),
         supabase.from('recipes').select('id').eq('created_by', user.id),
         supabase.from('comments').select('id').eq('user_id', user.id),
         supabase.from('ratings').select('id').eq('user_id', user.id),
@@ -61,7 +63,7 @@ export default function ShopPage() {
       const xp = calculateXP(stats)
       setLevel(getLevel(xp).level)
 
-      const totalCoins = calculateCoins(stats)
+      setTotalCoins(calculateCoins(stats, profileRes.data?.is_admin ?? false))
 
       const purchased = purchasedRes.data ?? []
       const ids = purchased.map((p) => p.item_id)
@@ -74,7 +76,6 @@ export default function ShopPage() {
         if (item) spent += item.price
       }
       setSpentCoins(spent)
-      setCoins(totalCoins - spent)
 
       // Get equipped items
       for (const p of purchased) {
@@ -114,9 +115,9 @@ export default function ShopPage() {
     }
 
     setPurchasedItems((prev) => [...prev, item.id])
-    setCoins((prev) => prev - item.price)
     setSpentCoins((prev) => prev + item.price)
     toast.success(`קנית ${item.name}!`)
+    const confetti = (await import('canvas-confetti')).default
     confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#feae2c', '#f59e0b', '#fbbf24'] })
   }
 
@@ -181,9 +182,9 @@ export default function ShopPage() {
                 boxShadow: getShopItem(equippedFrame)?.glow,
               } : {}}
             >
-              <div className="w-full h-full rounded-full overflow-hidden">
+              <div className="relative w-full h-full rounded-full overflow-hidden">
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  <Image src={profile.avatar_url} alt="" fill className="object-cover" sizes="100px" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold" style={{ background: gradient }}>
                     {profile?.display_name?.charAt(0) ?? '?'}
@@ -278,9 +279,9 @@ export default function ShopPage() {
                             boxShadow: item.glow,
                           }}
                         >
-                          <div className="w-full h-full rounded-full overflow-hidden">
+                          <div className="relative w-full h-full rounded-full overflow-hidden">
                             {profile?.avatar_url ? (
-                              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                              <Image src={profile.avatar_url} alt="" fill className="object-cover" sizes="84px" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
                                 {profile?.display_name?.charAt(0) ?? '?'}

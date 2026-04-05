@@ -13,6 +13,7 @@ import FilterBar from '@/components/FilterBar'
 import SkeletonCard from '@/components/SkeletonCard'
 import Onboarding from '@/components/Onboarding'
 import BackToTop from '@/components/BackToTop'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const PAGE_SIZE = 12
@@ -591,9 +592,9 @@ export default function HomePage() {
                         variants={listItemVariants}
                       >
                         <Link href={`/recipe/${recipe.id}`} className="flex gap-4 rounded-xl bg-surface-container-lowest p-3 shadow-sm hover:shadow-md transition-shadow">
-                          <div className="h-20 w-20 shrink-0 rounded-lg overflow-hidden bg-secondary-container/30">
+                          <div className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden bg-secondary-container/30">
                             {recipe.image_url ? (
-                              <img src={recipe.image_url} alt={recipe.title} loading="lazy" className="h-full w-full object-cover" />
+                              <Image src={recipe.image_url} alt={recipe.title} fill className="object-cover" sizes="80px" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-3xl">🍽️</div>
                             )}

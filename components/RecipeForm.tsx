@@ -3,7 +3,6 @@
 import { createClient } from '@/lib/supabase'
 import { type Recipe, type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, parseIngredient, serializeIngredient } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
-import confetti from 'canvas-confetti'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -239,6 +238,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         if (error) throw error
 
         toast('המתכון נשמר בהצלחה! 🎉')
+        const confetti = (await import('canvas-confetti')).default
         confetti({
           particleCount: 120,
           spread: 80,

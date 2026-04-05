@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { createWorker } from 'tesseract.js'
 import { parseRecipeText, type ParsedRecipe } from '@/lib/parse-recipe'
 import { type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, serializeIngredient } from '@/lib/types'
 import Navbar from '@/components/Navbar'
@@ -32,7 +31,7 @@ const EXAMPLE_TEXT = `עוגת שוקולד
 
 export default function ImportRecipePage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [rawText, setRawText] = useState('')
   const [parsed, setParsed] = useState<ParsedRecipe | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
@@ -94,6 +93,7 @@ export default function ImportRecipePage() {
     toast.info('מזהה טקסט מהתמונה...')
 
     try {
+      const { createWorker } = await import('tesseract.js')
       const worker = await createWorker('heb', undefined, {
         logger: (m) => {
           if (m.status === 'recognizing text') {
