@@ -95,9 +95,10 @@ describe('displayIngredient', () => {
     expect(result2).toContain('¼')
   })
 
-  it('wraps amount in LTR marks for correct RTL display', () => {
+  it('wraps amount in bidi isolate for correct RTL display', () => {
     const result = displayIngredient({ amount: '4½', unit: 'כוס', name: 'קמח' })
-    expect(result.startsWith('\u200E')).toBe(true)
+    expect(result).toContain('\u2066')
+    expect(result).toContain('\u2069')
   })
 })
 

@@ -639,8 +639,9 @@ export default function RecipeDetailPage() {
                     }`}
                   >
                     {ing.amount && (
-                      <span className="font-bold" dir="ltr">{scaleAmount(ing.amount, servingsMultiplier)} </span>
+                      <span className="font-bold inline-block" dir="ltr">{scaleAmount(ing.amount, servingsMultiplier)}</span>
                     )}
+                    {ing.amount && ' '}
                     {ing.unit && (
                       <span className="text-outline">{ing.unit} </span>
                     )}

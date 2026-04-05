@@ -115,8 +115,9 @@ export function formatAmount(amount: string): string {
 
 export function displayIngredient(ing: Ingredient): string {
   const amount = formatAmount(ing.amount)
-  // Wrap amount with LTR marks so "4½" doesn't flip to "½4" in RTL context
-  const ltrAmount = amount ? `\u200E${amount}\u200E` : ''
+  // Wrap amount with LTR isolate so "4½" doesn't flip to "½4" in RTL context
+  // Use FSI/PDI (U+2068/U+2069) for proper bidi isolation
+  const ltrAmount = amount ? `\u2066${amount}\u2069` : ''
   const parts = [ltrAmount, ing.unit, ing.name].filter(Boolean)
   return parts.join(' ')
 }
