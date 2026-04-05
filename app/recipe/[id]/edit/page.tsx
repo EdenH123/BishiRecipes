@@ -40,21 +40,18 @@ export default function EditRecipePage() {
       const recipeData = recipeRes.data as Recipe
       const currentUserId = userRes.data.user?.id ?? null
 
-      // Permission check: owner, collaborator, admin, or family member
+      // Permission check: owner, collaborator, or admin
       let allowed = false
       if (currentUserId) {
         if (currentUserId === recipeData.created_by) {
           allowed = true
         } else {
-          const [profileRes, collabRes, familyRes] = await Promise.all([
+          const [profileRes, collabRes] = await Promise.all([
             supabase.from('profiles').select('is_admin').eq('id', currentUserId).single(),
             supabase.from('recipe_collaborators').select('user_id').eq('recipe_id', id).eq('user_id', currentUserId).maybeSingle(),
-            // Check if current user and recipe owner are in the same family
-            supabase.rpc('are_family_members', { user_a: currentUserId, user_b: recipeData.created_by }),
           ])
           if (profileRes.data?.is_admin) allowed = true
           if (collabRes.data) allowed = true
-          if (familyRes.data === true) allowed = true
         }
       }
 

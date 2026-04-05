@@ -143,7 +143,6 @@ export default function RecipeDetailPage() {
   const [relatedRecipes, setRelatedRecipes] = useState<Recipe[]>([])
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [isCollaborator, setIsCollaborator] = useState(false)
-  const [isFamilyMember, setIsFamilyMember] = useState(false)
   const [shareSheetOpen, setShareSheetOpen] = useState(false)
   const [frameMap, setFrameMap] = useState<Map<string, string>>(new Map())
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -188,15 +187,6 @@ export default function RecipeDetailPage() {
       setCollaborators(collabs)
       if (currentUserId) {
         setIsCollaborator(collabs.some((c) => c.user_id === currentUserId))
-
-        // Check if same family as recipe owner
-        if (currentUserId !== recipeData.created_by) {
-          const { data: sameFamily } = await supabase.rpc('are_family_members', {
-            user_a: currentUserId,
-            user_b: recipeData.created_by,
-          })
-          setIsFamilyMember(sameFamily === true)
-        }
       }
 
       // Fetch equipped frames for collaborators
@@ -435,7 +425,7 @@ export default function RecipeDetailPage() {
           >
             <span className="material-symbols-outlined text-lg">share</span>
           </motion.button>
-          {(userId === recipe.created_by || isCollaborator || isAdmin || isFamilyMember) && (
+          {(userId === recipe.created_by || isCollaborator || isAdmin) && (
             <motion.div variants={actionButtonItemVariants}>
               <Link
                 href={`/recipe/${recipe.id}/edit`}
