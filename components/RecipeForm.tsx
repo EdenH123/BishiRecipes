@@ -34,6 +34,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
     recipe?.steps?.length ? recipe.steps : ['']
   )
   const [customCategory, setCustomCategory] = useState('')
+  const [prepTime, setPrepTime] = useState<string>(recipe?.prep_time ? String(recipe.prep_time) : '')
   const [videoUrl, setVideoUrl] = useState(recipe?.video_url ?? '')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(
@@ -207,6 +208,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
       const recipeData = {
         title: title.trim(),
         description: description.trim() || null,
+        prep_time: prepTime ? parseInt(prepTime, 10) : null,
         category: category || null,
         tags,
         ingredients: filteredIngredients.map(serializeIngredient),
@@ -320,6 +322,23 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
           spellCheck
           className={inputClass}
         />
+      </div>
+
+      {/* 2.5 Prep Time */}
+      <div>
+        <label className="font-medium text-gray-700 mb-1 block">זמן הכנה (דקות)</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min="1"
+            value={prepTime}
+            onChange={(e) => setPrepTime(e.target.value)}
+            placeholder="למשל 45"
+            className={inputClass + ' max-w-[140px]'}
+          />
+          <span className="text-sm text-outline">דקות</span>
+        </div>
+        <p className="mt-1 text-xs text-outline">אופציונלי — כמה זמן לוקח להכין את המתכון</p>
       </div>
 
       {/* 3. Category */}

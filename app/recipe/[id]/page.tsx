@@ -348,10 +348,16 @@ export default function RecipeDetailPage() {
           ))}
         </motion.div>
 
-        {/* Author + date */}
-        <p className="mt-3 text-sm text-gray-500">
-          הוסיף/ה: {recipe.profiles?.display_name ?? 'משתמש/ת'} · {formatDate(recipe.created_at)}
-        </p>
+        {/* Prep time + Author + date */}
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+          {recipe.prep_time && (
+            <span className="flex items-center gap-1 bg-surface-container rounded-full px-3 py-1 font-medium text-on-surface">
+              <span className="material-symbols-outlined text-base text-primary">schedule</span>
+              {recipe.prep_time} דקות
+            </span>
+          )}
+          <span>הוסיף/ה: {recipe.profiles?.display_name ?? 'משתמש/ת'} · {formatDate(recipe.created_at)}</span>
+        </div>
 
         {/* Collaborators */}
         {collaborators.length > 0 && (

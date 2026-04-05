@@ -80,6 +80,12 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                   {recipe.category}
                 </div>
               )}
+              {recipe.prep_time && (
+                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-medium text-white flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">schedule</span>
+                  {recipe.prep_time} דק׳
+                </div>
+              )}
             </div>
 
             <div className="p-3 text-right">

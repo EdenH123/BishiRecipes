@@ -604,6 +604,12 @@ export default function HomePage() {
                               <p className="text-xs text-on-surface-variant line-clamp-1 mt-0.5">{recipe.description}</p>
                             )}
                             <div className="flex items-center gap-2 mt-1.5 flex-wrap justify-end">
+                              {recipe.prep_time && (
+                                <span className="text-[10px] text-on-surface-variant flex items-center gap-0.5">
+                                  <span className="material-symbols-outlined text-[10px]">schedule</span>
+                                  {recipe.prep_time} דק׳
+                                </span>
+                              )}
                               {recipe.category && (
                                 <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{recipe.category}</span>
                               )}
