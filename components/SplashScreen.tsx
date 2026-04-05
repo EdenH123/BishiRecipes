@@ -94,13 +94,13 @@ export default function SplashScreen() {
               initial={{ x: -150, opacity: 0, rotate: -45 }}
               animate={{ x: 0, opacity: 1, rotate: 8 }}
               transition={{ delay: 0.3, ...spring }}
-              className="text-5xl -mr-1"
+              className="text-5xl -mr-3"
             >
               🍴
             </motion.span>
 
-            {/* Pan drops in from top with bounce */}
-            <motion.span
+            {/* Logo drops in from top with bounce */}
+            <motion.div
               initial={{ y: -200, opacity: 0, scale: 0.5 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               transition={{
@@ -109,17 +109,17 @@ export default function SplashScreen() {
                 stiffness: 200,
                 damping: 12,
               }}
-              className="text-8xl mx-1 relative z-10"
+              className="mx-2 relative z-10"
             >
-              🍳
-            </motion.span>
+              <Image src="/logo.png" alt="BISHILicious" width={100} height={100} className="rounded-full drop-shadow-xl" priority />
+            </motion.div>
 
             {/* Knife sweeps in from right */}
             <motion.span
               initial={{ x: 150, opacity: 0, rotate: 45 }}
               animate={{ x: 0, opacity: 1, rotate: -8 }}
               transition={{ delay: 0.3, ...spring }}
-              className="text-5xl -ml-1"
+              className="text-5xl -ml-3"
             >
               🔪
             </motion.span>
