@@ -293,7 +293,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
           className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 py-3 text-sm text-primary font-medium transition-colors hover:bg-primary/5 active:scale-[0.98]"
         >
           <span className="material-symbols-outlined text-lg">upload_file</span>
-          ייבוא מתכון מטקסט
+          ייבוא מתכון
         </Link>
       )}
 
