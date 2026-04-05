@@ -110,22 +110,22 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 ))}
               </motion.div>
 
-              {recipe.profiles?.display_name && (
-                <p className="text-[11px] text-outline italic">
-                  הוסיף/ה: {recipe.profiles.display_name}
-                </p>
-              )}
+              <div className="flex items-end justify-between">
+                {recipe.profiles?.display_name && (
+                  <p className="text-[11px] text-outline italic">
+                    הוסיף/ה: {recipe.profiles.display_name}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleFlip}
+                  className="w-8 h-8 shrink-0 rounded-full bg-primary/80 text-white flex items-center justify-center text-sm shadow-md hover:bg-primary transition-colors active:scale-95"
+                  aria-label="Show ingredients"
+                >
+                  i
+                </button>
+              </div>
             </div>
-
-            {/* Flip button - front */}
-            <button
-              type="button"
-              onClick={handleFlip}
-              className="absolute bottom-2 left-2 w-9 h-9 rounded-full bg-primary/80 text-white flex items-center justify-center text-sm shadow-md hover:bg-primary transition-colors active:scale-95"
-              aria-label="Show ingredients"
-            >
-              i
-            </button>
           </div>
 
           {/* Back side */}
