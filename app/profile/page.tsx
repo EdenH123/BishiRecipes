@@ -9,6 +9,7 @@ import { CATEGORIES, DEFAULT_TAGS, getUserBadge } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
 import { getShopItem } from '@/lib/coins'
+import { getFrameDecorations } from '@/components/FrameDecorations'
 import Achievements from '@/components/Achievements'
 import XPProgress from '@/components/XPProgress'
 import Navbar from '@/components/Navbar'
@@ -299,30 +300,33 @@ export default function ProfilePage() {
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           >
-            <div
-              className="w-[88px] h-[88px] rounded-full p-[3px]"
-              style={equippedFrame ? {
-                background: getShopItem(equippedFrame)?.preview,
-                boxShadow: getShopItem(equippedFrame)?.glow,
-              } : {}}
-            >
-              <div className="w-full h-full rounded-full overflow-hidden">
-                {profile?.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.display_name}
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div
-                    className="flex w-full h-full items-center justify-center text-3xl font-bold text-white"
-                    style={{ background: getAvatarGradient(profile?.id || '') }}
-                  >
-                    {profile?.display_name?.charAt(0) || '?'}
-                  </div>
-                )}
+            <div className="relative">
+              <div
+                className="w-[88px] h-[88px] rounded-full p-[3px]"
+                style={equippedFrame ? {
+                  background: getShopItem(equippedFrame)?.preview,
+                  boxShadow: getShopItem(equippedFrame)?.glow,
+                } : {}}
+              >
+                <div className="w-full h-full rounded-full overflow-hidden">
+                  {profile?.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={profile.display_name}
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="flex w-full h-full items-center justify-center text-3xl font-bold text-white"
+                      style={{ background: getAvatarGradient(profile?.id || '') }}
+                    >
+                      {profile?.display_name?.charAt(0) || '?'}
+                    </div>
+                  )}
+                </div>
               </div>
+              {equippedFrame && getFrameDecorations(equippedFrame)}
             </div>
             <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
               {uploadingAvatar ? (

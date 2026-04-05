@@ -11,6 +11,7 @@ import { SHOP_ITEMS, type ShopItem, calculateCoins, getShopItem } from '@/lib/co
 import { calculateXP, getLevel } from '@/lib/xp-levels'
 import { type UserStats } from '@/lib/achievements'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
+import { getFrameDecorations } from '@/components/FrameDecorations'
 
 const springTransition = { type: 'spring' as const, stiffness: 300, damping: 25 }
 
@@ -172,22 +173,25 @@ export default function ShopPage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center mb-8"
         >
-          <div
-            className="mb-3 w-[100px] h-[100px] rounded-full p-[3px]"
-            style={equippedFrame ? {
-              background: getShopItem(equippedFrame)?.preview,
-              boxShadow: getShopItem(equippedFrame)?.glow,
-            } : {}}
-          >
-            <div className="w-full h-full rounded-full overflow-hidden">
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold" style={{ background: gradient }}>
-                  {profile?.display_name?.charAt(0) ?? '?'}
-                </div>
-              )}
+          <div className="relative mb-3">
+            <div
+              className="w-[100px] h-[100px] rounded-full p-[3px]"
+              style={equippedFrame ? {
+                background: getShopItem(equippedFrame)?.preview,
+                boxShadow: getShopItem(equippedFrame)?.glow,
+              } : {}}
+            >
+              <div className="w-full h-full rounded-full overflow-hidden">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold" style={{ background: gradient }}>
+                    {profile?.display_name?.charAt(0) ?? '?'}
+                  </div>
+                )}
+              </div>
             </div>
+            {equippedFrame && getFrameDecorations(equippedFrame)}
           </div>
           <h2 className="text-lg font-bold text-on-surface font-rubik">{profile?.display_name}</h2>
           {titleText && (
@@ -266,22 +270,25 @@ export default function ShopPage() {
                   {/* Preview */}
                   <div className="flex justify-center mb-3">
                     {item.type === 'frame' ? (
-                      <div
-                        className="relative w-[84px] h-[84px] rounded-full p-[3px]"
-                        style={{
-                          background: item.preview,
-                          boxShadow: item.glow,
-                        }}
-                      >
-                        <div className="w-full h-full rounded-full overflow-hidden">
-                          {profile?.avatar_url ? (
-                            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
-                              {profile?.display_name?.charAt(0) ?? '?'}
-                            </div>
-                          )}
+                      <div className="relative">
+                        <div
+                          className="w-[84px] h-[84px] rounded-full p-[3px]"
+                          style={{
+                            background: item.preview,
+                            boxShadow: item.glow,
+                          }}
+                        >
+                          <div className="w-full h-full rounded-full overflow-hidden">
+                            {profile?.avatar_url ? (
+                              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
+                                {profile?.display_name?.charAt(0) ?? '?'}
+                              </div>
+                            )}
+                          </div>
                         </div>
+                        {getFrameDecorations(item.id)}
                       </div>
                     ) : (
                       <div className="h-16 flex items-center justify-center">
