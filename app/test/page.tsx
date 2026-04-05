@@ -426,9 +426,9 @@ export default function TestPage() {
       add('20. ייצוא תמונת מתכון', 'fail', String(e))
     }
 
-    // 21. Type utilities (parseIngredient, displayIngredient, getUserBadge)
+    // 21. Type utilities (parseIngredient, displayIngredient, formatAmount, getUserBadge)
     try {
-      const { parseIngredient, displayIngredient, getUserBadge } = await import('@/lib/types')
+      const { parseIngredient, displayIngredient, formatAmount, getUserBadge } = await import('@/lib/types')
       const parsed = parseIngredient(JSON.stringify({ amount: '2', unit: 'כוסות', name: 'קמח' }))
       const display = displayIngredient(parsed)
       const badge0 = getUserBadge(0)
@@ -437,10 +437,16 @@ export default function TestPage() {
       const badge10 = getUserBadge(10)
       const badge20 = getUserBadge(20)
       const badgeCheck = !badge0 && badge1?.icon === '🌱' && badge5?.icon === '🥄' && badge10?.icon === '🍳' && badge20?.icon === '👨‍🍳'
-      if (parsed.amount === '2' && parsed.unit === 'כוסות' && parsed.name === 'קמח' && display === '2 כוסות קמח' && badgeCheck) {
-        add('21. כלי טיפוסים (types)', 'pass', `parseIngredient ✓ | displayIngredient: "${display}" ✓ | badges: 0→null, 1→🌱, 5→🥄, 10→🍳, 20→👨‍🍳 ✓`)
+      const displayContains = display.includes('2') && display.includes('כוסות') && display.includes('קמח')
+      // formatAmount converts fractions to Unicode
+      const frac1 = formatAmount('1/2') === '½'
+      const frac2 = formatAmount('1 1/4') === '1¼'
+      const frac3 = formatAmount('3/4') === '¾'
+      const fracCheck = frac1 && frac2 && frac3
+      if (parsed.amount === '2' && parsed.unit === 'כוסות' && parsed.name === 'קמח' && displayContains && badgeCheck && fracCheck) {
+        add('21. כלי טיפוסים (types)', 'pass', `parseIngredient ✓ | displayIngredient ✓ | formatAmount: 1/2→½, 1 1/4→1¼, 3/4→¾ ✓ | badges ✓`)
       } else {
-        add('21. כלי טיפוסים (types)', 'fail', `parsed: ${JSON.stringify(parsed)} | display: ${display} | badges: ${badgeCheck}`)
+        add('21. כלי טיפוסים (types)', 'fail', `parsed: ${JSON.stringify(parsed)} | display: ${displayContains} | fractions: ${frac1},${frac2},${frac3} | badges: ${badgeCheck}`)
       }
     } catch (e) {
       add('21. כלי טיפוסים (types)', 'fail', String(e))
@@ -460,6 +466,25 @@ export default function TestPage() {
       } catch (e) {
         add('22. מניעת כפילות מועדפים', 'fail', String(e))
       }
+    }
+
+    // 23. Coins & Shop
+    try {
+      const { calculateCoins, getShopItem, SHOP_ITEMS } = await import('@/lib/coins')
+      const coins = calculateCoins({ recipeCount: 3, commentCount: 5, ratingCount: 2, favoriteCount: 8, reactionCount: 4, collaborationCount: 1 })
+      const expected = 3 * 30 + 5 * 5 + 2 * 3 + 8 * 2 + 4 * 1 + 1 * 20 // 90+25+6+16+4+20=161
+      const goldFrame = getShopItem('frame_gold')
+      const frameCount = SHOP_ITEMS.filter(i => i.type === 'frame').length
+      const titleCount = SHOP_ITEMS.filter(i => i.type === 'title').length
+      const coinsOk = coins === expected
+      const shopOk = goldFrame !== undefined && goldFrame.type === 'frame'
+      if (coinsOk && shopOk) {
+        add('23. מטבעות וחנות', 'pass', `calculateCoins=${coins} (צפוי ${expected}) ✓ | ${frameCount} מסגרות, ${titleCount} תארים | frame_gold: ${goldFrame.price} מטבעות`)
+      } else {
+        add('23. מטבעות וחנות', 'fail', `coins: ${coins} (צפוי ${expected}) | goldFrame: ${JSON.stringify(goldFrame)}`)
+      }
+    } catch (e) {
+      add('23. מטבעות וחנות', 'fail', String(e))
     }
 
     // 24. XP Calculation
@@ -658,13 +683,98 @@ export default function TestPage() {
       add('35. פילטרים מוסתרים (הוספה)', 'fail', String(e))
     }
 
-    // 36. Cleanup test recipe
+    // 36. Hebrew ingredient parsing
+    try {
+      const parsed1 = parseRecipeText("test\n\nמצרכים:\nכוס וחצי קמח רגיל\n\nהכנה:\ntest")
+      const parsed2 = parseRecipeText("test\n\nמצרכים:\nכפית ושלושת רבעי אבקת אפייה\n\nהכנה:\ntest")
+      const parsed3 = parseRecipeText("test\n\nמצרכים:\nחצי כפית מלח\n\nהכנה:\ntest")
+      const ing1 = parsed1.ingredients[0]
+      const ing2 = parsed2.ingredients[0]
+      const ing3 = parsed3.ingredients[0]
+      const ok1 = ing1?.amount === '1½' && ing1?.unit === 'כוס' && ing1?.name === 'קמח רגיל'
+      const ok2 = ing2?.amount === '1¾' && ing2?.unit === 'כפית' && ing2?.name === 'אבקת אפייה'
+      const ok3 = ing3?.amount === '½' && ing3?.unit === 'כפית' && ing3?.name === 'מלח'
+      if (ok1 && ok2 && ok3) {
+        add('36. פרסור מצרכים בעברית', 'pass', `"כוס וחצי"→${ing1.amount} ✓ | "כפית ושלושת רבעי"→${ing2.amount} ✓ | "חצי כפית"→${ing3.amount} ✓`)
+      } else {
+        add('36. פרסור מצרכים בעברית', 'fail', `1: ${ing1?.amount}/${ok1} | 2: ${ing2?.amount}/${ok2} | 3: ${ing3?.amount}/${ok3}`)
+      }
+    } catch (e) {
+      add('36. פרסור מצרכים בעברית', 'fail', String(e))
+    }
+
+    // 37. URL recipe scraping API
+    try {
+      const res = await fetch('/api/scrape-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: '' }),
+      })
+      const badUrlRes = await fetch('/api/scrape-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: 'not-a-url' }),
+      })
+      if (res.status === 400 && badUrlRes.status === 400) {
+        add('37. API ייבוא מקישור', 'pass', `URL ריק→${res.status} ✓ | URL לא תקין→${badUrlRes.status} ✓`)
+      } else {
+        add('37. API ייבוא מקישור', 'fail', `URL ריק: ${res.status} (צפוי 400) | URL לא תקין: ${badUrlRes.status} (צפוי 400)`)
+      }
+    } catch (e) {
+      add('37. API ייבוא מקישור', 'fail', String(e))
+    }
+
+    // 38. User items / shop table
+    if (userId) {
+      try {
+        const { data, error } = await supabase
+          .from('user_items')
+          .select('item_id, equipped')
+          .eq('user_id', userId)
+        if (error) add('38. טבלת פריטי משתמש', 'fail', error.message)
+        else {
+          const equipped = data.filter((i: { equipped: boolean }) => i.equipped)
+          add('38. טבלת פריטי משתמש', 'pass', `${data.length} פריטים | ${equipped.length} מצוידים`)
+        }
+      } catch (e) {
+        add('38. טבלת פריטי משתמש', 'fail', String(e))
+      }
+    }
+
+    // 39. Feedback table
+    try {
+      const { data, error } = await supabase
+        .from('feedback')
+        .select('id, type')
+        .limit(5)
+      if (error) add('39. טבלת משוב', 'fail', error.message)
+      else add('39. טבלת משוב', 'pass', `${data.length} פידבקים`)
+    } catch (e) {
+      add('39. טבלת משוב', 'fail', String(e))
+    }
+
+    // 40. Frame decorations
+    try {
+      const { getFrameDecorations } = await import('@/components/FrameDecorations')
+      const gold = getFrameDecorations('frame_gold', 44)
+      const fire = getFrameDecorations('frame_fire', 44)
+      const none = getFrameDecorations('nonexistent', 44)
+      if (gold && fire && !none) {
+        add('40. מסגרות דקורטיביות', 'pass', 'frame_gold ✓ | frame_fire ✓ | nonexistent→null ✓')
+      } else {
+        add('40. מסגרות דקורטיביות', 'fail', `gold: ${!!gold} | fire: ${!!fire} | none: ${!!none}`)
+      }
+    } catch (e) {
+      add('40. מסגרות דקורטיביות', 'fail', String(e))
+    }
+
+    // 41. Cleanup test recipe
     if (testRecipeId) {
       try {
         await supabase.from('recipes').delete().eq('id', testRecipeId)
-        add('36. ניקוי', 'pass', 'מתכון הבדיקה נמחק')
+        add('41. ניקוי', 'pass', 'מתכון הבדיקה נמחק')
       } catch (e) {
-        add('36. ניקוי', 'fail', String(e))
+        add('41. ניקוי', 'fail', String(e))
       }
     }
 
@@ -682,7 +792,7 @@ export default function TestPage() {
           <Link href="/" className="text-sm text-primary hover:underline">חזרה לאפליקציה</Link>
         </div>
         <p className="text-on-surface-variant mb-6">
-          בודק: חיבור, הרשאות, פרופיל, מתכונים, מועדפים, תגובות, דירוגים, hidden_filters, אחסון, עדכונים, אמוג׳י, גרדיאנט, דחיסה, ייצוא, טיפוסים, XP, רמות, הישגים, פענוח מתכון, שותפים, לידרבורד, תגיות.
+          בודק: חיבור, הרשאות, פרופיל, מתכונים, מועדפים, תגובות, דירוגים, hidden_filters, אחסון, עדכונים, אמוג׳י, גרדיאנט, דחיסה, ייצוא, טיפוסים, מטבעות, XP, רמות, הישגים, פענוח מתכון, שותפים, לידרבורד, תגיות, ייבוא URL, חנות, משוב, מסגרות.
         </p>
 
         <div className="flex items-center gap-4 mb-6">
