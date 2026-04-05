@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Toaster } from 'sonner'
-import NavigationProgress from '@/components/NavigationProgress'
 import PageTransition from '@/components/PageTransition'
 import './globals.css'
 
@@ -42,7 +41,6 @@ export default function RootLayout({
         />
       </head>
       <body className="font-rubik">
-        <NavigationProgress />
         <Toaster position="top-center" richColors dir="rtl" />
         <PageTransition>{children}</PageTransition>
       </body>
