@@ -136,14 +136,14 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
               transform: 'rotateY(180deg)',
             }}
           >
-            <div className="p-3 text-right flex-1 overflow-hidden flex flex-col">
-              <h3 className="text-on-surface font-bold text-sm mb-2 line-clamp-1">
+            <div className="p-3 pb-1 text-right flex-1 overflow-hidden flex flex-col min-h-0">
+              <h3 className="text-on-surface font-bold text-sm mb-2 line-clamp-1 shrink-0">
                 {recipe.title}
               </h3>
-              <p className="text-[10px] text-primary font-bold mb-1.5">
+              <p className="text-[10px] text-primary font-bold mb-1.5 shrink-0">
                 מצרכים
               </p>
-              <ul className="text-xs text-on-surface-variant space-y-1 overflow-y-auto flex-1 pr-1">
+              <ul className="text-xs text-on-surface-variant space-y-1 overflow-y-auto flex-1 min-h-0 pr-1">
                 {recipe.ingredients?.length ? (
                   recipe.ingredients.map((raw, idx) => {
                     const ing = parseIngredient(raw)
@@ -158,16 +158,16 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                   <li className="text-outline italic">אין מצרכים</li>
                 )}
               </ul>
-              <div className="flex justify-start pt-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleFlip}
-                  className="w-8 h-8 rounded-full bg-on-surface/10 text-on-surface-variant flex items-center justify-center shadow-sm hover:bg-on-surface/20 transition-colors active:scale-95"
-                  aria-label="Show front"
-                >
-                  <span className="material-symbols-outlined text-base">close</span>
-                </button>
-              </div>
+            </div>
+            <div className="flex justify-start px-3 pb-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleFlip}
+                className="w-8 h-8 rounded-full bg-on-surface/10 text-on-surface-variant flex items-center justify-center shadow-sm hover:bg-on-surface/20 transition-colors active:scale-95"
+                aria-label="Show front"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
             </div>
           </div>
         </div>
