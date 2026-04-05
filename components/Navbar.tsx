@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { Profile } from '@/lib/types'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
+import { getShopItem } from '@/lib/coins'
+import { getFrameDecorations } from '@/components/FrameDecorations'
 
 export default function Navbar() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [equippedFrame, setEquippedFrame] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadProfile() {
@@ -18,13 +21,18 @@ export default function Navbar() {
       } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+      const [profileRes, itemsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('user_items').select('item_id').eq('user_id', user.id).eq('equipped', true),
+      ])
 
-      if (data) setProfile(data)
+      if (profileRes.data) setProfile(profileRes.data)
+
+      const equipped = itemsRes.data ?? []
+      for (const item of equipped) {
+        const shopItem = getShopItem(item.item_id)
+        if (shopItem?.type === 'frame') setEquippedFrame(item.item_id)
+      }
     }
 
     loadProfile()
@@ -37,23 +45,37 @@ export default function Navbar() {
           {profile && (
             <button
               onClick={() => router.push('/profile')}
-              className="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border-2 border-primary/10 transition-transform active:scale-95"
+              className="relative transition-transform active:scale-95"
+              style={{ width: equippedFrame ? 48 : 40, height: equippedFrame ? 48 : 40 }}
             >
-              {profile.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.display_name}
-                  loading="lazy"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span
-                  className="flex w-full h-full items-center justify-center text-white text-sm font-bold"
-                  style={{ background: getAvatarGradient(profile.id) }}
+              <div
+                className="w-full h-full rounded-full p-[2px]"
+                style={equippedFrame ? {
+                  background: getShopItem(equippedFrame)?.preview,
+                  boxShadow: getShopItem(equippedFrame)?.glow,
+                } : {}}
+              >
+                <div className="w-full h-full rounded-full overflow-hidden bg-surface-container-highest border-2 border-primary/10"
+                  style={equippedFrame ? { borderColor: 'transparent' } : {}}
                 >
-                  {profile.display_name?.charAt(0) || '?'}
-                </span>
-              )}
+                  {profile.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={profile.display_name}
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span
+                      className="flex w-full h-full items-center justify-center text-white text-sm font-bold"
+                      style={{ background: getAvatarGradient(profile.id) }}
+                    >
+                      {profile.display_name?.charAt(0) || '?'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {equippedFrame && getFrameDecorations(equippedFrame)}
             </button>
           )}
         </div>
