@@ -162,10 +162,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 <button
                   type="button"
                   onClick={handleFlip}
-                  className="w-8 h-8 rounded-full bg-primary/80 text-white flex items-center justify-center text-sm shadow-md hover:bg-primary transition-colors active:scale-95"
+                  className="w-8 h-8 rounded-full bg-on-surface/10 text-on-surface-variant flex items-center justify-center shadow-sm hover:bg-on-surface/20 transition-colors active:scale-95"
                   aria-label="Show front"
                 >
-                  &#x21A9;
+                  <span className="material-symbols-outlined text-base">close</span>
                 </button>
               </div>
             </div>
