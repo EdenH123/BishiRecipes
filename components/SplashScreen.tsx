@@ -7,12 +7,12 @@ const spring = { type: 'spring' as const, stiffness: 300, damping: 18 }
 
 // Falling food rain
 const RAIN_EMOJIS = ['🍕', '🧁', '🍰', '🥗', '🍖', '🥘', '🍲', '🥙', '🍩', '🧆', '🍔', '🌮', '🥯', '🍳', '🥐', '🍪']
-const RAIN_DROPS = Array.from({ length: 20 }, (_, i) => ({
+const RAIN_DROPS = Array.from({ length: 30 }, (_, i) => ({
   emoji: RAIN_EMOJIS[i % RAIN_EMOJIS.length],
-  x: (i * 5.2 + 2) % 100,
-  delay: i * 0.12,
-  duration: 1.8 + (i % 5) * 0.3,
-  size: i % 3 === 0 ? 'text-2xl' : i % 3 === 1 ? 'text-xl' : 'text-lg',
+  x: (i * 3.4 + 1) % 98,
+  delay: (i % 10) * 0.2 + Math.floor(i / 10) * 0.07,
+  duration: 1.6 + (i % 7) * 0.25,
+  size: i % 4 === 0 ? 'text-3xl' : i % 4 === 1 ? 'text-2xl' : i % 4 === 2 ? 'text-xl' : 'text-lg',
 }))
 
 const LOADING_TEXTS = [

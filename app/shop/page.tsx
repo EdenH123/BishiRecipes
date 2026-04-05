@@ -172,20 +172,40 @@ export default function ShopPage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center mb-8"
         >
-          <div className="relative mb-3">
-            <div
-              className="w-24 h-24 rounded-full p-1 transition-all"
-              style={equippedFrame ? { background: getShopItem(equippedFrame)?.preview } : {}}
-            >
-              <div className="w-full h-full rounded-full overflow-hidden">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold" style={{ background: gradient }}>
-                    {profile?.display_name?.charAt(0) ?? '?'}
-                  </div>
-                )}
-              </div>
+          <div className="relative w-28 h-28 flex items-center justify-center mb-3">
+            {equippedFrame && (
+              <>
+                <div
+                  className="absolute inset-0 rounded-full shadow-lg"
+                  style={{ background: getShopItem(equippedFrame)?.preview }}
+                />
+                {getShopItem(equippedFrame)?.decorations?.map((deco, di) => {
+                  const count = getShopItem(equippedFrame)?.decorations?.length ?? 1
+                  const angle = (di / count) * Math.PI * 2 - Math.PI / 2
+                  const radius = 50
+                  return (
+                    <span
+                      key={di}
+                      className="absolute z-20 text-sm leading-none drop-shadow-sm pointer-events-none"
+                      style={{
+                        left: `calc(50% + ${Math.cos(angle) * radius}px - 8px)`,
+                        top: `calc(50% + ${Math.sin(angle) * radius}px - 8px)`,
+                      }}
+                    >
+                      {deco}
+                    </span>
+                  )
+                })}
+              </>
+            )}
+            <div className="relative z-10 w-[88px] h-[88px] rounded-full overflow-hidden border-2 border-white/80">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold" style={{ background: gradient }}>
+                  {profile?.display_name?.charAt(0) ?? '?'}
+                </div>
+              )}
             </div>
           </div>
           <h2 className="text-lg font-bold text-on-surface font-rubik">{profile?.display_name}</h2>
@@ -266,69 +286,39 @@ export default function ShopPage() {
                   <div className="flex justify-center mb-3">
                     {item.type === 'frame' ? (
                       <div className="relative w-24 h-24 flex items-center justify-center">
-                        {/* Floating decorations */}
+                        {/* Gradient ring */}
+                        <div
+                          className="absolute inset-0 rounded-full shadow-lg"
+                          style={{ background: item.preview }}
+                        />
+                        {/* Embedded decorations along the ring */}
                         {item.decorations?.map((deco, di) => {
-                          const angle = (di / (item.decorations?.length ?? 1)) * Math.PI * 2 - Math.PI / 2
-                          const radius = 44
+                          const count = item.decorations?.length ?? 1
+                          const angle = (di / count) * Math.PI * 2 - Math.PI / 2
+                          const radius = 42
                           return (
-                            <motion.span
+                            <span
                               key={di}
-                              className="absolute text-sm pointer-events-none z-10"
+                              className="absolute z-20 text-xs leading-none drop-shadow-sm pointer-events-none"
                               style={{
-                                left: `calc(50% + ${Math.cos(angle) * radius}px - 8px)`,
-                                top: `calc(50% + ${Math.sin(angle) * radius}px - 8px)`,
-                              }}
-                              animate={
-                                item.id === 'frame_fire'
-                                  ? { y: [0, -6, 0], scale: [1, 1.3, 1], opacity: [0.8, 1, 0.8] }
-                                  : item.id === 'frame_ice'
-                                  ? { rotate: [0, 180, 360], opacity: [0.7, 1, 0.7] }
-                                  : item.id === 'frame_gold'
-                                  ? { scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }
-                                  : { y: [0, -4, 0], scale: [1, 1.15, 1] }
-                              }
-                              transition={{
-                                duration: item.id === 'frame_fire' ? 0.8 : 1.5,
-                                repeat: Infinity,
-                                delay: di * 0.3,
-                                ease: 'easeInOut',
+                                left: `calc(50% + ${Math.cos(angle) * radius}px - 7px)`,
+                                top: `calc(50% + ${Math.sin(angle) * radius}px - 7px)`,
                               }}
                             >
                               {deco}
-                            </motion.span>
+                            </span>
                           )
                         })}
-                        {/* Frame ring */}
-                        <motion.div
-                          className="w-[72px] h-[72px] rounded-full p-[3px] shadow-lg"
-                          style={{ background: item.preview }}
-                          animate={
-                            item.id === 'frame_rainbow' || item.id === 'frame_crown'
-                              ? { rotate: 360 }
-                              : item.id === 'frame_fire'
-                              ? { scale: [1, 1.05, 1] }
-                              : {}
-                          }
-                          transition={
-                            item.id === 'frame_rainbow' || item.id === 'frame_crown'
-                              ? { duration: 3, repeat: Infinity, ease: 'linear' }
-                              : item.id === 'frame_fire'
-                              ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' }
-                              : {}
-                          }
-                        >
-                          <div className="w-full h-full rounded-full overflow-hidden bg-surface">
-                            <div className="w-full h-full rounded-full overflow-hidden">
-                              {profile?.avatar_url ? (
-                                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
-                                  {profile?.display_name?.charAt(0) ?? '?'}
-                                </div>
-                              )}
+                        {/* Avatar inner circle */}
+                        <div className="relative z-10 w-[76px] h-[76px] rounded-full overflow-hidden border-2 border-white/80">
+                          {profile?.avatar_url ? (
+                            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
+                              {profile?.display_name?.charAt(0) ?? '?'}
                             </div>
-                          </div>
-                        </motion.div>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <div className="h-16 flex items-center justify-center">

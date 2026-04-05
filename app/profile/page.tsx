@@ -294,25 +294,47 @@ export default function ProfilePage() {
           <motion.button
             onClick={() => avatarInputRef.current?.click()}
             disabled={uploadingAvatar}
-            className="relative group"
+            className="relative group w-24 h-24 flex items-center justify-center"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           >
-            <div
-              className="rounded-full p-1 transition-all"
-              style={equippedFrame ? { background: getShopItem(equippedFrame)?.preview } : {}}
-            >
+            {equippedFrame && (
+              <>
+                <div
+                  className="absolute inset-0 rounded-full shadow-lg"
+                  style={{ background: getShopItem(equippedFrame)?.preview }}
+                />
+                {getShopItem(equippedFrame)?.decorations?.map((deco, di) => {
+                  const count = getShopItem(equippedFrame)?.decorations?.length ?? 1
+                  const angle = (di / count) * Math.PI * 2 - Math.PI / 2
+                  const radius = 44
+                  return (
+                    <span
+                      key={di}
+                      className="absolute z-20 text-xs leading-none drop-shadow-sm pointer-events-none"
+                      style={{
+                        left: `calc(50% + ${Math.cos(angle) * radius}px - 7px)`,
+                        top: `calc(50% + ${Math.sin(angle) * radius}px - 7px)`,
+                      }}
+                    >
+                      {deco}
+                    </span>
+                  )
+                })}
+              </>
+            )}
+            <div className="relative z-10 w-20 h-20 rounded-full overflow-hidden border-2 border-white/80">
               {profile?.avatar_url ? (
                 <img
                   src={profile.avatar_url}
                   alt={profile.display_name}
                   loading="lazy"
-                  className="h-20 w-20 rounded-full object-cover"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <div
-                  className="flex h-20 w-20 items-center justify-center rounded-full text-3xl font-bold text-white"
+                  className="flex w-full h-full items-center justify-center text-3xl font-bold text-white"
                   style={{ background: getAvatarGradient(profile?.id || '') }}
                 >
                   {profile?.display_name?.charAt(0) || '?'}
