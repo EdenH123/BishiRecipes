@@ -142,6 +142,7 @@ export default function RecipeDetailPage() {
   const [relatedRecipes, setRelatedRecipes] = useState<Recipe[]>([])
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [isCollaborator, setIsCollaborator] = useState(false)
+  const [shareSheetOpen, setShareSheetOpen] = useState(false)
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -404,7 +405,7 @@ export default function RecipeDetailPage() {
           variants={actionButtonsContainerVariants}
           initial="hidden"
           animate="visible"
-          className="mt-4 flex flex-wrap items-center gap-3"
+          className="mt-4 flex items-center gap-2"
         >
           {userId && (
             <motion.div variants={actionButtonItemVariants}>
@@ -414,19 +415,24 @@ export default function RecipeDetailPage() {
           <motion.button
             variants={actionButtonItemVariants}
             onClick={() => setCookingMode(true)}
-            className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
+            className="flex items-center gap-1.5 rounded-xl border border-outline-variant px-3.5 py-2.5 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low active:scale-95"
           >
-            <span className="material-symbols-outlined text-base">skillet</span>
-            מצב בישול
+            <span className="material-symbols-outlined text-lg">skillet</span>
+          </motion.button>
+          <motion.button
+            variants={actionButtonItemVariants}
+            onClick={() => setShareSheetOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-outline-variant px-3.5 py-2.5 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low active:scale-95"
+          >
+            <span className="material-symbols-outlined text-lg">share</span>
           </motion.button>
           {(userId === recipe.created_by || isCollaborator || isAdmin) && (
             <motion.div variants={actionButtonItemVariants}>
               <Link
                 href={`/recipe/${recipe.id}/edit`}
-                className="flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 active:scale-95"
+                className="flex items-center gap-1.5 rounded-xl border border-outline-variant px-3.5 py-2.5 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low active:scale-95"
               >
-                <span className="material-symbols-outlined text-base">edit</span>
-                עריכה
+                <span className="material-symbols-outlined text-lg">edit</span>
               </Link>
             </motion.div>
           )}
@@ -462,57 +468,82 @@ export default function RecipeDetailPage() {
                   },
                 })
               }}
-              className="flex items-center gap-1 rounded-lg border border-error/30 px-4 py-2 text-sm text-error transition-colors hover:bg-error/10"
+              className="flex items-center gap-1.5 rounded-xl border border-error/30 px-3.5 py-2.5 text-sm text-error transition-colors hover:bg-error/5 active:scale-95"
             >
-              <span className="material-symbols-outlined text-base">delete</span>
-              מחיקה
+              <span className="material-symbols-outlined text-lg">delete</span>
             </motion.button>
           )}
         </motion.div>
 
-        {/* Share */}
-        <motion.div
-          variants={actionButtonsContainerVariants}
-          initial="hidden"
-          animate="visible"
-          className="mt-4 flex flex-wrap items-center gap-2"
-        >
-          <motion.button
-            variants={actionButtonItemVariants}
-            onClick={() => {
-              const url = window.location.href
-              const text = `${recipe.title} — בישי מתכונים`
-              window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + url)}`, '_blank')
-            }}
-            className="flex items-center gap-1.5 rounded-full bg-[#25D366]/10 px-4 py-2 text-sm font-medium text-[#25D366] transition-colors hover:bg-[#25D366]/20"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.632-1.467A11.932 11.932 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.587-5.932-1.61l-.425-.253-2.746.87.879-2.672-.278-.442A9.776 9.776 0 012.182 12c0-5.414 4.404-9.818 9.818-9.818S21.818 6.586 21.818 12s-4.404 9.818-9.818 9.818z"/></svg>
-            WhatsApp
-          </motion.button>
-          <motion.button
-            variants={actionButtonItemVariants}
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(window.location.href)
-                toast.success('הקישור הועתק!')
-              } catch {
-                toast.error('לא ניתן להעתיק')
-              }
-            }}
-            className="flex items-center gap-1.5 rounded-full bg-surface-container-low px-4 py-2 text-sm text-on-surface-variant transition-colors hover:bg-surface-container"
-          >
-            <span className="material-symbols-outlined text-base">content_copy</span>
-            העתק קישור
-          </motion.button>
-          <motion.button
-            variants={actionButtonItemVariants}
-            onClick={() => exportRecipeAsImage(recipe)}
-            className="flex items-center gap-1.5 rounded-full bg-surface-container-low px-4 py-2 text-sm text-on-surface-variant transition-colors hover:bg-surface-container"
-          >
-            <span className="material-symbols-outlined text-base">download</span>
-            ייצוא תמונה
-          </motion.button>
-        </motion.div>
+        {/* Share bottom sheet */}
+        <AnimatePresence>
+          {shareSheetOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShareSheetOpen(false)}
+                className="fixed inset-0 bg-black/40 z-50"
+              />
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-surface p-5 pb-10 shadow-xl"
+              >
+                <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-outline-variant/40" />
+                <h3 className="text-center font-bold text-on-surface font-rubik mb-5">שיתוף</h3>
+                <div className="flex justify-center gap-6">
+                  <button
+                    onClick={() => {
+                      const url = window.location.href
+                      const text = `${recipe.title} — BISHILicious`
+                      window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + url)}`, '_blank')
+                      setShareSheetOpen(false)
+                    }}
+                    className="flex flex-col items-center gap-2"
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366]/10">
+                      <svg className="h-6 w-6 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.632-1.467A11.932 11.932 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.587-5.932-1.61l-.425-.253-2.746.87.879-2.672-.278-.442A9.776 9.776 0 012.182 12c0-5.414 4.404-9.818 9.818-9.818S21.818 6.586 21.818 12s-4.404 9.818-9.818 9.818z"/></svg>
+                    </div>
+                    <span className="text-xs font-rubik text-on-surface-variant">WhatsApp</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(window.location.href)
+                        toast.success('הקישור הועתק!')
+                      } catch {
+                        toast.error('לא ניתן להעתיק')
+                      }
+                      setShareSheetOpen(false)
+                    }}
+                    className="flex flex-col items-center gap-2"
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-low">
+                      <span className="material-symbols-outlined text-xl text-on-surface-variant">content_copy</span>
+                    </div>
+                    <span className="text-xs font-rubik text-on-surface-variant">העתק קישור</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      exportRecipeAsImage(recipe)
+                      setShareSheetOpen(false)
+                    }}
+                    className="flex flex-col items-center gap-2"
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-low">
+                      <span className="material-symbols-outlined text-xl text-on-surface-variant">download</span>
+                    </div>
+                    <span className="text-xs font-rubik text-on-surface-variant">ייצוא תמונה</span>
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Manage collaborators (owner only) */}
         {userId === recipe.created_by && (
