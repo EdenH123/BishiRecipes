@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import type { Profile } from '@/lib/types'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
@@ -14,6 +15,7 @@ export default function Navbar() {
   const supabase = useMemo(() => createClient(), [])
   const [profile, setProfile] = useState<Profile | null>(null)
   const [equippedFrame, setEquippedFrame] = useState<string | null>(null)
+  const [logoSpin, setLogoSpin] = useState(0)
 
   useEffect(() => {
     let userId: string | null = null
@@ -103,7 +105,14 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="BISHILicious" width={40} height={40} className="rounded-full" priority />
+          <motion.div
+            animate={{ rotate: logoSpin }}
+            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+            onTap={() => setLogoSpin((prev) => prev + 360)}
+            className="cursor-pointer"
+          >
+            <Image src="/logo.png" alt="BISHILicious" width={40} height={40} className="rounded-full" priority />
+          </motion.div>
           <h1 className="text-xl font-bold text-primary">BISHILicious</h1>
         </div>
       </div>
