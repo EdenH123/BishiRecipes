@@ -4,8 +4,8 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { CATEGORIES } from '@/lib/types'
-import type { Profile } from '@/lib/types'
-import { getAvatarGradient } from '@/lib/avatar-gradient'
+import AvatarWithFrame from '@/components/AvatarWithFrame'
+import { fetchEquippedFrames } from '@/lib/fetch-frames'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import { motion } from 'framer-motion'
@@ -104,6 +104,7 @@ export default function AdminDashboard() {
   const [dailyRecipes, setDailyRecipes] = useState<DayBucket[]>([])
   const [categories, setCategories] = useState<CategoryCount[]>([])
   const [topUsers, setTopUsers] = useState<ActiveUser[]>([])
+  const [frameMap, setFrameMap] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
     async function load() {
@@ -253,14 +254,17 @@ export default function AdminDashboard() {
             for (const p of profiles) profileMap.set(p.id, p)
           }
 
-          setTopUsers(
-            sortedUsers.map(([id, activity]) => ({
-              id,
-              display_name: profileMap.get(id)?.display_name || 'משתמש',
-              avatar_url: profileMap.get(id)?.avatar_url || null,
-              activity,
-            }))
-          )
+          const topUsersList = sortedUsers.map(([id, activity]) => ({
+            id,
+            display_name: profileMap.get(id)?.display_name || 'משתמש',
+            avatar_url: profileMap.get(id)?.avatar_url || null,
+            activity,
+          }))
+          setTopUsers(topUsersList)
+
+          // Fetch equipped frames for top users
+          const frames = await fetchEquippedFrames(topUsersList.map((u) => u.id))
+          setFrameMap(frames)
         }
       } catch (err) {
         console.error('Admin dashboard error:', err)
@@ -485,20 +489,7 @@ export default function AdminDashboard() {
                 </span>
 
                 {/* Avatar */}
-                {user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.display_name}
-                    className="h-10 w-10 rounded-full object-cover shrink-0"
-                  />
-                ) : (
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white shrink-0"
-                    style={{ background: getAvatarGradient(user.id) }}
-                  >
-                    {user.display_name.charAt(0)}
-                  </div>
-                )}
+                <AvatarWithFrame userId={user.id} avatarUrl={user.avatar_url} displayName={user.display_name} frameId={frameMap.get(user.id)} size={40} />
 
                 {/* Name */}
                 <div className="flex-1 min-w-0">

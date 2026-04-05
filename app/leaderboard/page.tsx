@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { getUserBadge } from '@/lib/types'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
+import AvatarWithFrame from '@/components/AvatarWithFrame'
+import { fetchEquippedFrames } from '@/lib/fetch-frames'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -75,6 +77,7 @@ export default function LeaderboardPage() {
   const [mostRecipes, setMostRecipes] = useState<UserWithCount[]>([])
   const [highestRated, setHighestRated] = useState<RatedRecipe[]>([])
   const [mostActive, setMostActive] = useState<UserWithCount[]>([])
+  const [frameMap, setFrameMap] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
     async function fetchLeaderboard() {
@@ -184,6 +187,14 @@ export default function LeaderboardPage() {
         .slice(0, 10)
       setMostActive(sortedActive)
 
+      const allUserIds = [
+        ...sortedRecipes.map(u => u.id),
+        ...sortedRated.map(r => r.created_by),
+        ...sortedActive.map(u => u.id),
+      ].filter(Boolean)
+      const frames = await fetchEquippedFrames(Array.from(new Set(allUserIds)))
+      setFrameMap(frames)
+
       setLoading(false)
     }
 
@@ -199,26 +210,15 @@ export default function LeaderboardPage() {
     return stars.join('')
   }
 
-  function renderAvatar(userId: string, avatarUrl: string | null, displayName: string, size = 'h-10 w-10') {
-    if (avatarUrl) {
-      return (
-        <Image
-          src={avatarUrl}
-          alt={displayName}
-          width={40}
-          height={40}
-          className={`${size} rounded-full object-cover`}
-          sizes="40px"
-        />
-      )
-    }
+  function renderAvatar(userId: string, avatarUrl: string | null, displayName: string, size = 40) {
     return (
-      <div
-        className={`${size} flex items-center justify-center rounded-full text-lg font-bold text-white`}
-        style={{ background: getAvatarGradient(userId) }}
-      >
-        {displayName?.charAt(0) || '?'}
-      </div>
+      <AvatarWithFrame
+        userId={userId}
+        avatarUrl={avatarUrl}
+        displayName={displayName}
+        frameId={frameMap.get(userId)}
+        size={size}
+      />
     )
   }
 

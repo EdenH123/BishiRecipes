@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 import { type Collaborator, type Profile } from '@/lib/types'
-import { getAvatarGradient } from '@/lib/avatar-gradient'
 import { toast } from 'sonner'
+import AvatarWithFrame from '@/components/AvatarWithFrame'
+import { fetchEquippedFrames } from '@/lib/fetch-frames'
 
 interface ManageCollaboratorsProps {
   recipeId: string
@@ -25,6 +25,7 @@ export default function ManageCollaborators({
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
+  const [frameMap, setFrameMap] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
     if (!open) return
@@ -36,6 +37,16 @@ export default function ManageCollaborators({
     }
     fetchProfiles()
   }, [open])
+
+  useEffect(() => {
+    const allIds = [
+      ...collaborators.map((c) => c.user_id),
+      ...profiles.map((p) => p.id),
+    ]
+    const uniqueIds = Array.from(new Set(allIds))
+    if (uniqueIds.length === 0) return
+    fetchEquippedFrames(uniqueIds).then(setFrameMap)
+  }, [collaborators, profiles])
 
   const existingIds = new Set([ownerId, ...collaborators.map((c) => c.user_id)])
   const availableProfiles = profiles
@@ -115,22 +126,13 @@ export default function ManageCollaborators({
                     className="flex items-center justify-between rounded-lg bg-surface-container-low px-3 py-2"
                   >
                     <div className="flex items-center gap-2">
-                      {c.profiles?.avatar_url ? (
-                        <Image
-                          src={c.profiles.avatar_url}
-                          alt={c.profiles.display_name}
-                          width={28}
-                          height={28}
-                          className="h-7 w-7 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-                          style={{ background: getAvatarGradient(c.user_id) }}
-                        >
-                          {c.profiles?.display_name?.charAt(0) ?? '?'}
-                        </span>
-                      )}
+                      <AvatarWithFrame
+                        userId={c.user_id}
+                        avatarUrl={c.profiles?.avatar_url}
+                        displayName={c.profiles?.display_name}
+                        frameId={frameMap.get(c.user_id) ?? null}
+                        size={32}
+                      />
                       <span className="text-sm text-gray-700">{c.profiles?.display_name}</span>
                     </div>
                     <button
@@ -168,22 +170,13 @@ export default function ManageCollaborators({
                     disabled={loading}
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-surface-container-low disabled:opacity-50"
                   >
-                    {p.avatar_url ? (
-                      <Image
-                        src={p.avatar_url}
-                        alt={p.display_name}
-                        width={24}
-                        height={24}
-                        className="h-6 w-6 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span
-                        className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                        style={{ background: getAvatarGradient(p.id) }}
-                      >
-                        {p.display_name?.charAt(0) ?? '?'}
-                      </span>
-                    )}
+                    <AvatarWithFrame
+                      userId={p.id}
+                      avatarUrl={p.avatar_url}
+                      displayName={p.display_name}
+                      frameId={frameMap.get(p.id) ?? null}
+                      size={28}
+                    />
                     <span>{p.display_name}</span>
                   </button>
                 ))}

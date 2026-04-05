@@ -20,7 +20,8 @@ import CookingMode from '@/components/CookingMode'
 import UnitConverter from '@/components/UnitConverter'
 import BackToTop from '@/components/BackToTop'
 import ManageCollaborators from '@/components/ManageCollaborators'
-import { getAvatarGradient } from '@/lib/avatar-gradient'
+import AvatarWithFrame from '@/components/AvatarWithFrame'
+import { fetchEquippedFrames } from '@/lib/fetch-frames'
 
 // --- Animation variants ---
 
@@ -143,6 +144,7 @@ export default function RecipeDetailPage() {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [isCollaborator, setIsCollaborator] = useState(false)
   const [shareSheetOpen, setShareSheetOpen] = useState(false)
+  const [frameMap, setFrameMap] = useState<Map<string, string>>(new Map())
   const deleteTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   useEffect(() => {
     async function load() {
@@ -185,6 +187,13 @@ export default function RecipeDetailPage() {
       setCollaborators(collabs)
       if (currentUserId) {
         setIsCollaborator(collabs.some((c) => c.user_id === currentUserId))
+      }
+
+      // Fetch equipped frames for collaborators
+      if (collabs.length > 0) {
+        const collabUserIds = collabs.map((c) => c.user_id)
+        const frames = await fetchEquippedFrames(collabUserIds)
+        setFrameMap(frames)
       }
 
       setLoading(false)
@@ -364,22 +373,7 @@ export default function RecipeDetailPage() {
             <span>שותפים:</span>
             {collaborators.map((c) => (
               <span key={c.user_id} className="flex items-center gap-1">
-                {c.profiles?.avatar_url ? (
-                  <Image
-                    src={c.profiles.avatar_url}
-                    alt={c.profiles.display_name}
-                    width={20}
-                    height={20}
-                    className="h-5 w-5 rounded-full object-cover"
-                  />
-                ) : (
-                  <span
-                    className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                    style={{ background: getAvatarGradient(c.user_id) }}
-                  >
-                    {c.profiles?.display_name?.charAt(0) ?? '?'}
-                  </span>
-                )}
+                <AvatarWithFrame userId={c.user_id} avatarUrl={c.profiles?.avatar_url} displayName={c.profiles?.display_name} frameId={frameMap.get(c.user_id)} size={20} />
                 <span>{c.profiles?.display_name}</span>
               </span>
             ))}

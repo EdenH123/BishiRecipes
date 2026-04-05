@@ -3,13 +3,12 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import type { Profile } from '@/lib/types'
-import { getAvatarGradient } from '@/lib/avatar-gradient'
+import AvatarWithFrame from '@/components/AvatarWithFrame'
+import { fetchEquippedFrames } from '@/lib/fetch-frames'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import Image from 'next/image'
 
 type FeedbackType = 'suggestion' | 'bug' | 'improvement'
 type FeedbackStatus = 'open' | 'in_progress' | 'done' | 'rejected'
@@ -58,6 +57,7 @@ export default function FeedbackPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set())
+  const [frameMap, setFrameMap] = useState<Map<string, string>>(new Map())
 
   // Form state
   const [showForm, setShowForm] = useState(false)
@@ -115,6 +115,15 @@ export default function FeedbackPage() {
           votes: voteCounts.get(f.id) || 0,
         }))
         setItems(itemsWithVotes as FeedbackItem[])
+
+        // Fetch equipped frames for feedback authors
+        const authorIds = feedbackData
+          .map((f: any) => f.profiles?.id)
+          .filter((id: string | undefined): id is string => !!id)
+        if (authorIds.length > 0) {
+          const frames = await fetchEquippedFrames(authorIds)
+          setFrameMap(frames)
+        }
       }
 
       if (votesData) {
@@ -441,16 +450,7 @@ export default function FeedbackPage() {
                       )}
 
                       <div className="mt-2 flex items-center gap-2 text-[11px] text-on-surface-variant">
-                        {item.profiles?.avatar_url ? (
-                          <Image src={item.profiles.avatar_url} alt="" width={16} height={16} className="h-4 w-4 rounded-full object-cover" />
-                        ) : (
-                          <div
-                            className="h-4 w-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
-                            style={{ background: getAvatarGradient(item.profiles?.id || '') }}
-                          >
-                            {item.profiles?.display_name?.charAt(0) || '?'}
-                          </div>
-                        )}
+                        <AvatarWithFrame userId={item.profiles?.id || ''} avatarUrl={item.profiles?.avatar_url} displayName={item.profiles?.display_name} frameId={frameMap.get(item.profiles?.id || '')} size={16} />
                         <span>{item.profiles?.display_name}</span>
                         <span>·</span>
                         <span>{timeAgo}</span>

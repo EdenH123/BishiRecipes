@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { getAvatarGradient } from '@/lib/avatar-gradient'
+import AvatarWithFrame from '@/components/AvatarWithFrame'
+import { fetchEquippedFrames } from '@/lib/fetch-frames'
 
 interface Comment {
   id: string
@@ -58,6 +59,7 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [frameMap, setFrameMap] = useState<Map<string, string>>(new Map())
   const initialLoadDone = useRef(false)
 
   const fetchComments = useCallback(async () => {
@@ -74,6 +76,10 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
 
     setComments((data as Comment[]) || [])
     initialLoadDone.current = true
+
+    const userIds = Array.from(new Set((data || []).map((c: Comment) => c.user_id)))
+    const frames = await fetchEquippedFrames(userIds)
+    setFrameMap(frames)
   }, [supabase, recipeId])
 
   useEffect(() => {
@@ -145,20 +151,13 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
               className="flex items-start gap-3 rounded-lg bg-surface-container-lowest p-3 shadow-sm"
             >
               {/* Avatar */}
-              {comment.profiles.avatar_url ? (
-                <img
-                  src={comment.profiles.avatar_url}
-                  alt={comment.profiles.display_name}
-                  className="h-9 w-9 shrink-0 rounded-full object-cover"
-                />
-              ) : (
-                <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                  style={{ background: getAvatarGradient(comment.user_id) }}
-                >
-                  {comment.profiles.display_name?.charAt(0) || '?'}
-                </span>
-              )}
+              <AvatarWithFrame
+                userId={comment.user_id}
+                avatarUrl={comment.profiles.avatar_url}
+                displayName={comment.profiles.display_name}
+                frameId={frameMap.get(comment.user_id)}
+                size={36}
+              />
 
               {/* Body */}
               <div className="flex-1 min-w-0">
