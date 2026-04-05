@@ -393,16 +393,16 @@ export default function HomePage() {
     return () => observer.disconnect()
   }, [hasMore, loadingMore, loading, page, fetchRecipesPage])
 
-  function handleToggleTag(tag: string) {
+  const handleToggleTag = useCallback(function handleToggleTag(tag: string) {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     )
-  }
+  }, [])
 
   const router = useRouter()
   const [surpriseLoading, setSurpriseLoading] = useState(false)
 
-  async function handleSurprise() {
+  const handleSurprise = useCallback(async function handleSurprise() {
     setSurpriseLoading(true)
     const { data } = await supabase.from('recipes').select('id')
     if (data && data.length > 0) {
@@ -410,7 +410,7 @@ export default function HomePage() {
       router.push(`/recipe/${random.id}`)
     }
     setSurpriseLoading(false)
-  }
+  }, [supabase, router])
 
   return (
     <div className="min-h-screen bg-surface" dir="rtl">

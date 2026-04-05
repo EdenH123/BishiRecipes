@@ -10,6 +10,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect, useMemo, useRef, type FormEvent } from 'react'
 
+const INPUT_CLASS =
+  'rounded-lg border border-gray-200 p-3 w-full focus:border-primary focus:ring-1 focus:ring-primary outline-none'
+
 interface RecipeFormProps {
   recipe?: Recipe
 }
@@ -273,8 +276,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
     }
   }
 
-  const inputClass =
-    'rounded-lg border border-gray-200 p-3 w-full focus:border-primary focus:ring-1 focus:ring-primary outline-none'
+  const inputClass = INPUT_CLASS
 
   return (
     <motion.form

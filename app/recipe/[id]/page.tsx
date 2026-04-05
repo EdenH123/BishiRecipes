@@ -396,6 +396,7 @@ export default function RecipeDetailPage() {
             width={1200}
             height={400}
             className="h-full max-h-[250px] sm:max-h-[400px] w-full object-cover"
+            sizes="(max-width: 768px) 100vw, 768px"
             priority
           />
         ) : (

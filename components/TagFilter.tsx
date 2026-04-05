@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 
 interface TagFilterProps {
@@ -8,7 +9,7 @@ interface TagFilterProps {
   onToggleTag: (tag: string) => void
 }
 
-export default function TagFilter({
+export default memo(function TagFilter({
   tags,
   selectedTags,
   onToggleTag,
@@ -38,4 +39,4 @@ export default function TagFilter({
       })}
     </div>
   )
-}
+})

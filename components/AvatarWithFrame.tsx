@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { getShopItem } from '@/lib/coins'
 import { getFrameDecorations } from '@/components/FrameDecorations'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
@@ -12,7 +13,7 @@ interface AvatarWithFrameProps {
   size?: number // px, default 40
 }
 
-export default function AvatarWithFrame({ userId, avatarUrl, displayName, frameId, size = 40 }: AvatarWithFrameProps) {
+export default memo(function AvatarWithFrame({ userId, avatarUrl, displayName, frameId, size = 40 }: AvatarWithFrameProps) {
   const frame = frameId ? getShopItem(frameId) : null
   const initial = displayName?.charAt(0) || '?'
 
@@ -58,4 +59,4 @@ export default function AvatarWithFrame({ userId, avatarUrl, displayName, frameI
       {getFrameDecorations(frameId!, (size + 8) / 2)}
     </div>
   )
-}
+})

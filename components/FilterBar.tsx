@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import TagFilter from './TagFilter'
 
@@ -18,7 +18,7 @@ interface FilterBarProps {
   onToggleFavorites: () => void
 }
 
-export default function FilterBar({
+export default memo(function FilterBar({
   categories,
   selectedCategory,
   onSelectCategory,
@@ -200,4 +200,4 @@ export default function FilterBar({
       </AnimatePresence>
     </div>
   )
-}
+})
