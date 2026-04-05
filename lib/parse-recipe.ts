@@ -76,7 +76,7 @@ function parseIngredientLine(line: string): Ingredient {
   return { amount, unit, name: remaining }
 }
 
-function guessCategory(title: string, ingredients: string[], steps: string[]): string {
+export function guessCategory(title: string, ingredients: string[], steps: string[]): string {
   const all = [title, ...ingredients, ...steps.slice(0, 3)].join(' ').toLowerCase()
 
   if (/עוגה|עוגיות|קרם|שוקולד|מוס|טירמיסו|עוגת|קאפקייק|מאפין/.test(all)) return 'קינוח'

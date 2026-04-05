@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { parseRecipeText, type ParsedRecipe } from '@/lib/parse-recipe'
+import { parseRecipeText, guessCategory, type ParsedRecipe } from '@/lib/parse-recipe'
 import { type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, serializeIngredient } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
@@ -38,6 +38,8 @@ export default function ImportRecipePage() {
   const [saving, setSaving] = useState(false)
   const [ocrLoading, setOcrLoading] = useState(false)
   const [ocrProgress, setOcrProgress] = useState(0)
+  const [urlInput, setUrlInput] = useState('')
+  const [urlLoading, setUrlLoading] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
 
   // Editable fields after parsing
@@ -67,6 +69,47 @@ export default function ImportRecipePage() {
       }
     })
   }, [])
+
+  async function handleUrlImport() {
+    if (!urlInput.trim()) return
+    setUrlLoading(true)
+    try {
+      const res = await fetch('/api/scrape-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlInput.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'שגיאה בייבוא מהקישור')
+        setUrlLoading(false)
+        return
+      }
+
+      // Parse scraped ingredients through our parser for structured format
+      const parsedIngredients: Ingredient[] = data.ingredients.map((line: string) => {
+        const result = parseRecipeText(`temp\n\nמצרכים:\n${line}\n\nהכנה:\ntemp`)
+        return result.ingredients[0] || { amount: '', unit: '', name: line }
+      })
+
+      setParsed({
+        title: data.title,
+        description: data.description,
+        ingredients: parsedIngredients,
+        steps: data.steps,
+        category: '',
+      })
+      setTitle(data.title || '')
+      setDescription(data.description || '')
+      setIngredients(parsedIngredients.length > 0 ? parsedIngredients : [{ amount: '', unit: '', name: '' }])
+      setSteps(data.steps.length > 0 ? data.steps : [''])
+      setCategory(guessCategory(data.title, data.ingredients, data.steps))
+      toast.success('המתכון יובא בהצלחה! בדקו ועִרכו לפי הצורך')
+    } catch {
+      toast.error('שגיאה בייבוא מהקישור')
+    }
+    setUrlLoading(false)
+  }
 
   function handleParse() {
     if (!rawText.trim()) {
@@ -212,9 +255,9 @@ export default function ImportRecipePage() {
           <span className="material-symbols-outlined text-lg">arrow_forward</span>
           חזרה
         </button>
-        <h1 className="text-2xl font-bold mb-2">ייבוא מתכון מטקסט</h1>
+        <h1 className="text-2xl font-bold mb-2">ייבוא מתכון</h1>
         <p className="text-on-surface-variant text-sm mb-6">
-          הדביקו טקסט של מתכון בכל פורמט — המערכת תזהה אוטומטית את השם, המצרכים והשלבים.
+          הדביקו קישור לאתר מתכונים, טקסט חופשי, או תמונה — המערכת תזהה אוטומטית את השם, המצרכים והשלבים.
         </p>
 
         <AnimatePresence mode="wait">
@@ -225,6 +268,51 @@ export default function ImportRecipePage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
+              {/* URL Import */}
+              <div className="mb-6 bg-surface-container-low rounded-xl p-4">
+                <label className="font-bold text-sm mb-2 block">
+                  <span className="material-symbols-outlined text-base align-middle ml-1">link</span>
+                  ייבוא מקישור
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleUrlImport() }}
+                    placeholder="https://www.example.com/recipe/..."
+                    dir="ltr"
+                    className="flex-1 rounded-lg border border-outline-variant px-4 py-3 text-sm outline-none focus:border-primary bg-surface-container-lowest"
+                  />
+                  <button
+                    onClick={handleUrlImport}
+                    disabled={!urlInput.trim() || urlLoading}
+                    className="bg-primary text-white px-5 py-3 rounded-lg font-medium disabled:opacity-40 active:scale-95 transition-transform text-sm shrink-0"
+                  >
+                    {urlLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
+                        מייבא...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-lg">download</span>
+                        ייבא
+                      </span>
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-2">
+                  תומך ברוב אתרי המתכונים הפופולריים
+                </p>
+              </div>
+
+              <div className="relative flex items-center gap-3 mb-6">
+                <div className="flex-1 border-t border-outline-variant" />
+                <span className="text-xs text-on-surface-variant">או הדביקו טקסט</span>
+                <div className="flex-1 border-t border-outline-variant" />
+              </div>
+
               <textarea
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
@@ -280,13 +368,12 @@ export default function ImportRecipePage() {
               )}
 
               <div className="mt-6 bg-surface-container-low rounded-xl p-4">
-                <h3 className="font-bold text-sm mb-2">פורמטים נתמכים:</h3>
+                <h3 className="font-bold text-sm mb-2">דרכי ייבוא:</h3>
                 <ul className="text-xs text-on-surface-variant space-y-1">
-                  <li>{`• כותרת, אחריה מצרכים ושלבים עם כותרות ("מצרכים:", "הכנה:")`}</li>
-                  <li>{`• רשימה ממוספרת (1. 2. 3.) או עם מקפים (- - -)`}</li>
-                  <li>{`• טקסט חופשי — המערכת תנסה לזהות לבד`}</li>
-                  <li>{`• כמויות בעברית ("שתי כוסות קמח") או מספרים ("2 כוסות קמח")`}</li>
-                  <li>{`• תמונה של מתכון — זיהוי טקסט אוטומטי (OCR) עם תמיכה בעברית`}</li>
+                  <li>{`🔗 קישור לאתר מתכונים — המערכת תשלוף את המתכון אוטומטית`}</li>
+                  <li>{`📝 טקסט עם כותרות ("מצרכים:", "הכנה:") או טקסט חופשי`}</li>
+                  <li>{`📷 תמונה של מתכון — זיהוי טקסט אוטומטי (OCR) בעברית`}</li>
+                  <li>{`🔢 כמויות בעברית ("שתי כוסות") או מספרים ("2 כוסות")`}</li>
                 </ul>
               </div>
             </motion.div>
