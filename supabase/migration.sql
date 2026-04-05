@@ -305,5 +305,5 @@ CREATE TABLE IF NOT EXISTS user_items (
 ALTER TABLE user_items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own items" ON user_items FOR SELECT TO authenticated USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own items" ON user_items FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own items" ON user_items FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own items" ON user_items FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete own votes" ON feedback_votes FOR DELETE TO authenticated USING (auth.uid() = user_id);

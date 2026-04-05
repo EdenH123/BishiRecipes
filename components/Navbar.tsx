@@ -21,17 +21,17 @@ export default function Navbar() {
       } = await supabase.auth.getUser()
       if (!user) return
 
-      const [profileRes, itemsRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('user_items').select('item_id').eq('user_id', user.id).eq('equipped', true),
-      ])
+      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (profileData) setProfile(profileData)
 
-      if (profileRes.data) setProfile(profileRes.data)
-
-      const equipped = itemsRes.data ?? []
-      for (const item of equipped) {
-        const shopItem = getShopItem(item.item_id)
-        if (shopItem?.type === 'frame') setEquippedFrame(item.item_id)
+      try {
+        const { data: itemsData } = await supabase.from('user_items').select('item_id').eq('user_id', user.id).eq('equipped', true)
+        for (const item of itemsData ?? []) {
+          const shopItem = getShopItem(item.item_id)
+          if (shopItem?.type === 'frame') setEquippedFrame(item.item_id)
+        }
+      } catch {
+        // user_items table may not exist yet
       }
     }
 
@@ -75,7 +75,7 @@ export default function Navbar() {
                   )}
                 </div>
               </div>
-              {equippedFrame && getFrameDecorations(equippedFrame)}
+              {equippedFrame && getFrameDecorations(equippedFrame, 24)}
             </button>
           )}
         </div>

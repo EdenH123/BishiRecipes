@@ -1,16 +1,23 @@
 // SVG decorations for avatar frames — no emojis, pure vector art
+// All positions are relative to the container center, scaled by radius
 
-export function GoldDecos() {
+interface DecoProps {
+  r: number // radius from center to decoration position
+}
+
+export function GoldDecos({ r }: DecoProps) {
+  const s = Math.max(8, r * 0.25) // star size scales with radius
   return (
     <>
-      {/* 4-point stars at cardinal positions */}
       {[0, 90, 180, 270].map((deg) => (
         <svg
           key={deg}
-          className="absolute w-3 h-3 pointer-events-none"
+          className="absolute pointer-events-none"
           style={{
-            left: `calc(50% + ${Math.cos((deg * Math.PI) / 180) * 44}px - 6px)`,
-            top: `calc(50% + ${Math.sin((deg * Math.PI) / 180) * 44}px - 6px)`,
+            width: s,
+            height: s,
+            left: `calc(50% + ${Math.cos((deg * Math.PI) / 180) * r}px - ${s / 2}px)`,
+            top: `calc(50% + ${Math.sin((deg * Math.PI) / 180) * r}px - ${s / 2}px)`,
             filter: 'drop-shadow(0 0 2px rgba(212,160,23,0.8))',
           }}
           viewBox="0 0 24 24"
@@ -23,56 +30,61 @@ export function GoldDecos() {
   )
 }
 
-export function FireDecos() {
+export function FireDecos({ r }: DecoProps) {
   return (
     <>
-      {/* Flame shapes at top and sides */}
-      {[-30, 0, 30].map((deg, i) => (
-        <svg
-          key={i}
-          className="absolute pointer-events-none"
-          style={{
-            width: i === 1 ? 16 : 12,
-            height: i === 1 ? 20 : 16,
-            left: `calc(50% + ${Math.cos(((deg - 90) * Math.PI) / 180) * 42}px - ${i === 1 ? 8 : 6}px)`,
-            top: `calc(50% + ${Math.sin(((deg - 90) * Math.PI) / 180) * 42}px - ${i === 1 ? 14 : 10}px)`,
-            filter: 'drop-shadow(0 0 3px rgba(255,100,0,0.7))',
-          }}
-          viewBox="0 0 24 32"
-          fill="none"
-        >
-          <path
-            d="M12 0C12 0 4 10 4 18c0 4.4 3.6 8 8 8s8-3.6 8-8C20 10 12 0 12 0z"
-            fill="url(#flame)"
-          />
-          <path
-            d="M12 12c0 0-3 4-3 7.5c0 1.7 1.3 3 3 3s3-1.3 3-3C15 16 12 12 12 12z"
-            fill="#ffe066"
-          />
-          <defs>
-            <linearGradient id="flame" x1="12" y1="0" x2="12" y2="26" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#ff4500" />
-              <stop offset="0.5" stopColor="#ff6a00" />
-              <stop offset="1" stopColor="#ffa500" />
-            </linearGradient>
-          </defs>
-        </svg>
-      ))}
+      {[-30, 0, 30].map((deg, i) => {
+        const w = i === 1 ? Math.max(10, r * 0.3) : Math.max(8, r * 0.22)
+        const h = w * 1.25
+        return (
+          <svg
+            key={i}
+            className="absolute pointer-events-none"
+            style={{
+              width: w,
+              height: h,
+              left: `calc(50% + ${Math.cos(((deg - 90) * Math.PI) / 180) * r}px - ${w / 2}px)`,
+              top: `calc(50% + ${Math.sin(((deg - 90) * Math.PI) / 180) * r}px - ${h * 0.7}px)`,
+              filter: 'drop-shadow(0 0 3px rgba(255,100,0,0.7))',
+            }}
+            viewBox="0 0 24 32"
+            fill="none"
+          >
+            <path
+              d="M12 0C12 0 4 10 4 18c0 4.4 3.6 8 8 8s8-3.6 8-8C20 10 12 0 12 0z"
+              fill={`url(#flame_${i})`}
+            />
+            <path
+              d="M12 12c0 0-3 4-3 7.5c0 1.7 1.3 3 3 3s3-1.3 3-3C15 16 12 12 12 12z"
+              fill="#ffe066"
+            />
+            <defs>
+              <linearGradient id={`flame_${i}`} x1="12" y1="0" x2="12" y2="26" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#ff4500" />
+                <stop offset="0.5" stopColor="#ff6a00" />
+                <stop offset="1" stopColor="#ffa500" />
+              </linearGradient>
+            </defs>
+          </svg>
+        )
+      })}
     </>
   )
 }
 
-export function IceDecos() {
+export function IceDecos({ r }: DecoProps) {
+  const s = Math.max(10, r * 0.28)
   return (
     <>
-      {/* Crystal/snowflake shapes */}
       {[45, 165, 285].map((deg) => (
         <svg
           key={deg}
-          className="absolute w-3.5 h-3.5 pointer-events-none"
+          className="absolute pointer-events-none"
           style={{
-            left: `calc(50% + ${Math.cos((deg * Math.PI) / 180) * 44}px - 7px)`,
-            top: `calc(50% + ${Math.sin((deg * Math.PI) / 180) * 44}px - 7px)`,
+            width: s,
+            height: s,
+            left: `calc(50% + ${Math.cos((deg * Math.PI) / 180) * r}px - ${s / 2}px)`,
+            top: `calc(50% + ${Math.sin((deg * Math.PI) / 180) * r}px - ${s / 2}px)`,
             filter: 'drop-shadow(0 0 3px rgba(135,206,235,0.8))',
           }}
           viewBox="0 0 24 24"
@@ -92,10 +104,10 @@ export function IceDecos() {
   )
 }
 
-export function RainbowDecos() {
+export function RainbowDecos({ r }: DecoProps) {
+  const s = Math.max(5, r * 0.12)
   return (
     <>
-      {/* Small colored circles like gems along the ring */}
       {[
         { deg: 0, color: '#e74c3c' },
         { deg: 60, color: '#f1c40f' },
@@ -106,10 +118,12 @@ export function RainbowDecos() {
       ].map(({ deg, color }) => (
         <div
           key={deg}
-          className="absolute w-2 h-2 rounded-full pointer-events-none"
+          className="absolute rounded-full pointer-events-none"
           style={{
-            left: `calc(50% + ${Math.cos((deg * Math.PI) / 180) * 44}px - 4px)`,
-            top: `calc(50% + ${Math.sin((deg * Math.PI) / 180) * 44}px - 4px)`,
+            width: s,
+            height: s,
+            left: `calc(50% + ${Math.cos((deg * Math.PI) / 180) * r}px - ${s / 2}px)`,
+            top: `calc(50% + ${Math.sin((deg * Math.PI) / 180) * r}px - ${s / 2}px)`,
             background: color,
             boxShadow: `0 0 4px ${color}`,
           }}
@@ -119,30 +133,32 @@ export function RainbowDecos() {
   )
 }
 
-export function DiamondDecos() {
+export function DiamondDecos({ r }: DecoProps) {
+  const s = Math.max(8, r * 0.25)
   return (
     <>
-      {/* Diamond gem shapes */}
-      {[60, 180, 300].map((deg) => (
+      {[60, 180, 300].map((deg, i) => (
         <svg
           key={deg}
-          className="absolute w-3 h-3 pointer-events-none"
+          className="absolute pointer-events-none"
           style={{
-            left: `calc(50% + ${Math.cos((deg * Math.PI) / 180) * 44}px - 6px)`,
-            top: `calc(50% + ${Math.sin((deg * Math.PI) / 180) * 44}px - 6px)`,
+            width: s,
+            height: s,
+            left: `calc(50% + ${Math.cos((deg * Math.PI) / 180) * r}px - ${s / 2}px)`,
+            top: `calc(50% + ${Math.sin((deg * Math.PI) / 180) * r}px - ${s / 2}px)`,
             filter: 'drop-shadow(0 0 3px rgba(168,216,234,0.9))',
           }}
           viewBox="0 0 24 24"
           fill="none"
         >
-          <polygon points="12,2 22,10 12,22 2,10" fill="url(#gem)" stroke="#a8d8ea" strokeWidth="1" />
+          <polygon points="12,2 22,10 12,22 2,10" fill={`url(#gem_${i})`} stroke="#a8d8ea" strokeWidth="1" />
           <line x1="2" y1="10" x2="22" y2="10" stroke="#d4f1f9" strokeWidth="0.5" />
           <line x1="12" y1="2" x2="8" y2="10" stroke="#d4f1f9" strokeWidth="0.5" />
           <line x1="12" y1="2" x2="16" y2="10" stroke="#d4f1f9" strokeWidth="0.5" />
           <line x1="8" y1="10" x2="12" y2="22" stroke="#d4f1f9" strokeWidth="0.5" />
           <line x1="16" y1="10" x2="12" y2="22" stroke="#d4f1f9" strokeWidth="0.5" />
           <defs>
-            <linearGradient id="gem" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+            <linearGradient id={`gem_${i}`} x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
               <stop stopColor="#e0f7fa" />
               <stop offset="0.4" stopColor="#a8d8ea" />
               <stop offset="1" stopColor="#87ceeb" />
@@ -154,17 +170,19 @@ export function DiamondDecos() {
   )
 }
 
-export function CrownDecos() {
+export function CrownDecos({ r }: DecoProps) {
+  const crownW = Math.max(14, r * 0.4)
+  const crownH = crownW * 0.7
+  const gemS = Math.max(5, r * 0.12)
   return (
     <>
-      {/* Crown shape at top */}
       <svg
         className="absolute pointer-events-none"
         style={{
-          width: 22,
-          height: 16,
-          left: 'calc(50% - 11px)',
-          top: '-2px',
+          width: crownW,
+          height: crownH,
+          left: `calc(50% - ${crownW / 2}px)`,
+          top: `calc(50% - ${r + crownH * 0.5}px)`,
           filter: 'drop-shadow(0 0 3px rgba(142,68,173,0.7))',
         }}
         viewBox="0 0 32 24"
@@ -186,14 +204,15 @@ export function CrownDecos() {
           </linearGradient>
         </defs>
       </svg>
-      {/* Small gems on sides */}
       {[135, 225].map((deg) => (
         <div
           key={deg}
-          className="absolute w-2 h-2 rounded-full pointer-events-none"
+          className="absolute rounded-full pointer-events-none"
           style={{
-            left: `calc(50% + ${Math.cos((deg * Math.PI) / 180) * 44}px - 4px)`,
-            top: `calc(50% + ${Math.sin((deg * Math.PI) / 180) * 44}px - 4px)`,
+            width: gemS,
+            height: gemS,
+            left: `calc(50% + ${Math.cos((deg * Math.PI) / 180) * r}px - ${gemS / 2}px)`,
+            top: `calc(50% + ${Math.sin((deg * Math.PI) / 180) * r}px - ${gemS / 2}px)`,
             background: 'linear-gradient(135deg, #c39bd3, #8e44ad)',
             boxShadow: '0 0 4px rgba(142,68,173,0.6)',
           }}
@@ -203,14 +222,15 @@ export function CrownDecos() {
   )
 }
 
-export function getFrameDecorations(frameId: string) {
+/** Get frame decorations scaled to a given radius (half the container size) */
+export function getFrameDecorations(frameId: string, radius = 44) {
   switch (frameId) {
-    case 'frame_gold': return <GoldDecos />
-    case 'frame_fire': return <FireDecos />
-    case 'frame_ice': return <IceDecos />
-    case 'frame_rainbow': return <RainbowDecos />
-    case 'frame_diamond': return <DiamondDecos />
-    case 'frame_crown': return <CrownDecos />
+    case 'frame_gold': return <GoldDecos r={radius} />
+    case 'frame_fire': return <FireDecos r={radius} />
+    case 'frame_ice': return <IceDecos r={radius} />
+    case 'frame_rainbow': return <RainbowDecos r={radius} />
+    case 'frame_diamond': return <DiamondDecos r={radius} />
+    case 'frame_crown': return <CrownDecos r={radius} />
     default: return null
   }
 }

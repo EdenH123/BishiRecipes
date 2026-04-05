@@ -55,7 +55,7 @@ export default function AvatarWithFrame({ userId, avatarUrl, displayName, frameI
           )}
         </div>
       </div>
-      {getFrameDecorations(frameId!)}
+      {getFrameDecorations(frameId!, (size + 8) / 2)}
     </div>
   )
 }

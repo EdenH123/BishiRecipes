@@ -127,11 +127,13 @@ export default function ShopPage() {
     // Unequip all items of same type
     const sameTypeItems = purchasedItems.filter((id) => getShopItem(id)?.type === item.type)
     for (const id of sameTypeItems) {
-      await supabase.from('user_items').update({ equipped: false }).eq('user_id', userId).eq('item_id', id)
+      const { error } = await supabase.from('user_items').update({ equipped: false }).eq('user_id', userId).eq('item_id', id)
+      if (error) { toast.error('שגיאה בהסרת פריט קודם'); return }
     }
 
     // Equip the new one
-    await supabase.from('user_items').update({ equipped: true }).eq('user_id', userId).eq('item_id', item.id)
+    const { error } = await supabase.from('user_items').update({ equipped: true }).eq('user_id', userId).eq('item_id', item.id)
+    if (error) { toast.error('שגיאה בהפעלת פריט'); return }
 
     if (item.type === 'frame') setEquippedFrame(item.id)
     if (item.type === 'title') setEquippedTitle(item.id)
@@ -140,7 +142,8 @@ export default function ShopPage() {
 
   async function handleUnequip(item: ShopItem) {
     if (!userId) return
-    await supabase.from('user_items').update({ equipped: false }).eq('user_id', userId).eq('item_id', item.id)
+    const { error } = await supabase.from('user_items').update({ equipped: false }).eq('user_id', userId).eq('item_id', item.id)
+    if (error) { toast.error('שגיאה בהסרת פריט'); return }
     if (item.type === 'frame') setEquippedFrame(null)
     if (item.type === 'title') setEquippedTitle(null)
     toast('הוסר')
@@ -192,7 +195,7 @@ export default function ShopPage() {
                 )}
               </div>
             </div>
-            {equippedFrame && getFrameDecorations(equippedFrame)}
+            {equippedFrame && getFrameDecorations(equippedFrame, 50)}
           </div>
           <h2 className="text-lg font-bold text-on-surface font-rubik">{profile?.display_name}</h2>
           {titleText && (
@@ -289,7 +292,7 @@ export default function ShopPage() {
                             )}
                           </div>
                         </div>
-                        {getFrameDecorations(item.id)}
+                        {getFrameDecorations(item.id, 42)}
                       </div>
                     ) : (
                       <div className="h-16 flex items-center justify-center">
