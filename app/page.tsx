@@ -23,6 +23,10 @@ const gridContainerVariants = {
       staggerChildren: 0.05,
     },
   },
+  exit: {
+    opacity: 0,
+    transition: { duration: 0.15 },
+  },
 }
 
 const gridItemVariants = {
@@ -448,11 +452,12 @@ export default function HomePage() {
               <AnimatePresence mode="popLayout">
                 {viewMode === 'grid' ? (
                   <motion.div
-                    key="grid-view"
+                    key={`grid-${selectedCategory}-${selectedMember}-${selectedTags.join(',')}-${showFavoritesOnly}-${sortBy}`}
                     className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
                     variants={gridContainerVariants}
                     initial="hidden"
                     animate="visible"
+                    exit="exit"
                   >
                     {recipes.map((recipe, index) => (
                       <motion.div
@@ -467,11 +472,12 @@ export default function HomePage() {
                   </motion.div>
                 ) : (
                   <motion.div
-                    key="list-view"
+                    key={`list-${selectedCategory}-${selectedMember}-${selectedTags.join(',')}-${showFavoritesOnly}-${sortBy}`}
                     className="flex flex-col gap-3"
                     variants={gridContainerVariants}
                     initial="hidden"
                     animate="visible"
+                    exit="exit"
                   >
                     {recipes.map((recipe) => (
                       <motion.div

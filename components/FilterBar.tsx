@@ -42,12 +42,15 @@ export default function FilterBar({
       {/* Top-level filter pills with icons */}
       <div className="flex flex-row-reverse gap-3 overflow-x-auto hide-scrollbar -mx-4 px-4 pb-2">
         {/* Favorites Toggle */}
-        <button
+        <motion.button
           type="button"
           onClick={onToggleFavorites}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium shadow-sm active:scale-95 transition-all whitespace-nowrap ${
+          whileTap={{ scale: 0.92 }}
+          animate={showFavoritesOnly ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium shadow-sm transition-all whitespace-nowrap ${
             showFavoritesOnly
-              ? 'bg-secondary-container text-on-secondary-container'
+              ? 'bg-secondary-container text-on-secondary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant'
           }`}
         >
@@ -58,49 +61,55 @@ export default function FilterBar({
             star
           </span>
           <span>מועדפים</span>
-        </button>
+        </motion.button>
 
         {/* Category Filter */}
-        <button
+        <motion.button
           type="button"
           onClick={() => toggleExpand('category')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium active:scale-95 transition-all whitespace-nowrap ${
+          whileTap={{ scale: 0.92 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-all whitespace-nowrap ${
             selectedCategory || expandedFilter === 'category'
-              ? 'bg-sky/15 text-sky'
+              ? 'bg-sky/15 text-sky shadow-md'
               : 'bg-surface-container-low text-on-surface-variant'
           }`}
         >
           <span className="material-symbols-outlined text-[20px]">category</span>
           <span>{selectedCategory || 'קטגוריות'}</span>
-        </button>
+        </motion.button>
 
         {/* Tags Filter */}
-        <button
+        <motion.button
           type="button"
           onClick={() => toggleExpand('tags')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium active:scale-95 transition-all whitespace-nowrap ${
+          whileTap={{ scale: 0.92 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-all whitespace-nowrap ${
             selectedTags.length > 0 || expandedFilter === 'tags'
-              ? 'bg-primary/10 text-primary'
+              ? 'bg-primary/10 text-primary shadow-md'
               : 'bg-surface-container-low text-on-surface-variant'
           }`}
         >
           <span className="material-symbols-outlined text-[20px]">sell</span>
           <span>תגיות{selectedTags.length > 0 ? ` (${selectedTags.length})` : ''}</span>
-        </button>
+        </motion.button>
 
         {/* Family Filter */}
-        <button
+        <motion.button
           type="button"
           onClick={() => toggleExpand('members')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium active:scale-95 transition-all whitespace-nowrap ${
+          whileTap={{ scale: 0.92 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-all whitespace-nowrap ${
             selectedMember || expandedFilter === 'members'
-              ? 'bg-tertiary/10 text-tertiary'
+              ? 'bg-tertiary/10 text-tertiary shadow-md'
               : 'bg-surface-container-low text-on-surface-variant'
           }`}
         >
           <span className="material-symbols-outlined text-[20px]">family_restroom</span>
           <span>בני משפחה</span>
-        </button>
+        </motion.button>
       </div>
 
       {/* Expanded filter content */}
@@ -117,18 +126,22 @@ export default function FilterBar({
               {categories.map((cat) => {
                 const isSelected = selectedCategory === cat
                 return (
-                  <button
+                  <motion.button
                     key={cat}
+                    layout
                     type="button"
                     onClick={() => onSelectCategory(isSelected ? null : cat)}
+                    whileTap={{ scale: 0.9 }}
+                    animate={isSelected ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                     className={`rounded-full px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${
                       isSelected
-                        ? 'bg-sky text-white'
+                        ? 'bg-sky text-white shadow-md'
                         : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                     }`}
                   >
                     {cat}
-                  </button>
+                  </motion.button>
                 )
               })}
             </div>
@@ -163,18 +176,22 @@ export default function FilterBar({
               {members.map((member) => {
                 const isSelected = selectedMember === member.id
                 return (
-                  <button
+                  <motion.button
                     key={member.id}
+                    layout
                     type="button"
                     onClick={() => onSelectMember(isSelected ? null : member.id)}
+                    whileTap={{ scale: 0.9 }}
+                    animate={isSelected ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                     className={`rounded-full px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${
                       isSelected
-                        ? 'bg-tertiary text-on-tertiary'
+                        ? 'bg-tertiary text-on-tertiary shadow-md'
                         : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                     }`}
                   >
                     {member.display_name}
-                  </button>
+                  </motion.button>
                 )
               })}
             </div>

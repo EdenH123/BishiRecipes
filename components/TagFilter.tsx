@@ -23,9 +23,12 @@ export default function TagFilter({
             layout
             type="button"
             onClick={() => onToggleTag(tag)}
+            whileTap={{ scale: 0.9 }}
+            animate={isSelected ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
             className={`rounded-full px-3 py-1.5 text-sm cursor-pointer whitespace-nowrap transition-colors ${
               isSelected
-                ? 'bg-primary text-on-primary'
+                ? 'bg-primary text-on-primary shadow-md'
                 : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
             }`}
           >
