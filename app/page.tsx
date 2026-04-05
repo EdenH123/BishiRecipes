@@ -68,7 +68,7 @@ export default function HomePage() {
   const [allTags, setAllTags] = useState<string[]>([])
   const [allCategories, setAllCategories] = useState<string[]>([])
   const [members, setMembers] = useState<{ id: string; display_name: string }[]>([])
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alpha'>('newest')
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alpha' | 'rating' | 'favorites' | 'comments'>('newest')
   const [loading, setLoading] = useState(true)
   const [filterChanging, setFilterChanging] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -210,18 +210,13 @@ export default function HomePage() {
         query = query.in('id', ['__none__'])
       }
 
-      // Apply sort
-      switch (sortBy) {
-        case 'oldest':
-          query = query.order('created_at', { ascending: true })
-          break
-        case 'alpha':
-          query = query.order('title', { ascending: true })
-          break
-        case 'newest':
-        default:
-          query = query.order('created_at', { ascending: false })
-          break
+      // Apply sort (only DB-sortable fields; rating/favorites/comments handled post-fetch)
+      if (sortBy === 'oldest') {
+        query = query.order('created_at', { ascending: true })
+      } else if (sortBy === 'alpha') {
+        query = query.order('title', { ascending: true })
+      } else {
+        query = query.order('created_at', { ascending: false })
       }
 
       return query
@@ -231,6 +226,9 @@ export default function HomePage() {
   )
 
   const isFirstLoad = useRef(true)
+
+  // For special sorts, we cache the full sorted list and paginate client-side
+  const specialSortCache = useRef<Recipe[]>([])
 
   // Fetch a page of recipes
   const fetchRecipesPage = useCallback(
@@ -243,33 +241,99 @@ export default function HomePage() {
         setLoadingMore(true)
       }
 
-      const from = pageNum * PAGE_SIZE
-      const to = from + PAGE_SIZE - 1
+      const isSpecialSort = sortBy === 'rating' || sortBy === 'favorites' || sortBy === 'comments'
 
-      const [dataRes, countRes] = await Promise.all([
-        buildFilteredQuery(false).range(from, to),
-        // Only fetch count on initial load / filter change (page 0)
-        pageNum === 0
-          ? buildFilteredQuery(true)
-          : Promise.resolve({ count: null }),
-      ])
+      if (isSpecialSort && isInitial) {
+        // Fetch ALL filtered recipes + counts for sorting
+        const [dataRes, countRes, ratingsRes, favoritesRes, commentsRes] = await Promise.all([
+          buildFilteredQuery(false),
+          buildFilteredQuery(true),
+          supabase.from('ratings').select('recipe_id, rating'),
+          supabase.from('favorites').select('recipe_id'),
+          supabase.from('comments').select('recipe_id'),
+        ])
 
-      if (countRes.count !== null && countRes.count !== undefined) {
-        setTotalCount(countRes.count)
-      }
+        if (countRes.count !== null && countRes.count !== undefined) {
+          setTotalCount(countRes.count)
+        }
 
-      const newRecipes = (dataRes.data as Recipe[]) || []
-      const fetchedCount = newRecipes.length
+        const allRecipes = (dataRes.data as Recipe[]) || []
 
-      if (isInitial) {
-        setRecipes(newRecipes)
+        // Build count maps
+        const ratingMap = new Map<string, { total: number; count: number }>()
+        if (ratingsRes.data) {
+          for (const r of ratingsRes.data) {
+            const existing = ratingMap.get(r.recipe_id)
+            if (existing) { existing.total += r.rating; existing.count++ }
+            else ratingMap.set(r.recipe_id, { total: r.rating, count: 1 })
+          }
+        }
+        const favCountMap = new Map<string, number>()
+        if (favoritesRes.data) {
+          for (const f of favoritesRes.data) {
+            favCountMap.set(f.recipe_id, (favCountMap.get(f.recipe_id) || 0) + 1)
+          }
+        }
+        const commentCountMap = new Map<string, number>()
+        if (commentsRes.data) {
+          for (const c of commentsRes.data) {
+            commentCountMap.set(c.recipe_id, (commentCountMap.get(c.recipe_id) || 0) + 1)
+          }
+        }
+
+        // Sort
+        allRecipes.sort((a, b) => {
+          if (sortBy === 'rating') {
+            const avgA = ratingMap.has(a.id) ? ratingMap.get(a.id)!.total / ratingMap.get(a.id)!.count : 0
+            const avgB = ratingMap.has(b.id) ? ratingMap.get(b.id)!.total / ratingMap.get(b.id)!.count : 0
+            return avgB - avgA
+          } else if (sortBy === 'favorites') {
+            return (favCountMap.get(b.id) || 0) - (favCountMap.get(a.id) || 0)
+          } else {
+            return (commentCountMap.get(b.id) || 0) - (commentCountMap.get(a.id) || 0)
+          }
+        })
+
+        specialSortCache.current = allRecipes
+        const pageSlice = allRecipes.slice(0, PAGE_SIZE)
+        setRecipes(pageSlice)
+        setHasMore(allRecipes.length > PAGE_SIZE)
+        setPage(0)
+      } else if (isSpecialSort && !isInitial) {
+        // Paginate from cache
+        const from = pageNum * PAGE_SIZE
+        const pageSlice = specialSortCache.current.slice(from, from + PAGE_SIZE)
+        setRecipes((prev) => [...prev, ...pageSlice])
+        setHasMore(from + PAGE_SIZE < specialSortCache.current.length)
+        setPage(pageNum)
       } else {
-        setRecipes((prev) => [...prev, ...newRecipes])
-      }
+        // Normal DB-sorted pagination
+        const from = pageNum * PAGE_SIZE
+        const to = from + PAGE_SIZE - 1
 
-      // If we got fewer than PAGE_SIZE results, there are no more pages
-      setHasMore(fetchedCount === PAGE_SIZE)
-      setPage(pageNum)
+        const [dataRes, countRes] = await Promise.all([
+          buildFilteredQuery(false).range(from, to),
+          pageNum === 0
+            ? buildFilteredQuery(true)
+            : Promise.resolve({ count: null }),
+        ])
+
+        if (countRes.count !== null && countRes.count !== undefined) {
+          setTotalCount(countRes.count)
+        }
+
+        const newRecipes = (dataRes.data as Recipe[]) || []
+        const fetchedCount = newRecipes.length
+
+        if (isInitial) {
+          setRecipes(newRecipes)
+        } else {
+          setRecipes((prev) => [...prev, ...newRecipes])
+        }
+
+        setHasMore(fetchedCount === PAGE_SIZE)
+        setPage(pageNum)
+      }
 
       if (isInitial && isFirstLoad.current) {
         setLoading(false)
@@ -280,7 +344,7 @@ export default function HomePage() {
         setLoadingMore(false)
       }
     },
-    [buildFilteredQuery]
+    [buildFilteredQuery, sortBy, supabase]
   )
 
   // Initial fetch + refetch when filters/sort change
@@ -426,12 +490,15 @@ export default function HomePage() {
             </div>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'alpha')}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="rounded-full bg-surface-container-low px-4 py-2 text-sm text-on-surface-variant outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="newest">חדש ← ישן</option>
               <option value="oldest">ישן ← חדש</option>
               <option value="alpha">א-ב</option>
+              <option value="rating">הכי מדורגים</option>
+              <option value="favorites">הכי פופולריים</option>
+              <option value="comments">הכי מגיבים</option>
             </select>
           </div>
         </div>
