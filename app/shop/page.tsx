@@ -265,20 +265,36 @@ export default function ShopPage() {
                   {/* Preview */}
                   <div className="flex justify-center mb-3">
                     {item.type === 'frame' ? (
-                      <div
-                        className="w-20 h-20 rounded-full p-1"
+                      <motion.div
+                        className="w-20 h-20 rounded-full p-[3px] shadow-lg"
                         style={{ background: item.preview }}
+                        animate={
+                          item.id === 'frame_rainbow' || item.id === 'frame_crown'
+                            ? { rotate: 360 }
+                            : item.id === 'frame_fire'
+                            ? { scale: [1, 1.05, 1] }
+                            : {}
+                        }
+                        transition={
+                          item.id === 'frame_rainbow' || item.id === 'frame_crown'
+                            ? { duration: 3, repeat: Infinity, ease: 'linear' }
+                            : item.id === 'frame_fire'
+                            ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' }
+                            : {}
+                        }
                       >
-                        <div className="w-full h-full rounded-full overflow-hidden">
-                          {profile?.avatar_url ? (
-                            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
-                              {profile?.display_name?.charAt(0) ?? '?'}
-                            </div>
-                          )}
+                        <div className="w-full h-full rounded-full overflow-hidden bg-surface">
+                          <div className="w-full h-full rounded-full overflow-hidden">
+                            {profile?.avatar_url ? (
+                              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xl font-bold text-white" style={{ background: gradient }}>
+                                {profile?.display_name?.charAt(0) ?? '?'}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </motion.div>
                     ) : (
                       <div className="h-16 flex items-center justify-center">
                         <span className="text-2xl">{item.preview.split(' ')[0]}</span>
