@@ -505,8 +505,7 @@ export default function ProfilePage() {
             href="/feedback"
             className="flex items-center gap-2 rounded-xl border border-outline-variant px-5 py-3 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low font-rubik"
           >
-            <span className="material-symbols-outlined text-lg">feedback</span>
-            📋 הצעות ושיפורים
+            הצעות ושיפורים 📋
           </Link>
         </div>
 
