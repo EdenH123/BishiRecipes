@@ -8,6 +8,7 @@ import type { Recipe, Profile } from '@/lib/types'
 import { CATEGORIES, DEFAULT_TAGS, getUserBadge } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
 import { getAvatarGradient } from '@/lib/avatar-gradient'
+import { getShopItem } from '@/lib/coins'
 import Achievements from '@/components/Achievements'
 import XPProgress from '@/components/XPProgress'
 import Navbar from '@/components/Navbar'
@@ -44,6 +45,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [equippedFrame, setEquippedFrame] = useState<string | null>(null)
+  const [equippedTitle, setEquippedTitle] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'recipes' | 'favorites' | 'achievements' | 'admin'>('recipes')
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [allCategories, setAllCategories] = useState<string[]>([])
@@ -79,6 +82,21 @@ export default function ProfilePage() {
         if (profileData) {
           setProfile(profileData)
           setDisplayName(profileData.display_name)
+        }
+
+        // Fetch equipped shop items
+        const { data: userItems } = await supabase
+          .from('user_items')
+          .select('item_id, equipped')
+          .eq('user_id', user.id)
+          .eq('equipped', true)
+
+        if (userItems) {
+          for (const ui of userItems) {
+            const item = getShopItem(ui.item_id)
+            if (item?.type === 'frame') setEquippedFrame(ui.item_id)
+            if (item?.type === 'title') setEquippedTitle(ui.item_id)
+          }
         }
 
         // Fetch user's recipes
@@ -276,7 +294,7 @@ export default function ProfilePage() {
           <motion.button
             onClick={() => avatarInputRef.current?.click()}
             disabled={uploadingAvatar}
-            className="relative group"
+            className={`relative group rounded-full ${equippedFrame ? getShopItem(equippedFrame)?.preview ?? '' : ''}`}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
@@ -317,6 +335,13 @@ export default function ProfilePage() {
             </div>
           ) : null
         })()}
+
+        {/* Equipped title */}
+        {equippedTitle && (
+          <div className="mt-1 flex justify-center">
+            <span className="text-sm font-medium text-primary">{getShopItem(equippedTitle)?.preview}</span>
+          </div>
+        )}
 
         {/* Edit display name */}
         <div className="mt-4 flex items-center justify-center gap-3">
@@ -499,8 +524,14 @@ export default function ProfilePage() {
           </AnimatePresence>
         </div>
 
-        {/* Feedback link */}
-        <div className="mt-8 flex justify-center">
+        {/* Shop + Feedback links */}
+        <div className="mt-8 flex justify-center gap-3">
+          <Link
+            href="/shop"
+            className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-3 text-sm text-amber-700 transition-colors hover:bg-amber-100 font-rubik font-medium"
+          >
+            חנות המטבח 🪙
+          </Link>
           <Link
             href="/feedback"
             className="flex items-center gap-2 rounded-xl border border-outline-variant px-5 py-3 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low font-rubik"

@@ -288,4 +288,22 @@ CREATE TABLE IF NOT EXISTS feedback_votes (
 ALTER TABLE feedback_votes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view feedback votes" ON feedback_votes FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Users can insert own votes" ON feedback_votes FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+-- ===========================================
+-- User Items (Shop purchases)
+-- ===========================================
+
+CREATE TABLE IF NOT EXISTS user_items (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  item_id text NOT NULL,
+  equipped boolean DEFAULT false,
+  purchased_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, item_id)
+);
+
+ALTER TABLE user_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own items" ON user_items FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own items" ON user_items FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own items" ON user_items FOR UPDATE TO authenticated USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own votes" ON feedback_votes FOR DELETE TO authenticated USING (auth.uid() = user_id);
