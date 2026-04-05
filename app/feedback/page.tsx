@@ -86,21 +86,35 @@ export default function FeedbackPage() {
         .single()
       if (profile) setIsAdmin(profile.is_admin)
 
-      // Fetch feedback items
-      const { data: feedbackData } = await supabase
-        .from('feedback')
-        .select('*, profiles!user_id(display_name, avatar_url, id)')
-        .order('created_at', { ascending: false })
+      // Fetch feedback items + all votes for counting
+      const [{ data: feedbackData }, { data: allVotes }, { data: votesData }] = await Promise.all([
+        supabase
+          .from('feedback')
+          .select('*, profiles!user_id(display_name, avatar_url, id)')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('feedback_votes')
+          .select('feedback_id'),
+        supabase
+          .from('feedback_votes')
+          .select('feedback_id')
+          .eq('user_id', user.id),
+      ])
 
       if (feedbackData) {
-        setItems(feedbackData as FeedbackItem[])
+        // Count votes per feedback from feedback_votes table
+        const voteCounts = new Map<string, number>()
+        if (allVotes) {
+          for (const v of allVotes) {
+            voteCounts.set(v.feedback_id, (voteCounts.get(v.feedback_id) || 0) + 1)
+          }
+        }
+        const itemsWithVotes = feedbackData.map((f: any) => ({
+          ...f,
+          votes: voteCounts.get(f.id) || 0,
+        }))
+        setItems(itemsWithVotes as FeedbackItem[])
       }
-
-      // Fetch user's votes
-      const { data: votesData } = await supabase
-        .from('feedback_votes')
-        .select('feedback_id')
-        .eq('user_id', user.id)
 
       if (votesData) {
         setMyVotes(new Set(votesData.map((v) => v.feedback_id)))
@@ -162,10 +176,8 @@ export default function FeedbackPage() {
         await supabase.from('feedback_votes').delete()
           .eq('feedback_id', item.id)
           .eq('user_id', userId)
-        await supabase.from('feedback').update({ votes: newCount }).eq('id', item.id)
       } else {
         await supabase.from('feedback_votes').insert({ feedback_id: item.id, user_id: userId })
-        await supabase.from('feedback').update({ votes: newCount }).eq('id', item.id)
       }
     } catch {
       // Revert

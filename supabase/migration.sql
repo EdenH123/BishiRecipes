@@ -270,8 +270,8 @@ CREATE TABLE IF NOT EXISTS feedback (
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view feedback" ON feedback FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Users can insert feedback" ON feedback FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own or admin update feedback" ON feedback FOR UPDATE TO authenticated USING (
-  auth.uid() = user_id OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
+CREATE POLICY "Admin can update any feedback" ON feedback FOR UPDATE TO authenticated USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
 );
 CREATE POLICY "Users can delete own or admin delete feedback" ON feedback FOR DELETE TO authenticated USING (
   auth.uid() = user_id OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
