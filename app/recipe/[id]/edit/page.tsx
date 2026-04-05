@@ -40,22 +40,7 @@ export default function EditRecipePage() {
       const recipeData = recipeRes.data as Recipe
       const currentUserId = userRes.data.user?.id ?? null
 
-      // Permission check: owner, collaborator, or admin
-      let allowed = false
-      if (currentUserId) {
-        if (currentUserId === recipeData.created_by) {
-          allowed = true
-        } else {
-          const [profileRes, collabRes] = await Promise.all([
-            supabase.from('profiles').select('is_admin').eq('id', currentUserId).single(),
-            supabase.from('recipe_collaborators').select('user_id').eq('recipe_id', id).eq('user_id', currentUserId).maybeSingle(),
-          ])
-          if (profileRes.data?.is_admin) allowed = true
-          if (collabRes.data) allowed = true
-        }
-      }
-
-      if (!allowed) {
+      if (!currentUserId) {
         setUnauthorized(true)
         setLoading(false)
         return

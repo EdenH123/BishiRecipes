@@ -425,7 +425,7 @@ export default function RecipeDetailPage() {
           >
             <span className="material-symbols-outlined text-lg">share</span>
           </motion.button>
-          {(userId === recipe.created_by || isCollaborator || isAdmin) && (
+          {userId && (
             <motion.div variants={actionButtonItemVariants}>
               <Link
                 href={`/recipe/${recipe.id}/edit`}
