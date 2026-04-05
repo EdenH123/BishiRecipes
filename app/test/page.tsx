@@ -472,7 +472,7 @@ export default function TestPage() {
     try {
       const { calculateCoins, getShopItem, SHOP_ITEMS } = await import('@/lib/coins')
       const coins = calculateCoins({ recipeCount: 3, commentCount: 5, ratingCount: 2, favoriteCount: 8, reactionCount: 4, collaborationCount: 1 })
-      const expected = 3 * 30 + 5 * 5 + 2 * 3 + 8 * 2 + 4 * 1 + 1 * 20 // 90+25+6+16+4+20=161
+      const expected = 3 * 25 + 5 * 5 + 2 * 3 + 8 * 2 + 4 * 1 + 1 * 15 // 75+25+6+16+4+15=141
       const goldFrame = getShopItem('frame_gold')
       const frameCount = SHOP_ITEMS.filter(i => i.type === 'frame').length
       const titleCount = SHOP_ITEMS.filter(i => i.type === 'title').length
