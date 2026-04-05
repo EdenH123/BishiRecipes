@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { type Recipe, type Profile, CATEGORIES, DEFAULT_TAGS } from '@/lib/types'
@@ -397,23 +398,51 @@ export default function HomePage() {
     )
   }
 
+  const router = useRouter()
+  const [surpriseLoading, setSurpriseLoading] = useState(false)
+
+  async function handleSurprise() {
+    setSurpriseLoading(true)
+    const { data } = await supabase.from('recipes').select('id')
+    if (data && data.length > 0) {
+      const random = data[Math.floor(Math.random() * data.length)]
+      router.push(`/recipe/${random.id}`)
+    }
+    setSurpriseLoading(false)
+  }
+
   return (
     <div className="min-h-screen bg-surface" dir="rtl">
       <Navbar />
 
       <main className="pt-20 pb-28 px-4">
-        {/* Search bar */}
-        <div className="relative mb-6 max-w-2xl mx-auto">
-          <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-            <span className="material-symbols-outlined text-outline">search</span>
+        {/* Search bar + Surprise button */}
+        <div className="flex gap-2 items-center mb-6 max-w-2xl mx-auto">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+              <span className="material-symbols-outlined text-outline">search</span>
+            </div>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="חפש מתכון..."
+              className="w-full bg-surface-container-lowest border-none py-4 pr-12 pl-4 rounded-full shadow-sm focus:ring-2 focus:ring-primary/20 transition-all text-right placeholder:text-outline/60 outline-none"
+            />
           </div>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="חפש מתכון..."
-            className="w-full bg-surface-container-lowest border-none py-4 pr-12 pl-4 rounded-full shadow-sm focus:ring-2 focus:ring-primary/20 transition-all text-right placeholder:text-outline/60 outline-none"
-          />
+          <motion.button
+            onClick={handleSurprise}
+            disabled={surpriseLoading}
+            whileTap={{ scale: 0.9 }}
+            whileHover={{ rotate: [0, -10, 10, -10, 0] }}
+            transition={{ duration: 0.4 }}
+            className="shrink-0 flex items-center justify-center h-[52px] w-[52px] rounded-full bg-tertiary-container text-on-tertiary-container shadow-sm hover:shadow-md transition-shadow disabled:opacity-50"
+            title="הפתע אותי!"
+          >
+            <span className="material-symbols-outlined text-2xl">
+              {surpriseLoading ? 'hourglass_empty' : 'casino'}
+            </span>
+          </motion.button>
         </div>
 
         {/* Filter bar */}
