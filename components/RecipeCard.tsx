@@ -69,8 +69,8 @@ function RecipeCard({ recipe }: RecipeCardProps) {
                   className={`object-cover transition-all duration-500 group-hover:scale-105 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                 />
               ) : (
-                <div className="flex w-full h-full items-center justify-center bg-secondary-container/30 text-5xl">
-                  🍽️
+                <div className="flex w-full h-full items-center justify-center bg-secondary-container/30">
+                  <Image src="/logo.png" alt="BISHILicious" width={64} height={64} className="rounded-full opacity-40" />
                 </div>
               )}
 

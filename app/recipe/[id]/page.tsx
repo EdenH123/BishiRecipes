@@ -296,8 +296,8 @@ export default function RecipeDetailPage() {
             priority
           />
         ) : (
-          <div className="flex h-64 w-full items-center justify-center bg-secondary-container/30 text-7xl">
-            🍽️
+          <div className="flex h-64 w-full items-center justify-center bg-secondary-container/30">
+            <Image src="/logo.png" alt="BISHILicious" width={100} height={100} className="rounded-full opacity-40" />
           </div>
         )}
       </motion.div>
