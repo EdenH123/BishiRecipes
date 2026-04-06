@@ -63,8 +63,8 @@ export default function Navbar() {
   }, [])
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm">
-      <div className="flex flex-row-reverse justify-between items-center px-4 h-20 max-w-5xl mx-auto">
+    <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm overflow-visible">
+      <div className="flex flex-row-reverse justify-between items-center px-4 h-20 max-w-5xl mx-auto overflow-visible">
         <div className="flex items-center gap-3">
           {profile && (
             <button
@@ -104,14 +104,14 @@ export default function Navbar() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <motion.div
             animate={{ rotate: logoSpin }}
             transition={{ type: 'spring', stiffness: 200, damping: 15 }}
             onTap={() => setLogoSpin((prev) => prev + 360)}
-            className="cursor-pointer"
+            className="cursor-pointer shrink-0"
           >
-            <Image src="/logo.png" alt="BISHILicious" width={64} height={64} className="rounded-full" priority />
+            <Image src="/logo.png" alt="BISHILicious" width={64} height={64} className="rounded-full shrink-0" priority />
           </motion.div>
           <h1 className="text-xl font-bold text-primary">BISHILicious</h1>
         </div>
