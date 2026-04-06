@@ -154,7 +154,15 @@ export default function ImportRecipePage() {
       }
 
       setRawText(text)
-      toast.success('הטקסט זוהה! בִדקו ועִרכו לפני העיבוד')
+      // Auto-parse the OCR text immediately
+      const result = parseRecipeText(text)
+      setParsed(result)
+      setTitle(result.title)
+      setDescription(result.description)
+      setCategory(result.category)
+      setIngredients(result.ingredients.length > 0 ? result.ingredients : [{ amount: '', unit: '', name: '' }])
+      setSteps(result.steps.length > 0 ? result.steps : [''])
+      toast.success('המתכון זוהה מהתמונה! בִדקו ועִרכו לפי הצורך')
     } catch (err) {
       toast.error('שגיאה בזיהוי הטקסט')
     }

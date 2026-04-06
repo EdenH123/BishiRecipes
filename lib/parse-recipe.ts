@@ -22,42 +22,53 @@ const HEBREW_NUMBERS: Record<string, string> = {
 const UNITS_LIST = MEASUREMENT_UNITS.filter(Boolean)
 
 // Action verbs that indicate a step (not an ingredient)
-const STEP_VERBS = /לערבב|להוסיף|לחמם|לשים|לאפות|להכניס|לבשל|לטגן|לחתוך|להניח|למזוג|לקפל|להרתיח|לקרר|ללוש|לגלגל|להשאיר|לחלק|לסגור|להעביר|לרדד|למרוח|לשפוך|לסנן|לכסות|מחממים|מרתיחים|מערבבים|מוסיפים|שמים|אופים|מכניסים|מבשלים|מטגנים|חותכים|מניחים|מוזגים|מקפלים|מרתיחים|מקררים|מגלגלים|יוצרים|מעבירים|מורחים|יש לסגור|יש להוסיף|כשהמים/
+const STEP_VERBS = /לערבב|להוסיף|לחמם|לשים|לאפות|להכניס|לבשל|לטגן|לחתוך|להניח|למזוג|לקפל|להרתיח|לקרר|ללוש|לגלגל|להשאיר|לחלק|לסגור|להעביר|לרדד|למרוח|לשפוך|לסנן|לכסות|לפזר|לערום|ליצור|לטרוף|להמתין|לצנן|למלא|לקשט|לזלף|להגיש|לדלל|לכבות|להפוך|לנקז|לגרד|להקציף|לקמח|מחממים|מרתיחים|מערבבים|מוסיפים|שמים|אופים|מכניסים|מבשלים|מטגנים|חותכים|מניחים|מוזגים|מקפלים|מקררים|מגלגלים|יוצרים|מעבירים|מורחים|טורפים|יוצקים|מפזרים|ממלאים|מקשטים|מגישים|מנקזים|מקציפים|מכסים|משאירים|מחלקים|יש לסגור|יש להוסיף|יש לערבב|יש להניח|יש להכניס|כשהמים|כשהתנור|כשהשמן|אחרי ש|לפני ש|בינתיים|בזהירות|היטב|בעדינות|עד שמקבלים|עד ש/
 
-function isLikelyIngredient(line: string): boolean {
+// Common food/ingredient words that indicate a line is an ingredient
+const FOOD_WORDS = /קמח|סוכר|מלח|שמן|חמאה|ביצ|שמנת|חלב|שוקולד|קקאו|שמרים|אבקת|וניל|קינמון|גבינה|שקדים|אגוזים|צימוקים|דבש|סילן|תמצית|מיץ|לימון|תפוז|בצל|שום|עגבני|פלפל|גזר|תפוח|קישוא|חציל|פטרוזיל|כוסברה|נענע|כרוב|חסה|אורז|פסטה|בורגול|קוסקוס|עוף|בקר|הודו|דג|טחינה|סויה|חומוס|שעועית|עדשים|תירס|פטריות|זית|אפונה|ברוקולי|כרובית|סלרי|דלעת|בטטה|תפוחי אדמה|מרגרינה|שקית|אבקה|קורנפלור/
+
+// Temporal/structural words that strongly indicate a step
+const STEP_STRUCTURE = /דקות|שעה|שעות|מעלות|תנור|מיקסר|קערה|תבנית|סיר|מחבת|אש /
+
+function scoreIngredient(line: string): number {
   const clean = cleanLine(line)
-  if (!clean) return false
-  // Skip sub-headers like "*לבצק (במיקסר)-"
-  if (/^\*.*[-–:]$/.test(clean) || /^[*].*\(.*\).*[-–:]?$/.test(clean)) return false
-  // Skip if it has action verbs
-  if (STEP_VERBS.test(clean)) return false
-  // Skip if very long (steps tend to be longer)
-  if (clean.length > 50) return false
-  // Likely ingredient if starts with number, Hebrew number, or a unit
-  if (/^\d/.test(clean)) return true
+  if (!clean) return 0
+  let score = 0
+
+  // Strong negative: action verbs
+  if (STEP_VERBS.test(clean)) score -= 5
+  // Strong negative: step structure words
+  if (STEP_STRUCTURE.test(clean)) score -= 2
+  // Strong negative: long lines are usually steps
+  if (clean.length > 60) score -= 3
+  if (clean.length > 40) score -= 1
+
+  // Strong positive: starts with number
+  if (/^\d/.test(clean)) score += 4
+  // Strong positive: starts with Hebrew number
   for (const [word] of Object.entries(HEBREW_NUMBERS)) {
-    if (clean.startsWith(word + ' ') || clean === word) return true
+    if (clean.startsWith(word + ' ') || clean === word) { score += 4; break }
   }
+  // Strong positive: starts with or contains a measurement unit
   for (const u of UNITS_LIST) {
-    if (clean.startsWith(u + ' ') || clean === u) return true
+    if (clean.startsWith(u + ' ') || clean === u) { score += 4; break }
+    if (clean.includes(' ' + u + ' ') || clean.endsWith(' ' + u)) { score += 2; break }
   }
-  // Short lines without verbs are likely ingredients
-  if (clean.length < 30 && !STEP_VERBS.test(clean)) return true
-  return false
-}
+  // Positive: contains food words
+  if (FOOD_WORDS.test(clean)) score += 3
+  // Positive: short lines lean ingredient
+  if (clean.length < 25) score += 1
 
-function isLikelyStep(line: string): boolean {
-  const clean = cleanLine(line)
-  if (!clean) return false
-  if (STEP_VERBS.test(clean)) return true
-  if (clean.length > 50) return true
-  return false
+  return score
 }
 
 function isSubHeader(line: string): boolean {
   const clean = cleanLine(line)
   // Patterns like "*לבצק (במיקסר)-", "*כשהמים רותחים,"
-  return /^\*/.test(line.trim()) && clean.length < 40 && /[-–:,]$/.test(clean)
+  if (/^\*/.test(line.trim()) && clean.length < 40 && /[-–:,]$/.test(clean)) return true
+  // Also catch "לציפוי:", "לבצק:" style sub-headers
+  if (/^ל\S+[:\-–]$/.test(clean) && clean.length < 30) return true
+  return false
 }
 
 function cleanLine(line: string): string {
@@ -67,6 +78,8 @@ function cleanLine(line: string): string {
     .replace(/\*+$/, '') // strip trailing asterisks
     .replace(/^\d+[\.\)]\s+/, '') // strip numbering like "1. " or "2) " (require space to avoid eating decimals like "2.5")
     .replace(/^כותרת[:\s]+/i, '') // strip "כותרת:" prefix
+    .replace(/(\d)\s*\/\s*(\d)/g, '$1/$2') // normalize OCR spaced fractions: "3 / 4" → "3/4"
+    .replace(/(\d)\s*\.\s*(\d)/g, '$1.$2') // normalize OCR spaced decimals: "1 . 5" → "1.5"
     .trim()
 }
 
@@ -244,27 +257,42 @@ export function parseRecipeText(text: string): ParsedRecipe {
     }
   }
 
-  // If no headers found, try heuristic: classify each line as ingredient or step
+  // If no headers found, try heuristic: score each line and use context
   if (ingredientStart === -1 && stepStart === -1) {
     title = cleanLine(lines[0])
 
-    // Classify each line individually
+    // First pass: score every line
+    const scores: number[] = []
+    for (let i = 1; i < lines.length; i++) {
+      scores.push(scoreIngredient(lines[i]))
+    }
+
+    // Second pass: context-aware classification
+    // Lines near other ingredients get a boost, and vice versa
     for (let i = 1; i < lines.length; i++) {
       const raw = lines[i]
       const clean = cleanLine(raw)
       if (!clean) continue
 
-      // Skip sub-headers like "*לבצק (במיקסר)-"
+      const idx = i - 1 // scores index
+      let score = scores[idx]
+
+      // Context: if neighbors are ingredients, boost this line's ingredient score
+      const prevScore = idx > 0 ? scores[idx - 1] : 0
+      const nextScore = idx < scores.length - 1 ? scores[idx + 1] : 0
+      if (prevScore > 0 && nextScore > 0) score += 1 // sandwiched between ingredients
+      if (prevScore > 2) score += 0.5 // previous was clearly an ingredient
+
+      // Sub-headers go to steps for context
       if (isSubHeader(raw)) {
-        // Add as a step header for context
         steps.push(clean)
         continue
       }
 
-      if (isLikelyIngredient(raw)) {
+      if (score > 0) {
         const ing = parseIngredientLine(raw)
         if (ing.name || ing.unit) ingredients.push(ing)
-        else if (clean) steps.push(clean) // fallback to step
+        else if (clean) steps.push(clean)
       } else {
         steps.push(clean)
       }
