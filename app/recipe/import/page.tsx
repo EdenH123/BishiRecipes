@@ -500,13 +500,33 @@ export default function ImportRecipePage() {
                 <div className="space-y-2">
                   {ingredients.map((ing, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={ing.amount}
-                        onChange={(e) => updateIngredient(i, 'amount', e.target.value)}
-                        placeholder="כמות"
-                        className="w-16 rounded-lg border border-outline-variant px-2 py-2 text-sm outline-none focus:border-primary bg-surface-container-lowest text-center"
-                      />
+                      <div className="relative group">
+                        <input
+                          type="text"
+                          value={ing.amount}
+                          onChange={(e) => updateIngredient(i, 'amount', e.target.value)}
+                          placeholder="כמות"
+                          className="w-20 rounded-lg border border-outline-variant px-2 py-2 text-sm outline-none focus:border-primary bg-surface-container-lowest text-center"
+                          dir="ltr"
+                        />
+                        <div dir="ltr" className="hidden group-focus-within:flex absolute top-full right-0 mt-1 z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-1.5 gap-1">
+                          {['¼','⅓','½','⅔','¾'].map((f) => (
+                            <button
+                              key={f}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault()
+                                const cur = ing.amount.trim()
+                                const newVal = cur && !cur.includes(f) ? `${cur}${f}` : f
+                                updateIngredient(i, 'amount', newVal)
+                              }}
+                              className="w-9 h-9 rounded-md text-base hover:bg-primary/10 hover:text-primary transition-colors font-semibold"
+                            >
+                              {f}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <select
                         value={ing.unit}
                         onChange={(e) => updateIngredient(i, 'unit', e.target.value)}
