@@ -778,6 +778,146 @@ export default function TestPage() {
       }
     }
 
+    // 42. OCR spaced fractions normalization
+    try {
+      const p1 = parseRecipeText("test\nמצרכים:\n3 / 4 כוס סוכר\nהכנה:\ntest")
+      const p2 = parseRecipeText("test\nמצרכים:\n1 . 5 כוס קמח\nהכנה:\ntest")
+      const ok1 = p1.ingredients[0]?.amount === '¾' && p1.ingredients[0]?.unit === 'כוס'
+      const ok2 = p2.ingredients[0]?.amount === '1½' && p2.ingredients[0]?.unit === 'כוס'
+      if (ok1 && ok2) {
+        add('42. נרמול שברים OCR', 'pass', `"3 / 4"→${p1.ingredients[0].amount} ✓ | "1 . 5"→${p2.ingredients[0].amount} ✓`)
+      } else {
+        add('42. נרמול שברים OCR', 'fail', `"3 / 4"→${p1.ingredients[0]?.amount} (צפוי ¾) | "1 . 5"→${p2.ingredients[0]?.amount} (צפוי 1½)`)
+      }
+    } catch (e) {
+      add('42. נרמול שברים OCR', 'fail', String(e))
+    }
+
+    // 43. Mixed format — ingredient/step separation
+    try {
+      const mixed = parseRecipeText(`*בייגל*
+*מחממים תנור ל 200 מעלות
+חצי קילו קמח
+2 כפות סוכר
+כפית מלח
+ללוש 5 דקות במיקסר
+לחלק ל8 חלקים
+להכניס לתנור ל25 דקות`)
+      const ingCount = mixed.ingredients.length
+      const stepCount = mixed.steps.length
+      const hasFlour = mixed.ingredients.some(i => i.name.includes('קמח'))
+      const hasKnead = mixed.steps.some(s => s.includes('ללוש'))
+      if (ingCount >= 3 && stepCount >= 3 && hasFlour && hasKnead) {
+        add('43. הפרדת מצרכים/שלבים מעורבים', 'pass', `${ingCount} מצרכים ✓ | ${stepCount} שלבים ✓ | קמח=מצרך ✓ | ללוש=שלב ✓`)
+      } else {
+        add('43. הפרדת מצרכים/שלבים מעורבים', 'fail', `מצרכים: ${ingCount} (צפוי ≥3) | שלבים: ${stepCount} (צפוי ≥3) | קמח: ${hasFlour} | ללוש: ${hasKnead}`)
+      }
+    } catch (e) {
+      add('43. הפרדת מצרכים/שלבים מעורבים', 'fail', String(e))
+    }
+
+    // 44. Food-word detection (ingredients without amounts)
+    try {
+      const p = parseRecipeText("מתכון\nקמח\nסוכר\nמלח\nשמן\nלערבב הכל")
+      const ingNames = p.ingredients.map(i => i.name)
+      const hasAll = ['קמח', 'סוכר', 'מלח', 'שמן'].every(w => ingNames.some(n => n.includes(w)))
+      const stepOk = p.steps.length === 1 && p.steps[0].includes('לערבב')
+      if (hasAll && stepOk) {
+        add('44. זיהוי מילות מאכל', 'pass', `קמח, סוכר, מלח, שמן זוהו כמצרכים ✓ | "לערבב הכל" כשלב ✓`)
+      } else {
+        add('44. זיהוי מילות מאכל', 'fail', `מצרכים: ${ingNames.join(', ')} | שלבים: ${p.steps.join(', ')}`)
+      }
+    } catch (e) {
+      add('44. זיהוי מילות מאכל', 'fail', String(e))
+    }
+
+    // 45. Action verbs classified as steps
+    try {
+      const verbs = ['לערבב היטב', 'להוסיף ביצים', 'מחממים תנור', 'לאפות 30 דקות בתנור', 'למרוח ביצה מעל']
+      const p = parseRecipeText("מתכון\n2 כוס קמח\n" + verbs.join('\n'))
+      const allSteps = verbs.every(v => p.steps.some(s => s.includes(v.split(' ')[0])))
+      if (allSteps && p.ingredients.length === 1) {
+        add('45. זיהוי פעלי הכנה', 'pass', `${verbs.length} פעלים זוהו כשלבים ✓ | מצרך אחד ✓`)
+      } else {
+        add('45. זיהוי פעלי הכנה', 'fail', `שלבים: ${p.steps.length} (צפוי ${verbs.length}) | מצרכים: ${p.ingredients.length} (צפוי 1)`)
+      }
+    } catch (e) {
+      add('45. זיהוי פעלי הכנה', 'fail', String(e))
+    }
+
+    // 46. Asterisk/WhatsApp title cleanup
+    try {
+      const p = parseRecipeText("*עוגת שוקולד מיוחדת*\nמצרכים:\n2 כוס קמח\nהכנה:\nלאפות")
+      if (p.title === 'עוגת שוקולד מיוחדת') {
+        add('46. ניקוי כוכביות מכותרת', 'pass', `"*עוגת שוקולד מיוחדת*" → "${p.title}" ✓`)
+      } else {
+        add('46. ניקוי כוכביות מכותרת', 'fail', `כותרת: "${p.title}" (צפוי "עוגת שוקולד מיוחדת")`)
+      }
+    } catch (e) {
+      add('46. ניקוי כוכביות מכותרת', 'fail', String(e))
+    }
+
+    // 47. Category auto-detection (multiple)
+    try {
+      const bread = parseRecipeText("לחם ביתי\nמצרכים:\nקמח\nשמרים\nהכנה:\nללוש")
+      const drink = parseRecipeText("שייק בננה\nמצרכים:\nבננה\nחלב\nהכנה:\nלערבב")
+      const dessert = parseRecipeText("עוגיות שוקולד\nמצרכים:\nשוקולד\nהכנה:\nלאפות")
+      const allOk = bread.category === 'לחם ואפייה' && drink.category === 'שתייה' && dessert.category === 'קינוח'
+      if (allOk) {
+        add('47. זיהוי קטגוריות מרובות', 'pass', `לחם→${bread.category} ✓ | שייק→${drink.category} ✓ | עוגיות→${dessert.category} ✓`)
+      } else {
+        add('47. זיהוי קטגוריות מרובות', 'fail', `לחם→"${bread.category}" | שייק→"${drink.category}" | עוגיות→"${dessert.category}"`)
+      }
+    } catch (e) {
+      add('47. זיהוי קטגוריות מרובות', 'fail', String(e))
+    }
+
+    // 48. Sub-headers detected in mixed mode
+    try {
+      const p = parseRecipeText("עוגה\n*לבצק (במיקסר)-\n2 כוס קמח\n1 כוס סוכר\nלערבב הכל")
+      const subInSteps = p.steps.some(s => s.includes('לבצק'))
+      const ingOk = p.ingredients.length >= 2
+      if (subInSteps && ingOk) {
+        add('48. זיהוי כותרות-משנה', 'pass', `"*לבצק (במיקסר)-" → שלב ✓ | ${p.ingredients.length} מצרכים ✓`)
+      } else {
+        add('48. זיהוי כותרות-משנה', 'fail', `כותרת-משנה בשלבים: ${subInSteps} | מצרכים: ${p.ingredients.length}`)
+      }
+    } catch (e) {
+      add('48. זיהוי כותרות-משנה', 'fail', String(e))
+    }
+
+    // 49. Bidi marks stripped
+    try {
+      const text = "test\nמצרכים:\n\u200E3/4\u200F כוס סוכר\nהכנה:\ntest"
+      const p = parseRecipeText(text)
+      if (p.ingredients[0]?.amount === '¾') {
+        add('49. ניקוי סימני bidi', 'pass', `"‎3/4‏" → ${p.ingredients[0].amount} ✓`)
+      } else {
+        add('49. ניקוי סימני bidi', 'fail', `כמות: "${p.ingredients[0]?.amount}" (צפוי "¾")`)
+      }
+    } catch (e) {
+      add('49. ניקוי סימני bidi', 'fail', String(e))
+    }
+
+    // 50. Mixed numbers "1 1/2"
+    try {
+      const p = parseRecipeText("test\nמצרכים:\n1 1/2 כוס קמח\n2 3/4 כפות סוכר\nהכנה:\ntest")
+      const ok1 = p.ingredients[0]?.amount === '1½'
+      const ok2 = p.ingredients[1]?.amount === '2¾'
+      if (ok1 && ok2) {
+        add('50. מספרים מעורבים', 'pass', `"1 1/2"→${p.ingredients[0].amount} ✓ | "2 3/4"→${p.ingredients[1].amount} ✓`)
+      } else {
+        add('50. מספרים מעורבים', 'fail', `"1 1/2"→${p.ingredients[0]?.amount} (צפוי 1½) | "2 3/4"→${p.ingredients[1]?.amount} (צפוי 2¾)`)
+      }
+    } catch (e) {
+      add('50. מספרים מעורבים', 'fail', String(e))
+    }
+
+    // 51. Cleanup
+    if (testRecipeId) {
+      // Already cleaned in step 41
+    }
+
     setRunning(false)
   }
 
@@ -792,7 +932,7 @@ export default function TestPage() {
           <Link href="/" className="text-sm text-primary hover:underline">חזרה לאפליקציה</Link>
         </div>
         <p className="text-on-surface-variant mb-6">
-          בודק: חיבור, הרשאות, פרופיל, מתכונים, מועדפים, תגובות, דירוגים, hidden_filters, אחסון, עדכונים, אמוג׳י, גרדיאנט, דחיסה, ייצוא, טיפוסים, מטבעות, XP, רמות, הישגים, פענוח מתכון, שותפים, לידרבורד, תגיות, ייבוא URL, חנות, משוב, מסגרות.
+          בודק: חיבור, הרשאות, פרופיל, מתכונים, מועדפים, תגובות, דירוגים, hidden_filters, אחסון, עדכונים, אמוג׳י, גרדיאנט, דחיסה, ייצוא, טיפוסים, מטבעות, XP, רמות, הישגים, פענוח מתכון, שותפים, לידרבורד, תגיות, ייבוא URL, חנות, משוב, מסגרות, OCR שברים, הפרדת מצרכים/שלבים, מילות מאכל, פעלי הכנה, כוכביות, קטגוריות, כותרות-משנה, bidi, מספרים מעורבים.
         </p>
 
         <div className="flex items-center gap-4 mb-6">
