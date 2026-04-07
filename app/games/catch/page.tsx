@@ -29,6 +29,7 @@ interface FallingItem {
   rotSpeed: number
   wobblePhase: number
   wobbleAmp: number
+  caught?: boolean
 }
 
 interface FloatingText {
@@ -415,11 +416,12 @@ export default function CatchGame() {
                 addParticles(item.x, PLATE_Y, 6, ['#44ff44', '#88ff88', '#ffffff'])
               }
             }
+            item.caught = true
             item.y = h + 50 // remove
           }
 
-          // Miss good food
-          if (!item.isBad && !item.isPowerUp && item.y > h + 10) {
+          // Miss good food (only if not caught)
+          if (!item.caught && !item.isBad && !item.isPowerUp && item.y > h + 10) {
             loseLife()
             comboRef.current = 0
             setCombo(0)

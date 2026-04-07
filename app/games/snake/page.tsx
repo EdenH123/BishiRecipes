@@ -215,6 +215,15 @@ export default function SnakeGame() {
         ctx.stroke()
       }
 
+      // Wall borders
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)'
+      ctx.lineWidth = 2
+      ctx.strokeRect(1, 1, cols.current * CELL - 2, rows.current * CELL - 2)
+      // Inner glow on walls
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.15)'
+      ctx.lineWidth = 4
+      ctx.strokeRect(3, 3, cols.current * CELL - 6, rows.current * CELL - 6)
+
       // Subtle glow at center
       const grd = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.6)
       grd.addColorStop(0, `rgba(74, 222, 128, ${0.03 + 0.01 * Math.sin(gridPhase.current * 2)})`)
@@ -407,6 +416,29 @@ export default function SnakeGame() {
       ctx.restore()
     }
 
+    function triggerDeath() {
+      deathSegments.current = snake.current.map((seg, i) => {
+        const ratio = snake.current.length > 1 ? i / (snake.current.length - 1) : 0
+        return {
+          x: seg.x * CELL + CELL / 2,
+          y: seg.y * CELL + CELL / 2,
+          vx: (Math.random() - 0.5) * 6,
+          vy: (Math.random() - 0.5) * 6 - 2,
+          alpha: 1,
+          color: `hsl(142, ${lerp(80, 60, ratio)}%, ${lerp(60, 20, ratio)}%)`,
+          rotation: 0,
+          rotSpeed: (Math.random() - 0.5) * 0.3,
+        }
+      })
+      deathTimer.current = 0
+      gameStateRef.current = 'over'
+      setGameState('over')
+      setShakeClass(true)
+      setTimeout(() => setShakeClass(false), 400)
+      const newScores = saveHighScore(scoreRef.current)
+      setHighScores(newScores)
+    }
+
     function tick() {
       dir.current = nextDir.current
       const head = snake.current[0]
@@ -418,38 +450,15 @@ export default function SnakeGame() {
       if (dir.current === 'up') ny--
       if (dir.current === 'down') ny++
 
-      // Wall collision — wrap around
-      if (nx < 0) nx = cols.current - 1
-      if (nx >= cols.current) nx = 0
-      if (ny < 0) ny = rows.current - 1
-      if (ny >= rows.current) ny = 0
+      // Wall collision — game over
+      if (nx < 0 || nx >= cols.current || ny < 0 || ny >= rows.current) {
+        triggerDeath()
+        return
+      }
 
       // Self collision
       if (snake.current.some(s => s.x === nx && s.y === ny)) {
-        // Death animation: scatter segments
-        deathSegments.current = snake.current.map((seg, i) => {
-          const ratio = snake.current.length > 1 ? i / (snake.current.length - 1) : 0
-          return {
-            x: seg.x * CELL + CELL / 2,
-            y: seg.y * CELL + CELL / 2,
-            vx: (Math.random() - 0.5) * 6,
-            vy: (Math.random() - 0.5) * 6 - 2,
-            alpha: 1,
-            color: `hsl(142, ${lerp(80, 60, ratio)}%, ${lerp(60, 20, ratio)}%)`,
-            rotation: 0,
-            rotSpeed: (Math.random() - 0.5) * 0.3,
-          }
-        })
-        deathTimer.current = 0
-
-        gameStateRef.current = 'over'
-        setGameState('over')
-        // Screen shake
-        setShakeClass(true)
-        setTimeout(() => setShakeClass(false), 400)
-
-        const newScores = saveHighScore(scoreRef.current)
-        setHighScores(newScores)
+        triggerDeath()
         return
       }
 
