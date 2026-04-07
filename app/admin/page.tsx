@@ -125,10 +125,9 @@ export default function AdminDashboard() {
   const [topUsers, setTopUsers] = useState<ActiveUser[]>([])
   const [frameMap, setFrameMap] = useState<Map<string, string>>(new Map())
 
-  // Interactive chart state
-  const [hoveredBar, setHoveredBar] = useState<number | null>(null)
-  const [hoveredCat, setHoveredCat] = useState<string | null>(null)
+  // Interactive chart state (tap-based for mobile)
   const [selectedBar, setSelectedBar] = useState<number | null>(null)
+  const [selectedCat, setSelectedCat] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -548,21 +547,18 @@ export default function AdminDashboard() {
             {/* Bars */}
             <div className="flex items-end justify-between gap-2 h-full relative z-10">
               {dailyRecipes.map((bucket, i) => {
-                const isHovered = hoveredBar === i
-                const isSelected = selectedBar === i
+                const isActive = selectedBar === i
                 const pct = maxDaily > 0 ? (bucket.count / maxDaily) * 100 : 0
 
                 return (
                   <div
                     key={bucket.date}
-                    className="flex flex-col items-center flex-1 gap-1 relative cursor-pointer"
-                    onMouseEnter={() => setHoveredBar(i)}
-                    onMouseLeave={() => setHoveredBar(null)}
+                    className="flex flex-col items-center flex-1 gap-1 relative cursor-pointer active:scale-95 transition-transform"
                     onClick={() => setSelectedBar(selectedBar === i ? null : i)}
                   >
-                    {/* Tooltip */}
+                    {/* Tooltip on tap */}
                     <AnimatePresence>
-                      {(isHovered || isSelected) && (
+                      {isActive && (
                         <motion.div
                           initial={{ opacity: 0, y: 5, scale: 0.9 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -579,49 +575,27 @@ export default function AdminDashboard() {
                     </AnimatePresence>
 
                     {/* Count label */}
-                    <motion.span
-                      className="text-xs font-bold"
-                      animate={{
-                        color: isHovered || isSelected ? 'var(--md-sys-color-primary, #6750A4)' : 'var(--md-sys-color-on-surface, #1C1B1F)',
-                        scale: isHovered ? 1.2 : 1,
-                      }}
-                    >
+                    <span className={`text-xs font-bold ${isActive ? 'text-primary scale-110' : 'text-on-surface'} transition-all`}>
                       {bucket.count}
-                    </motion.span>
+                    </span>
 
                     {/* Bar */}
                     <motion.div
-                      className="w-full rounded-t-lg relative overflow-hidden"
+                      className="w-full rounded-t-lg"
                       initial={{ height: 0 }}
                       animate={{
                         height: `${Math.max(pct, 4)}%`,
-                        backgroundColor: isHovered || isSelected ? '#7C5CFC' : '#6750A4',
+                        backgroundColor: isActive ? '#7C5CFC' : '#6750A4',
+                        scale: isActive ? 1.08 : 1,
                       }}
-                      whileHover={{ scale: 1.08 }}
                       transition={{ duration: 0.5, delay: 0.2 + i * 0.07, ease: 'easeOut' }}
                       style={{ minHeight: bucket.count > 0 ? 8 : 4 }}
-                    >
-                      {/* Shine effect on hover */}
-                      {isHovered && (
-                        <motion.div
-                          initial={{ x: '-100%' }}
-                          animate={{ x: '200%' }}
-                          transition={{ duration: 0.6, ease: 'easeOut' }}
-                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                        />
-                      )}
-                    </motion.div>
+                    />
 
                     {/* Day label */}
-                    <motion.span
-                      className="text-[10px] font-rubik whitespace-nowrap"
-                      animate={{
-                        color: isHovered || isSelected ? 'var(--md-sys-color-primary, #6750A4)' : 'var(--md-sys-color-on-surface-variant, #49454F)',
-                        fontWeight: isHovered || isSelected ? 700 : 400,
-                      }}
-                    >
+                    <span className={`text-[10px] font-rubik whitespace-nowrap transition-all ${isActive ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>
                       {bucket.label}
-                    </motion.span>
+                    </span>
                   </div>
                 )
               })}
@@ -681,7 +655,7 @@ export default function AdminDashboard() {
                       const dashLen = (pct / 100) * circumference
                       const dashOffset = (offset / 100) * circumference
                       offset += pct
-                      const isHov = hoveredCat === cat.name
+                      const isActive = selectedCat === cat.name
                       return (
                         <motion.circle
                           key={cat.name}
@@ -692,10 +666,9 @@ export default function AdminDashboard() {
                           strokeDashoffset={-dashOffset}
                           strokeLinecap="round"
                           className="cursor-pointer"
-                          onMouseEnter={() => setHoveredCat(cat.name)}
-                          onMouseLeave={() => setHoveredCat(null)}
+                          onClick={() => setSelectedCat(selectedCat === cat.name ? null : cat.name)}
                           initial={{ strokeDasharray: `0 ${circumference}`, strokeWidth: 10 }}
-                          animate={{ strokeDasharray: `${dashLen} ${circumference - dashLen}`, strokeWidth: isHov ? 14 : 10 }}
+                          animate={{ strokeDasharray: `${dashLen} ${circumference - dashLen}`, strokeWidth: isActive ? 14 : 10 }}
                           transition={{ duration: 0.8, ease: 'easeOut' }}
                         />
                       )
@@ -703,12 +676,12 @@ export default function AdminDashboard() {
                   })()}
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  {hoveredCat ? (
+                  {selectedCat ? (
                     <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="text-center">
                       <p className="text-lg font-bold text-on-surface">
-                        {categories.find((c) => c.name === hoveredCat)?.count}
+                        {categories.find((c) => c.name === selectedCat)?.count}
                       </p>
-                      <p className="text-[10px] text-on-surface-variant font-rubik">{hoveredCat}</p>
+                      <p className="text-[10px] text-on-surface-variant font-rubik">{selectedCat}</p>
                     </motion.div>
                   ) : (
                     <div className="text-center">
@@ -728,7 +701,7 @@ export default function AdminDashboard() {
             {categories.map((cat, i) => {
               const total = categories.reduce((s, c) => s + c.count, 0)
               const pct = total > 0 ? Math.round((cat.count / total) * 100) : 0
-              const isHov = hoveredCat === cat.name
+              const isActive = selectedCat === cat.name
 
               return (
                 <motion.div
@@ -736,20 +709,19 @@ export default function AdminDashboard() {
                   initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3, delay: 0.1 + i * 0.05 }}
-                  className={`flex items-center gap-3 rounded-xl p-2 -mx-2 transition-colors cursor-pointer ${isHov ? 'bg-surface-container-low' : ''}`}
-                  onMouseEnter={() => setHoveredCat(cat.name)}
-                  onMouseLeave={() => setHoveredCat(null)}
+                  className={`flex items-center gap-3 rounded-xl p-2 -mx-2 transition-colors cursor-pointer ${isActive ? 'bg-surface-container-low' : ''}`}
+                  onClick={() => setSelectedCat(selectedCat === cat.name ? null : cat.name)}
                 >
                   <span className="text-xl w-8 text-center shrink-0">{cat.emoji}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <span className={`text-sm font-rubik transition-all ${isHov ? 'font-bold text-on-surface' : 'font-medium text-on-surface'}`}>
+                      <span className={`text-sm font-rubik transition-all ${isActive ? 'font-bold text-on-surface' : 'font-medium text-on-surface'}`}>
                         {cat.name}
                       </span>
                       <div className="flex items-center gap-2">
                         <motion.span
                           className="text-xs text-on-surface-variant font-rubik"
-                          animate={{ opacity: isHov ? 1 : 0.5 }}
+                          animate={{ opacity: isActive ? 1 : 0.5 }}
                         >
                           {pct}%
                         </motion.span>
@@ -764,7 +736,7 @@ export default function AdminDashboard() {
                         className="h-full rounded-full relative overflow-hidden"
                         style={{ backgroundColor: cat.bar }}
                       >
-                        {isHov && (
+                        {isActive && (
                           <motion.div
                             initial={{ x: '-100%' }}
                             animate={{ x: '200%' }}
