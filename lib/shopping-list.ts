@@ -63,13 +63,28 @@ function consolidateItems(items: ShoppingItem[]): ShoppingItem[] {
           updatedAt: item.updatedAt > existing.updatedAt ? item.updatedAt : existing.updatedAt,
         }
       } else {
-        const existingDisplay = [existing.quantity, existing.unit].filter(Boolean).join(' ')
-        const newDisplay = [item.quantity, item.unit].filter(Boolean).join(' ')
-        result[existingIdx] = {
-          ...existing,
-          quantity: existingDisplay && newDisplay ? `${existingDisplay} + ${newDisplay}` : existingDisplay || newDisplay,
-          unit: '',
-          updatedAt: item.updatedAt > existing.updatedAt ? item.updatedAt : existing.updatedAt,
+        // Different units — try gram conversion
+        const existingGrams = toGrams(existing.quantity, existing.unit)
+        const itemGrams = toGrams(item.quantity, item.unit)
+        const newerDate = item.updatedAt > existing.updatedAt ? item.updatedAt : existing.updatedAt
+
+        if (existingGrams !== null && itemGrams !== null) {
+          const formatted = formatGrams(existingGrams + itemGrams)
+          result[existingIdx] = {
+            ...existing,
+            quantity: formatted.quantity,
+            unit: formatted.unit,
+            updatedAt: newerDate,
+          }
+        } else {
+          const existingDisplay = [existing.quantity, existing.unit].filter(Boolean).join(' ')
+          const newDisplay = [item.quantity, item.unit].filter(Boolean).join(' ')
+          result[existingIdx] = {
+            ...existing,
+            quantity: existingDisplay && newDisplay ? `${existingDisplay} + ${newDisplay}` : existingDisplay || newDisplay,
+            unit: '',
+            updatedAt: newerDate,
+          }
         }
       }
     } else {
@@ -225,8 +240,47 @@ export function normalizeIngredientName(name: string): string {
   return stripHebrew(n).trim()
 }
 
+// --- Unit conversion to grams ---
+// Approximate conversions for common Hebrew cooking units.
+// These are general-purpose averages; exact values depend on the ingredient,
+// but for a shopping list, close enough is better than separate lines.
+const UNIT_TO_GRAMS: Record<string, number> = {
+  'גרם': 1,
+  'גר': 1,
+  'ג': 1,
+  'ק״ג': 1000,
+  'קילו': 1000,
+  'קילוגרם': 1000,
+  'כוס': 200,
+  'כוסות': 200,
+  'כף': 15,
+  'כפות': 15,
+  'כפית': 5,
+  'כפיות': 5,
+  'מ״ל': 1,
+  'מל': 1,
+  'ליטר': 1000,
+}
+
+/** Try to convert a quantity+unit to grams. Returns null if unit is not convertible. */
+function toGrams(quantity: string, unit: string): number | null {
+  const factor = UNIT_TO_GRAMS[unit.trim()]
+  if (factor === undefined) return null
+  const n = parseQuantity(quantity)
+  if (n === null) return null
+  return n * factor
+}
+
+/** Format grams into the most readable unit (g or kg) */
+function formatGrams(grams: number): { quantity: string; unit: string } {
+  if (grams >= 1000) {
+    const kg = grams / 1000
+    return { quantity: formatQuantity(kg), unit: 'ק״ג' }
+  }
+  return { quantity: formatQuantity(grams), unit: 'גרם' }
+}
+
 // --- Unit compatibility ---
-// Only merge quantities when units are the same or both empty.
 
 function unitsCompatible(a: string, b: string): boolean {
   const na = a.trim()
@@ -355,15 +409,31 @@ export function addIngredientsToList(
         updatedAt: now,
       }
     } else if (anyUnitIdx >= 0) {
-      // Different unit — combine into one line as "7 כפות + 100 גרם"
+      // Different unit — try to convert both to grams and merge
       const existing = newList[anyUnitIdx]
-      const existingDisplay = [existing.quantity, existing.unit].filter(Boolean).join(' ')
-      const newDisplay = [scaledAmount, ing.unit].filter(Boolean).join(' ')
-      newList[anyUnitIdx] = {
-        ...existing,
-        quantity: existingDisplay && newDisplay ? `${existingDisplay} + ${newDisplay}` : existingDisplay || newDisplay,
-        unit: '', // clear unit since it's now mixed into the quantity string
-        updatedAt: now,
+      const existingGrams = toGrams(existing.quantity, existing.unit)
+      const newGrams = toGrams(scaledAmount, ing.unit)
+
+      if (existingGrams !== null && newGrams !== null) {
+        // Both convertible — merge as grams/kg
+        const totalGrams = existingGrams + newGrams
+        const formatted = formatGrams(totalGrams)
+        newList[anyUnitIdx] = {
+          ...existing,
+          quantity: formatted.quantity,
+          unit: formatted.unit,
+          updatedAt: now,
+        }
+      } else {
+        // Can't convert — show as "X + Y"
+        const existingDisplay = [existing.quantity, existing.unit].filter(Boolean).join(' ')
+        const newDisplay = [scaledAmount, ing.unit].filter(Boolean).join(' ')
+        newList[anyUnitIdx] = {
+          ...existing,
+          quantity: existingDisplay && newDisplay ? `${existingDisplay} + ${newDisplay}` : existingDisplay || newDisplay,
+          unit: '',
+          updatedAt: now,
+        }
       }
     } else {
       newList.push({

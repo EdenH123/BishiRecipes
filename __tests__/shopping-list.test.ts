@@ -133,7 +133,7 @@ describe('addIngredientsToList', () => {
     expect(result[0].id).toBe('existing1') // same item
   })
 
-  it('merges items with different units into one line', () => {
+  it('converts different units to grams and merges', () => {
     const existing: ShoppingItem[] = [
       {
         id: 'existing1',
@@ -146,12 +146,78 @@ describe('addIngredientsToList', () => {
         updatedAt: new Date().toISOString(),
       },
     ]
+    // 7 כפות = 105g, + 100g = 205g
     const newIngredients = [makeIngredient('סוכר', '100', 'גרם')]
     const result = addIngredientsToList(existing, newIngredients)
 
     expect(result).toHaveLength(1)
-    expect(result[0].quantity).toBe('7 כפות + 100 גרם')
-    expect(result[0].unit).toBe('') // unit cleared since it's mixed
+    expect(result[0].quantity).toBe('205')
+    expect(result[0].unit).toBe('גרם')
+  })
+
+  it('converts cups and grams to grams', () => {
+    const existing: ShoppingItem[] = [
+      {
+        id: 'existing1',
+        ingredientName: 'קמח',
+        normalizedName: normalizeIngredientName('קמח'),
+        quantity: '2',
+        unit: 'כוסות',
+        checked: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ]
+    // 2 כוסות = 400g, + 50g = 450g
+    const newIngredients = [makeIngredient('קמח', '50', 'גרם')]
+    const result = addIngredientsToList(existing, newIngredients)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].quantity).toBe('450')
+    expect(result[0].unit).toBe('גרם')
+  })
+
+  it('shows kg when result exceeds 1000g', () => {
+    const existing: ShoppingItem[] = [
+      {
+        id: 'existing1',
+        ingredientName: 'קמח',
+        normalizedName: normalizeIngredientName('קמח'),
+        quantity: '5',
+        unit: 'כוסות',
+        checked: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ]
+    // 5 כוסות = 1000g = 1 ק״ג, + 500g = 1.5 ק״ג
+    const newIngredients = [makeIngredient('קמח', '500', 'גרם')]
+    const result = addIngredientsToList(existing, newIngredients)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].quantity).toBe('1½')
+    expect(result[0].unit).toBe('ק״ג')
+  })
+
+  it('falls back to "+" format for non-convertible units', () => {
+    const existing: ShoppingItem[] = [
+      {
+        id: 'existing1',
+        ingredientName: 'בצל',
+        normalizedName: normalizeIngredientName('בצל'),
+        quantity: '2',
+        unit: 'יחידות',
+        checked: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ]
+    const newIngredients = [makeIngredient('בצל', '1', 'חבילה')]
+    const result = addIngredientsToList(existing, newIngredients)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].quantity).toBe('2 יחידות + 1 חבילה')
+    expect(result[0].unit).toBe('')
   })
 
   it('does not merge with checked items', () => {
