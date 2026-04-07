@@ -456,7 +456,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                   type="text"
                   value={ingredient.amount}
                   onChange={(e) => updateIngredient(index, 'amount', e.target.value)}
-                  placeholder="2"
+                  placeholder="0"
                   className="w-20 rounded-lg border border-gray-200 p-3 text-center focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   dir="ltr"
                 />
