@@ -448,7 +448,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
               onDragOver={(e) => { e.preventDefault() }}
               onDrop={() => { if (dragIngredient !== null && dragIngredient !== index) reorderIngredients(dragIngredient, index); setDragIngredient(null) }}
               onDragEnd={() => setDragIngredient(null)}
-              className={`flex gap-2 items-center transition-opacity ${dragIngredient === index ? 'opacity-40' : ''}`}
+              className={`flex gap-2 items-center transition-opacity min-w-0 ${dragIngredient === index ? 'opacity-40' : ''}`}
             >
               <span className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg">drag_indicator</span>
               <div className="relative group">
@@ -495,7 +495,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                 onChange={(e) => updateIngredient(index, 'name', e.target.value)}
                 placeholder={`מצרך ${index + 1}`}
                 spellCheck
-                className="flex-1 rounded-lg border border-gray-200 p-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                className="flex-1 min-w-0 rounded-lg border border-gray-200 p-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
               />
               {ingredients.length > 1 && (
                 <button

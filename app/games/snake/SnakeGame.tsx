@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const CELL = 20
-const FOOD_EMOJIS = ['🍕', '🍔', '🌮', '🍩', '🧁', '🍪', '🥐', '🍟', '🌭', '🍫', '🥙', '🍗', '🍣', '🥑']
+const FOOD_EMOJIS = ['🍕', '🍔', '🌮', '🍩', '🧁', '🍪', '🥐', '🍟', '🌭', '🍫', '🥙', '🍗', '🍣', '🥑', '🍰', '🍓', '🍇', '🍉', '🥩', '🧆', '🥗', '🍜', '🍱', '🥘', '🫓']
 const GOLDEN_EMOJI = '🌟'
 
 type Dir = 'up' | 'down' | 'left' | 'right'
@@ -252,7 +252,7 @@ export default function SnakeGame() {
       }
 
       // Draw food emoji larger for visibility
-      ctx.font = `${CELL + 4}px serif`
+      ctx.font = `${CELL + 8}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(foodEmoji.current, fx, fy)
