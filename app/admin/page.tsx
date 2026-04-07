@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { CATEGORIES } from '@/lib/types'
@@ -8,7 +8,8 @@ import AvatarWithFrame from '@/components/AvatarWithFrame'
 import { fetchEquippedFrames } from '@/lib/fetch-frames'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { toast } from 'sonner'
 
 // ── Category config (reused from TasteMap) ──
 const CATEGORY_CONFIG: Record<string, { emoji: string; bar: string }> = {
@@ -92,12 +93,29 @@ interface ActiveUser {
   activity: number
 }
 
+interface ManagedUser {
+  id: string
+  display_name: string
+  avatar_url: string | null
+  is_admin: boolean
+  created_at: string
+  recipe_count: number
+  comment_count: number
+}
+
 export default function AdminDashboard() {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [showUserManagement, setShowUserManagement] = useState(false)
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [userSearch, setUserSearch] = useState('')
+  const [userFrameMap, setUserFrameMap] = useState<Map<string, string>>(new Map())
 
   const [overview, setOverview] = useState<OverviewStats>({ totalRecipes: 0, totalUsers: 0, totalComments: 0, totalRatings: 0 })
   const [weekly, setWeekly] = useState<WeeklyActivity>({ recipesThisWeek: 0, recipesLastWeek: 0, commentsThisWeek: 0, commentsLastWeek: 0, newUsersThisWeek: 0 })
@@ -121,6 +139,7 @@ export default function AdminDashboard() {
 
         if (!profile?.is_admin) { router.push('/'); return }
         setAuthorized(true)
+        setCurrentUserId(user.id)
 
         // ── Date boundaries ──
         const now = new Date()
@@ -276,6 +295,109 @@ export default function AdminDashboard() {
 
     load()
   }, [])
+
+  // ── User Management ──
+  const loadUsers = useCallback(async () => {
+    setUsersLoading(true)
+    try {
+      const [profilesRes, recipeCounts, commentCounts] = await Promise.all([
+        supabase.from('profiles').select('id, display_name, avatar_url, is_admin, created_at').order('created_at', { ascending: false }),
+        supabase.from('recipes').select('created_by'),
+        supabase.from('comments').select('user_id'),
+      ])
+
+      const rcMap = new Map<string, number>()
+      if (recipeCounts.data) {
+        for (const r of recipeCounts.data) {
+          rcMap.set(r.created_by, (rcMap.get(r.created_by) || 0) + 1)
+        }
+      }
+      const ccMap = new Map<string, number>()
+      if (commentCounts.data) {
+        for (const c of commentCounts.data) {
+          ccMap.set(c.user_id, (ccMap.get(c.user_id) || 0) + 1)
+        }
+      }
+
+      const users: ManagedUser[] = (profilesRes.data || []).map((p) => ({
+        id: p.id,
+        display_name: p.display_name,
+        avatar_url: p.avatar_url,
+        is_admin: p.is_admin,
+        created_at: p.created_at,
+        recipe_count: rcMap.get(p.id) || 0,
+        comment_count: ccMap.get(p.id) || 0,
+      }))
+      setManagedUsers(users)
+
+      const frames = await fetchEquippedFrames(users.map((u) => u.id))
+      setUserFrameMap(frames)
+    } catch {
+      toast.error('שגיאה בטעינת משתמשים')
+    } finally {
+      setUsersLoading(false)
+    }
+  }, [supabase])
+
+  async function toggleAdmin(userId: string, currentIsAdmin: boolean) {
+    if (userId === currentUserId) {
+      toast.error('לא ניתן לשנות הרשאות לעצמך')
+      return
+    }
+    const action = currentIsAdmin ? 'להסיר הרשאת אדמין' : 'לתת הרשאת אדמין'
+    if (!confirm(`${action} למשתמש?`)) return
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_admin: !currentIsAdmin })
+      .eq('id', userId)
+
+    if (error) {
+      toast.error('שגיאה בעדכון הרשאות')
+    } else {
+      setManagedUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, is_admin: !currentIsAdmin } : u)),
+      )
+      toast.success(currentIsAdmin ? 'הרשאת אדמין הוסרה' : 'הרשאת אדמין ניתנה')
+    }
+  }
+
+  async function deleteUser(userId: string, displayName: string) {
+    if (userId === currentUserId) {
+      toast.error('לא ניתן למחוק את עצמך')
+      return
+    }
+    if (!confirm(`למחוק את המשתמש "${displayName}"? כל המתכונים והתגובות שלו יימחקו.`)) return
+    if (!confirm('פעולה זו בלתי הפיכה. להמשיך?')) return
+
+    // Delete user's recipes, comments, ratings, favorites, then profile
+    const { error: recErr } = await supabase.from('recipes').delete().eq('created_by', userId)
+    const { error: comErr } = await supabase.from('comments').delete().eq('user_id', userId)
+    await supabase.from('ratings').delete().eq('user_id', userId)
+    await supabase.from('favorites').delete().eq('user_id', userId)
+    await supabase.from('recipe_collaborators').delete().eq('user_id', userId)
+    const { error: profErr } = await supabase.from('profiles').delete().eq('id', userId)
+
+    if (recErr || comErr || profErr) {
+      toast.error('שגיאה במחיקת משתמש')
+    } else {
+      setManagedUsers((prev) => prev.filter((u) => u.id !== userId))
+      toast.success(`המשתמש "${displayName}" נמחק`)
+      // Update overview
+      setOverview((prev) => ({ ...prev, totalUsers: prev.totalUsers - 1 }))
+    }
+  }
+
+  function handleOpenUserManagement() {
+    setShowUserManagement(true)
+    if (managedUsers.length === 0) loadUsers()
+  }
+
+  const filteredUsers = userSearch.trim()
+    ? managedUsers.filter((u) =>
+        u.display_name.toLowerCase().includes(userSearch.toLowerCase()),
+      )
+    : managedUsers
 
   // ── Loading ──
   if (loading || !authorized) {
@@ -509,6 +631,153 @@ export default function AdminDashboard() {
               <p className="text-sm text-on-surface-variant text-center py-4 font-rubik">אין נתונים עדיין</p>
             )}
           </div>
+        </motion.div>
+        {/* ── User Management ── */}
+        <motion.div
+          variants={sectionVariants}
+          initial="hidden"
+          animate="visible"
+          className="rounded-2xl bg-surface-container-lowest border border-outline-variant/20 p-5 shadow-sm"
+        >
+          <button
+            onClick={handleOpenUserManagement}
+            className="w-full flex items-center justify-between"
+          >
+            <h2 className="text-lg font-bold text-on-surface font-rubik flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">manage_accounts</span>
+              ניהול משתתפים
+            </h2>
+            <motion.span
+              animate={{ rotate: showUserManagement ? 180 : 0 }}
+              className="material-symbols-outlined text-on-surface-variant"
+            >
+              expand_more
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {showUserManagement && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-4">
+                  {/* Search */}
+                  <div className="relative mb-4">
+                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg">
+                      search
+                    </span>
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      placeholder="חיפוש משתמש..."
+                      className="w-full rounded-lg border border-outline-variant bg-surface py-2.5 pr-10 pl-3 text-sm text-on-surface placeholder:text-outline focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-rubik"
+                    />
+                  </div>
+
+                  {usersLoading && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-8 w-8 animate-spin rounded-full border-3 border-gray-200 border-t-primary" />
+                    </div>
+                  )}
+
+                  {!usersLoading && (
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className={`flex items-center gap-3 rounded-xl p-3 transition-colors ${
+                            user.is_admin
+                              ? 'bg-primary/5 border border-primary/20'
+                              : 'bg-surface-container-low'
+                          }`}
+                        >
+                          <AvatarWithFrame
+                            userId={user.id}
+                            avatarUrl={user.avatar_url}
+                            displayName={user.display_name}
+                            frameId={userFrameMap.get(user.id)}
+                            size={40}
+                          />
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-on-surface font-rubik truncate">
+                                {user.display_name}
+                              </p>
+                              {user.is_admin && (
+                                <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+                                  אדמין
+                                </span>
+                              )}
+                              {user.id === currentUserId && (
+                                <span className="shrink-0 rounded-full bg-tertiary/15 px-2 py-0.5 text-[10px] font-bold text-tertiary">
+                                  אני
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-on-surface-variant font-rubik">
+                              {user.recipe_count} מתכונים · {user.comment_count} תגובות
+                              {' · '}
+                              הצטרף/ה {new Date(user.created_at).toLocaleDateString('he-IL')}
+                            </p>
+                          </div>
+
+                          {/* Actions */}
+                          {user.id !== currentUserId && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => toggleAdmin(user.id, user.is_admin)}
+                                className={`rounded-lg p-2 text-sm transition-colors ${
+                                  user.is_admin
+                                    ? 'text-primary hover:bg-primary/10'
+                                    : 'text-on-surface-variant hover:bg-surface-container-high'
+                                }`}
+                                title={user.is_admin ? 'הסר אדמין' : 'הפוך לאדמין'}
+                              >
+                                <span
+                                  className="material-symbols-outlined text-lg"
+                                  style={user.is_admin ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                                >
+                                  admin_panel_settings
+                                </span>
+                              </button>
+                              <button
+                                onClick={() => deleteUser(user.id, user.display_name)}
+                                className="rounded-lg p-2 text-error/70 transition-colors hover:bg-error/10 hover:text-error"
+                                title="מחק משתמש"
+                              >
+                                <span className="material-symbols-outlined text-lg">person_remove</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {filteredUsers.length === 0 && !usersLoading && (
+                        <p className="text-sm text-on-surface-variant text-center py-6 font-rubik">
+                          {userSearch ? 'לא נמצאו משתמשים' : 'אין משתמשים'}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  {!usersLoading && managedUsers.length > 0 && (
+                    <div className="mt-3 flex items-center gap-3 text-xs text-on-surface-variant font-rubik border-t border-outline-variant/30 pt-3">
+                      <span>{managedUsers.length} משתמשים</span>
+                      <span>·</span>
+                      <span>{managedUsers.filter((u) => u.is_admin).length} אדמינים</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
 
