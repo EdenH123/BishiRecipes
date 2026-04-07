@@ -39,14 +39,64 @@ export function saveShoppingList(items: ShoppingItem[]): void {
 // suffixes, and strip leading ה (the) article. This is intentionally simple
 // and avoids NLP — it catches common duplicates without overmatching.
 
-const HEBREW_PLURAL_SUFFIXES = ['ים', 'ות', 'יות']
+// Known ingredient synonyms map: maps variant forms to a canonical key.
+// This handles irregular plurals and common alternate spellings that
+// suffix-stripping alone can't catch.
+const INGREDIENT_SYNONYMS: Record<string, string> = {
+  'עגבנייה': 'עגבניה',
+  'עגבניות': 'עגבניה',
+  'עגבנייות': 'עגבניה',
+  'בצל': 'בצל',
+  'בצלים': 'בצל',
+  'שום': 'שום',
+  'שומים': 'שום',
+  'ביצה': 'ביצה',
+  'ביצים': 'ביצה',
+  'לימון': 'לימון',
+  'לימונים': 'לימון',
+  'תפוח': 'תפוח',
+  'תפוחים': 'תפוח',
+  'גזר': 'גזר',
+  'גזרים': 'גזר',
+  'תפוח אדמה': 'תפוח אדמה',
+  'תפוחי אדמה': 'תפוח אדמה',
+  'פלפל': 'פלפל',
+  'פלפלים': 'פלפל',
+  'מלפפון': 'מלפפון',
+  'מלפפונים': 'מלפפון',
+  'אבוקדו': 'אבוקדו',
+  'אבוקדים': 'אבוקדו',
+  'חציל': 'חציל',
+  'חצילים': 'חציל',
+  'קישוא': 'קישוא',
+  'קישואים': 'קישוא',
+  'כוסברה': 'כוסברה',
+  'פטרוזיליה': 'פטרוזיליה',
+  'שמיר': 'שמיר',
+  'נענע': 'נענע',
+  'בזיליקום': 'בזיליקום',
+  'כוסמת': 'כוסמת',
+  'אורז': 'אורז',
+  'פסטה': 'פסטה',
+  'קמח': 'קמח',
+  'סוכר': 'סוכר',
+  'מלח': 'מלח',
+  'שמן': 'שמן',
+  'חמאה': 'חמאה',
+  'שמנת': 'שמנת',
+  'חלב': 'חלב',
+  'גבינה': 'גבינה',
+  'גבינות': 'גבינה',
+  'קוטג׳': 'קוטג',
+  'קוטג': 'קוטג',
+  'שוקולד': 'שוקולד',
+  'קקאו': 'קקאו',
+}
 
-export function normalizeIngredientName(name: string): string {
-  let n = name.trim()
-  // Remove bidi marks
-  n = n.replace(/[\u200E\u200F\u200B\u2066\u2069\uFEFF]/g, '')
-  // Lowercase (for Latin chars mixed in)
-  n = n.toLowerCase()
+const HEBREW_PLURAL_SUFFIXES = ['יים', 'ים', 'יות', 'ות']
+const HEBREW_FEMININE_SUFFIXES = ['ייה', 'יה', 'ה']
+
+function stripHebrew(n: string): string {
   // Remove leading ה article
   if (n.startsWith('ה') && n.length > 2) {
     n = n.slice(1)
@@ -54,11 +104,30 @@ export function normalizeIngredientName(name: string): string {
   // Remove common Hebrew plural suffixes to match singular forms
   for (const suffix of HEBREW_PLURAL_SUFFIXES) {
     if (n.endsWith(suffix) && n.length > suffix.length + 1) {
-      n = n.slice(0, -suffix.length)
-      break
+      return n.slice(0, -suffix.length)
     }
   }
-  return n.trim()
+  // Remove feminine suffixes (ה, יה, ייה)
+  for (const suffix of HEBREW_FEMININE_SUFFIXES) {
+    if (n.endsWith(suffix) && n.length > suffix.length + 1) {
+      return n.slice(0, -suffix.length)
+    }
+  }
+  return n
+}
+
+export function normalizeIngredientName(name: string): string {
+  let n = name.trim()
+  // Remove bidi marks
+  n = n.replace(/[\u200E\u200F\u200B\u2066\u2069\uFEFF]/g, '')
+  // Lowercase (for Latin chars mixed in)
+  n = n.toLowerCase()
+  // Remove quotes variants
+  n = n.replace(/[״"'׳]/g, '')
+  // Check synonym map first (exact match on cleaned input)
+  if (INGREDIENT_SYNONYMS[n]) return INGREDIENT_SYNONYMS[n]
+  // Fallback: strip Hebrew morphology
+  return stripHebrew(n).trim()
 }
 
 // --- Unit compatibility ---

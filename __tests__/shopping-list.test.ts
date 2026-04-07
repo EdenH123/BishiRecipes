@@ -43,7 +43,7 @@ describe('normalizeIngredientName', () => {
   })
 
   it('removes plural suffix ים', () => {
-    expect(normalizeIngredientName('עגבניים')).toBe('עגבני')
+    expect(normalizeIngredientName('עגבניים')).toBe('עגבנ')
   })
 
   it('removes plural suffix ות', () => {
@@ -54,14 +54,31 @@ describe('normalizeIngredientName', () => {
     expect(normalizeIngredientName('Tomato')).toBe('tomato')
   })
 
-  it('normalizes "עגבנייה" and "עגבניות" to same root', () => {
+  it('normalizes "עגבנייה" and "עגבניות" to same canonical form', () => {
     const a = normalizeIngredientName('עגבנייה')
     const b = normalizeIngredientName('עגבניות')
-    // "עגבנייה" does not end in a known plural suffix → stays as is
-    // "עגבניות" → "עגבני" (removes ות)
-    // These won't match exactly — this is acceptable, the system is simple
-    expect(typeof a).toBe('string')
-    expect(typeof b).toBe('string')
+    expect(a).toBe(b)
+    expect(a).toBe('עגבניה')
+  })
+
+  it('normalizes "ביצה" and "ביצים" to same form', () => {
+    expect(normalizeIngredientName('ביצה')).toBe(normalizeIngredientName('ביצים'))
+  })
+
+  it('normalizes "תפוחי אדמה" and "תפוח אדמה"', () => {
+    expect(normalizeIngredientName('תפוחי אדמה')).toBe(normalizeIngredientName('תפוח אדמה'))
+  })
+
+  it('normalizes "פלפל" and "פלפלים"', () => {
+    expect(normalizeIngredientName('פלפל')).toBe(normalizeIngredientName('פלפלים'))
+  })
+
+  it('normalizes "גבינה" and "גבינות"', () => {
+    expect(normalizeIngredientName('גבינה')).toBe(normalizeIngredientName('גבינות'))
+  })
+
+  it('removes quote characters', () => {
+    expect(normalizeIngredientName('קוטג׳')).toBe('קוטג')
   })
 })
 

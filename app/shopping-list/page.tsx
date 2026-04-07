@@ -72,10 +72,12 @@ export default function ShoppingListPage() {
       setSearchError(false)
 
       try {
+        // Search by title, category, and tags using OR filter
+        const term = query.trim()
         const { data, error } = await supabase
           .from('recipes')
-          .select('id, title, ingredients, image_url, category')
-          .ilike('title', `%${query.trim()}%`)
+          .select('id, title, ingredients, image_url, category, tags')
+          .or(`title.ilike.%${term}%,category.ilike.%${term}%,tags.cs.{"${term}"}`)
           .limit(10)
 
         if (error) throw error
