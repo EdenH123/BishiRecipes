@@ -160,17 +160,6 @@ export default function ShoppingListPage() {
   const uncheckedItems = items.filter((i) => !i.checked)
   const checkedItems = items.filter((i) => i.checked)
 
-  // Group by recipe for display
-  const groupedUnchecked = useMemo(() => {
-    const groups = new Map<string, ShoppingItem[]>()
-    for (const item of uncheckedItems) {
-      const key = item.recipeTitle || 'כללי'
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(item)
-    }
-    return groups
-  }, [uncheckedItems])
-
   return (
     <div className="min-h-screen bg-surface pt-20 pb-28">
       <Navbar />
@@ -383,67 +372,53 @@ export default function ShoppingListPage() {
           </div>
         )}
 
-        {/* Shopping list - grouped by recipe */}
+        {/* Shopping list - unified flat list */}
         {uncheckedItems.length > 0 && (
           <motion.div variants={containerVariants} initial="hidden" animate="visible">
-            {Array.from(groupedUnchecked.entries()).map(([groupName, groupItems]) => (
-              <div key={groupName} className="mb-5">
-                {groupedUnchecked.size > 1 && (
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm text-primary">
-                      restaurant_menu
-                    </span>
-                    <h3 className="text-sm font-bold text-on-surface-variant">
-                      {groupName}
-                    </h3>
-                  </div>
-                )}
-                <ul className="flex flex-col gap-1">
-                  <AnimatePresence mode="popLayout">
-                    {groupItems.map((item) => (
-                      <motion.li
-                        key={item.id}
-                        variants={itemVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        layout
-                        className="flex items-center gap-3 rounded-xl bg-surface-container-lowest border border-outline-variant/50 px-3 py-2.5 transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={false}
-                          onChange={() => handleToggle(item.id)}
-                          className="h-5 w-5 shrink-0 cursor-pointer rounded border-gray-300 accent-tertiary"
-                          aria-label={`סמן ${item.ingredientName}`}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <span className="text-sm text-on-surface">
-                            {item.quantity && (
-                              <span className="font-bold" dir="ltr">
-                                {item.quantity}
-                              </span>
-                            )}
-                            {item.quantity && ' '}
-                            {item.unit && (
-                              <span className="text-outline">{item.unit} </span>
-                            )}
-                            {item.ingredientName}
+            <ul className="flex flex-col gap-1">
+              <AnimatePresence mode="popLayout">
+                {uncheckedItems.map((item) => (
+                  <motion.li
+                    key={item.id}
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    layout
+                    className="flex items-center gap-3 rounded-xl bg-surface-container-lowest border border-outline-variant/50 px-3 py-2.5 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={false}
+                      onChange={() => handleToggle(item.id)}
+                      className="h-5 w-5 shrink-0 cursor-pointer rounded border-gray-300 accent-tertiary"
+                      aria-label={`סמן ${item.ingredientName}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm text-on-surface">
+                        {item.quantity && (
+                          <span className="font-bold" dir="ltr">
+                            {item.quantity}
                           </span>
-                        </div>
-                        <button
-                          onClick={() => handleRemove(item.id)}
-                          className="shrink-0 rounded-lg p-1 text-outline transition-colors hover:bg-error/10 hover:text-error"
-                          aria-label={`הסר ${item.ingredientName}`}
-                        >
-                          <span className="material-symbols-outlined text-lg">close</span>
-                        </button>
-                      </motion.li>
-                    ))}
-                  </AnimatePresence>
-                </ul>
-              </div>
-            ))}
+                        )}
+                        {item.quantity && ' '}
+                        {item.unit && (
+                          <span className="text-outline">{item.unit} </span>
+                        )}
+                        {item.ingredientName}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleRemove(item.id)}
+                      className="shrink-0 rounded-lg p-1 text-outline transition-colors hover:bg-error/10 hover:text-error"
+                      aria-label={`הסר ${item.ingredientName}`}
+                    >
+                      <span className="material-symbols-outlined text-lg">close</span>
+                    </button>
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ul>
           </motion.div>
         )}
 
