@@ -77,6 +77,14 @@ describe('normalizeIngredientName', () => {
     expect(normalizeIngredientName('גבינה')).toBe(normalizeIngredientName('גבינות'))
   })
 
+  it('strips parenthetical notes from name', () => {
+    expect(normalizeIngredientName('(1/2 כוס) סוכר')).toBe(normalizeIngredientName('סוכר'))
+  })
+
+  it('strips decoration parenthetical', () => {
+    expect(normalizeIngredientName('שוקולד (לקישוט)')).toBe(normalizeIngredientName('שוקולד'))
+  })
+
   it('removes quote characters', () => {
     expect(normalizeIngredientName('קוטג׳')).toBe('קוטג')
   })

@@ -171,6 +171,10 @@ export function normalizeIngredientName(name: string): string {
   n = n.toLowerCase()
   // Remove quotes variants
   n = n.replace(/[״"'׳]/g, '')
+  // Remove parenthetical notes like "(1/2 כוס)" or "(לקישוט)"
+  n = n.replace(/\([^)]*\)/g, '').trim()
+  // Collapse multiple spaces
+  n = n.replace(/\s+/g, ' ').trim()
   // Check synonym map first (exact match on cleaned input)
   if (INGREDIENT_SYNONYMS[n]) return INGREDIENT_SYNONYMS[n]
   // Fallback: strip Hebrew morphology
