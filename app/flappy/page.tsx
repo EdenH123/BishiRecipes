@@ -96,7 +96,8 @@ export default function FlappyPage() {
   const resetGame = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    birdY.current = canvas.height / 2 - BIRD_SIZE / 2
+    const dpr = window.devicePixelRatio || 1
+    birdY.current = (canvas.height / dpr) / 2 - BIRD_SIZE / 2
     birdVel.current = 0
     pipes.current = []
     scoreRef.current = 0
@@ -122,16 +123,27 @@ export default function FlappyPage() {
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
 
-    // Set canvas size
+    // Set canvas size with devicePixelRatio for sharp rendering
+    let dpr = 1
     function resize() {
       if (!canvas) return
-      canvas.width = Math.min(window.innerWidth, 420)
-      canvas.height = Math.min(window.innerHeight - 80, 640)
+      dpr = window.devicePixelRatio || 1
+      const w = Math.min(window.innerWidth, 420)
+      const h = Math.min(window.innerHeight - 80, 640)
+      canvas.width = w * dpr
+      canvas.height = h * dpr
+      canvas.style.width = `${w}px`
+      canvas.style.height = `${h}px`
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
     resize()
     window.addEventListener('resize', resize)
 
-    // Load falafel image
+    // Logical canvas dimensions (use these instead of canvas.width/height)
+    function cw() { return canvas!.width / dpr }
+    function ch() { return canvas!.height / dpr }
+
+    // Load falafel image at high resolution
     const falafelImg = new window.Image()
     falafelImg.src = '/logo.png'
     let falafelLoaded = false
@@ -149,6 +161,8 @@ export default function FlappyPage() {
       ctx.rotate(angle)
 
       if (falafelLoaded) {
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
         ctx.beginPath()
         ctx.arc(0, 0, BIRD_SIZE / 2, 0, Math.PI * 2)
         ctx.closePath()
@@ -168,43 +182,61 @@ export default function FlappyPage() {
       ctx.restore()
     }
 
+    // Food emojis for pipe columns — each pipe gets a random pattern
+    const FOOD_EMOJIS = ['🍕', '🍔', '🌮', '🍩', '🧁', '🍪', '🍰', '🥐', '🍟', '🌭', '🥯', '🍫', '🥙', '🧇', '🍗']
+    const pipeEmojis = new Map<number, string[]>()
+
+    function getPipeEmojis(topH: number): string[] {
+      const key = Math.round(topH)
+      if (!pipeEmojis.has(key)) {
+        const count = Math.ceil(ch() / 28) + 2
+        const emojis: string[] = []
+        for (let i = 0; i < count; i++) {
+          emojis.push(FOOD_EMOJIS[Math.floor(Math.random() * FOOD_EMOJIS.length)])
+        }
+        pipeEmojis.set(key, emojis)
+      }
+      return pipeEmojis.get(key)!
+    }
+
     function drawPipe(ctx: CanvasRenderingContext2D, x: number, topH: number) {
       if (!canvas) return
-      const grad1 = ctx.createLinearGradient(x, 0, x + PIPE_WIDTH, 0)
-      grad1.addColorStop(0, '#5B8C3E')
-      grad1.addColorStop(0.5, '#7AB648')
-      grad1.addColorStop(1, '#5B8C3E')
+      const emojis = getPipeEmojis(topH)
+      const emojiSize = 28
+      ctx.font = `${emojiSize}px serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
 
-      // Top pipe
-      ctx.fillStyle = grad1
-      ctx.fillRect(x, 0, PIPE_WIDTH, topH)
-      // Top pipe cap
-      ctx.fillStyle = '#4A7A2E'
-      ctx.fillRect(x - 4, topH - 20, PIPE_WIDTH + 8, 20)
-      ctx.fillStyle = '#7AB648'
-      ctx.fillRect(x - 4, topH - 20, PIPE_WIDTH + 8, 4)
+      // Top column (stacked food emojis from top down)
+      const topCount = Math.ceil(topH / emojiSize)
+      for (let i = 0; i < topCount; i++) {
+        const ey = i * emojiSize + emojiSize / 2
+        if (ey - emojiSize / 2 < topH) {
+          ctx.fillText(emojis[i % emojis.length], x + PIPE_WIDTH / 2, ey)
+        }
+      }
 
-      // Bottom pipe
+      // Bottom column (stacked food emojis from gap down)
       const bottomY = topH + PIPE_GAP
-      ctx.fillStyle = grad1
-      ctx.fillRect(x, bottomY, PIPE_WIDTH, canvas.height - bottomY)
-      // Bottom pipe cap
-      ctx.fillStyle = '#4A7A2E'
-      ctx.fillRect(x - 4, bottomY, PIPE_WIDTH + 8, 20)
-      ctx.fillStyle = '#7AB648'
-      ctx.fillRect(x - 4, bottomY, PIPE_WIDTH + 8, 4)
+      const bottomCount = Math.ceil((ch() - bottomY) / emojiSize) + 1
+      for (let i = 0; i < bottomCount; i++) {
+        const ey = bottomY + i * emojiSize + emojiSize / 2
+        if (ey < ch()) {
+          ctx.fillText(emojis[(i + 5) % emojis.length], x + PIPE_WIDTH / 2, ey)
+        }
+      }
     }
 
     function drawGround(ctx: CanvasRenderingContext2D) {
       if (!canvas) return
-      const groundY = canvas.height - 40
+      const groundY = ch() - 40
       ctx.fillStyle = '#DEB887'
-      ctx.fillRect(0, groundY, canvas.width, 40)
+      ctx.fillRect(0, groundY, cw(), 40)
       ctx.fillStyle = '#8B7355'
-      ctx.fillRect(0, groundY, canvas.width, 3)
+      ctx.fillRect(0, groundY, cw(), 3)
       // Ground pattern
       ctx.fillStyle = '#C4A46C'
-      for (let x = (frameCount.current * -2) % 30; x < canvas.width; x += 30) {
+      for (let x = (frameCount.current * -2) % 30; x < cw(); x += 30) {
         ctx.fillRect(x, groundY + 8, 15, 3)
       }
     }
@@ -212,18 +244,18 @@ export default function FlappyPage() {
     function drawBackground(ctx: CanvasRenderingContext2D) {
       if (!canvas) return
       // Sky gradient
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height)
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, ch())
       skyGrad.addColorStop(0, '#87CEEB')
       skyGrad.addColorStop(0.7, '#B0E0E6')
       skyGrad.addColorStop(1, '#F0E68C')
       ctx.fillStyle = skyGrad
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.fillRect(0, 0, cw(), ch())
 
       // Clouds
       ctx.fillStyle = 'rgba(255,255,255,0.8)'
-      const offset = (frameCount.current * 0.3) % (canvas.width + 100)
+      const offset = (frameCount.current * 0.3) % (cw() + 100)
       for (let i = 0; i < 3; i++) {
-        const cx = ((i * 170 + offset) % (canvas.width + 100)) - 50
+        const cx = ((i * 170 + offset) % (cw() + 100)) - 50
         const cy = 50 + i * 60
         ctx.beginPath()
         ctx.arc(cx, cy, 25, 0, Math.PI * 2)
@@ -241,8 +273,8 @@ export default function FlappyPage() {
       ctx.fillStyle = 'white'
       ctx.strokeStyle = 'rgba(0,0,0,0.4)'
       ctx.lineWidth = 4
-      ctx.strokeText(String(scoreRef.current), canvas.width / 2, 60)
-      ctx.fillText(String(scoreRef.current), canvas.width / 2, 60)
+      ctx.strokeText(String(scoreRef.current), cw() / 2, 60)
+      ctx.fillText(String(scoreRef.current), cw() / 2, 60)
       ctx.restore()
     }
 
@@ -253,7 +285,7 @@ export default function FlappyPage() {
       const r = BIRD_SIZE / 2 - 2
 
       // Ground/ceiling
-      if (by + BIRD_SIZE > canvas.height - 40 || by < 0) return true
+      if (by + BIRD_SIZE > ch() - 40 || by < 0) return true
 
       // Pipes
       for (const pipe of pipes.current) {
@@ -267,12 +299,12 @@ export default function FlappyPage() {
 
     function gameLoop() {
       if (!canvas) return
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.clearRect(0, 0, cw(), ch())
       drawBackground(ctx)
 
       if (gameStateRef.current === 'idle') {
         // Floating bird animation
-        birdY.current = canvas.height / 2 - BIRD_SIZE / 2 + Math.sin(frameCount.current * 0.05) * 15
+        birdY.current = ch() / 2 - BIRD_SIZE / 2 + Math.sin(frameCount.current * 0.05) * 15
         drawGround(ctx)
         drawBird(ctx)
 
@@ -281,10 +313,10 @@ export default function FlappyPage() {
         ctx.font = 'bold 28px Rubik, sans-serif'
         ctx.textAlign = 'center'
         ctx.fillStyle = '#2D5016'
-        ctx.fillText('Flappy Falafel', canvas.width / 2, canvas.height / 2 - 70)
+        ctx.fillText('Flappy Falafel', cw() / 2, ch() / 2 - 70)
         ctx.font = '16px Rubik, sans-serif'
         ctx.fillStyle = '#5B8C3E'
-        ctx.fillText('לחצו כדי להתחיל', canvas.width / 2, canvas.height / 2 + 60)
+        ctx.fillText('לחצו כדי להתחיל', cw() / 2, ch() / 2 + 60)
         ctx.restore()
       } else if (gameStateRef.current === 'playing') {
         // Physics
@@ -295,9 +327,9 @@ export default function FlappyPage() {
         frameCount.current++
         if (frameCount.current % PIPE_SPAWN_INTERVAL === 0) {
           const minTop = 60
-          const maxTop = canvas.height - PIPE_GAP - 100
+          const maxTop = ch() - PIPE_GAP - 100
           const topH = minTop + Math.random() * (maxTop - minTop)
-          pipes.current.push({ x: canvas.width, topH, scored: false })
+          pipes.current.push({ x: cw(), topH, scored: false })
         }
 
         // Move pipes & score
@@ -334,7 +366,7 @@ export default function FlappyPage() {
 
         // Darken
         ctx.fillStyle = 'rgba(0,0,0,0.3)'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.fillRect(0, 0, cw(), ch())
       }
 
       frameRef.current = requestAnimationFrame(gameLoop)
@@ -391,6 +423,16 @@ export default function FlappyPage() {
           ref={canvasRef}
           className="rounded-2xl shadow-2xl border-4 border-white/30 touch-none"
         />
+
+        {/* Back button on idle screen */}
+        {gameState === 'idle' && (
+          <button
+            onClick={(e) => { e.stopPropagation(); router.push('/') }}
+            className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm text-gray-700 px-3 py-1.5 rounded-full text-sm font-bold shadow-md active:scale-95 transition-transform z-10"
+          >
+            חזרה
+          </button>
+        )}
 
         <AnimatePresence>
           {gameState === 'over' && (
