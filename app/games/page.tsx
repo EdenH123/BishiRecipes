@@ -21,7 +21,7 @@ const GAMES: GameCard[] = [
     description: 'עופו בין עמודי האוכל ותשברו שיאים!',
     emoji: '🧆',
     href: '/flappy',
-    color: 'from-sky-400 to-green-400',
+    color: 'from-sky-700 to-green-700',
     available: true,
   },
   {
@@ -30,7 +30,7 @@ const GAMES: GameCard[] = [
     description: 'מצאו זוגות של מצרכים תואמים',
     emoji: '🃏',
     href: '/games/memory',
-    color: 'from-purple-400 to-pink-400',
+    color: 'from-purple-700 to-pink-700',
     available: false,
   },
   {
@@ -39,7 +39,7 @@ const GAMES: GameCard[] = [
     description: 'כמה אתם באמת יודעים על בישול?',
     emoji: '🧠',
     href: '/games/quiz',
-    color: 'from-amber-400 to-orange-400',
+    color: 'from-amber-700 to-orange-700',
     available: false,
   },
   {
@@ -48,7 +48,7 @@ const GAMES: GameCard[] = [
     description: 'אספו אוכל והתארכו בלי לפגוע בעצמכם',
     emoji: '🐍',
     href: '/games/snake',
-    color: 'from-green-400 to-emerald-500',
+    color: 'from-green-700 to-emerald-800',
     available: false,
   },
   {
@@ -57,7 +57,7 @@ const GAMES: GameCard[] = [
     description: 'תפסו מנות שנופלות מהשמיים',
     emoji: '🍽️',
     href: '/games/catch',
-    color: 'from-rose-400 to-red-400',
+    color: 'from-rose-700 to-red-700',
     available: false,
   },
   {
@@ -66,7 +66,7 @@ const GAMES: GameCard[] = [
     description: 'נחשו את המצרך לפי רמזים',
     emoji: '📝',
     href: '/games/word',
-    color: 'from-blue-400 to-indigo-400',
+    color: 'from-blue-700 to-indigo-700',
     available: false,
   },
 ]
