@@ -178,6 +178,30 @@ describe('addIngredientsToList', () => {
     expect(list[1].quantity).toBe('1') // ½ + ½
   })
 
+  it('scales quantities with multiplier', () => {
+    const ingredients = [
+      makeIngredient('קמח', '2', 'כוסות'),
+      makeIngredient('סוכר', '½', 'כוס'),
+      makeIngredient('מלח', '1', 'כפית'),
+    ]
+    const result = addIngredientsToList([], ingredients, 'r1', 'עוגה', 3)
+    expect(result[0].quantity).toBe('6')    // 2 * 3
+    expect(result[1].quantity).toBe('1½')   // 0.5 * 3
+    expect(result[2].quantity).toBe('3')    // 1 * 3
+  })
+
+  it('scales with fractional multiplier', () => {
+    const ingredients = [makeIngredient('קמח', '2', 'כוסות')]
+    const result = addIngredientsToList([], ingredients, 'r1', 'עוגה', 1.5)
+    expect(result[0].quantity).toBe('3')    // 2 * 1.5
+  })
+
+  it('does not scale when multiplier is 1', () => {
+    const ingredients = [makeIngredient('קמח', '2', 'כוסות')]
+    const result = addIngredientsToList([], ingredients, 'r1', 'עוגה', 1)
+    expect(result[0].quantity).toBe('2')
+  })
+
   it('skips ingredients with empty name', () => {
     const ingredients = [makeIngredient('', '1', 'כוס')]
     const result = addIngredientsToList([], ingredients)

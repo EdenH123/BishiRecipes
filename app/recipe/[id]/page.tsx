@@ -539,9 +539,14 @@ export default function RecipeDetailPage() {
                 recipe.ingredients || [],
                 recipe.id,
                 recipe.title,
+                servingsMultiplier,
               )
               saveShoppingList(updated)
-              toast.success('המצרכים נוספו לרשימת הקניות')
+              toast.success(
+                servingsMultiplier !== 1
+                  ? `המצרכים נוספו (x${servingsMultiplier}) לרשימת הקניות`
+                  : 'המצרכים נוספו לרשימת הקניות'
+              )
             }}
             className="flex items-center gap-1.5 rounded-xl border border-outline-variant px-3.5 py-2.5 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low active:scale-95"
             aria-label="הוסף לרשימת קניות"

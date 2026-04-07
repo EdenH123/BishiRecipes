@@ -204,18 +204,29 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 }
 
+function scaleQuantity(qty: string, multiplier: number): string {
+  if (multiplier === 1 || !qty) return qty
+  const n = parseQuantity(qty)
+  if (n === null) return qty
+  return formatQuantity(n * multiplier)
+}
+
 /**
  * Duplicate strategy: When adding ingredients, we check for existing items
  * with the same normalizedName. If found and units are compatible, we merge
  * quantities into a single line item. If units differ, we keep them separate
  * to avoid data loss (e.g. "2 כוסות" vs "100 גרם" of the same ingredient).
  * This balances avoiding clutter with preserving meaningful distinctions.
+ *
+ * The optional multiplier parameter scales ingredient quantities before adding,
+ * so users can add scaled servings (e.g. x2, x3) from the recipe page.
  */
 export function addIngredientsToList(
   currentList: ShoppingItem[],
   ingredients: string[],
   recipeId?: string,
   recipeTitle?: string,
+  multiplier: number = 1,
 ): ShoppingItem[] {
   const now = new Date().toISOString()
   const newList = [...currentList]
@@ -224,6 +235,7 @@ export function addIngredientsToList(
     const ing = parseIngredient(raw)
     if (!ing.name.trim()) continue
 
+    const scaledAmount = scaleQuantity(ing.amount, multiplier)
     const normalized = normalizeIngredientName(ing.name)
 
     // Find existing item with same normalized name and compatible unit
@@ -239,7 +251,7 @@ export function addIngredientsToList(
       const existing = newList[existingIdx]
       newList[existingIdx] = {
         ...existing,
-        quantity: mergeQuantities(existing.quantity, ing.amount),
+        quantity: mergeQuantities(existing.quantity, scaledAmount),
         updatedAt: now,
       }
     } else {
@@ -247,7 +259,7 @@ export function addIngredientsToList(
         id: generateId(),
         ingredientName: ing.name.trim(),
         normalizedName: normalized,
-        quantity: ing.amount,
+        quantity: scaledAmount,
         unit: ing.unit,
         checked: false,
         recipeId,
