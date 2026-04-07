@@ -108,11 +108,21 @@ export default function ShoppingListPage() {
     [supabase],
   )
 
-  function onSearchInput(value: string) {
-    setSearchQuery(value)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => handleSearch(value), 300)
-  }
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
+
+  const onSearchInput = useCallback(
+    (value: string) => {
+      setSearchQuery(value)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => handleSearch(value), 300)
+    },
+    [handleSearch],
+  )
 
   function handleAddRecipe(recipe: Recipe, multiplier: number = 1) {
     if (addingRecipeId === recipe.id) return // prevent double-click
@@ -134,33 +144,34 @@ export default function ShoppingListPage() {
     setTimeout(() => setAddingRecipeId(null), 1000)
   }
 
-  function handleToggle(id: string) {
+  const handleToggle = useCallback((id: string) => {
     setItems((prev) => toggleItem(prev, id))
-  }
+  }, [])
 
-  function handleRemove(id: string) {
+  const handleRemove = useCallback((id: string) => {
     setItems((prev) => removeItem(prev, id))
-  }
+  }, [])
 
-  function handleClearChecked() {
-    const checkedCount = items.filter((i) => i.checked).length
-    if (checkedCount === 0) return
-    setItems((prev) => clearCheckedItems(prev))
-    toast.success(`${checkedCount} פריטים הוסרו`)
-  }
+  const handleClearChecked = useCallback(() => {
+    setItems((prev) => {
+      const checkedCount = prev.filter((i) => i.checked).length
+      if (checkedCount === 0) return prev
+      toast.success(`${checkedCount} פריטים הוסרו`)
+      return clearCheckedItems(prev)
+    })
+  }, [])
 
-  function handleClearAll() {
-    if (items.length === 0) return
+  const handleClearAll = useCallback(() => {
     if (!confirm('למחוק את כל הרשימה?')) return
     setItems([])
     setRecipeEntries([])
     toast.success('הרשימה נוקתה')
-  }
+  }, [])
 
-  function handleRemoveRecipeFromList(recipeId: string) {
+  const handleRemoveRecipeFromList = useCallback((recipeId: string) => {
     setItems((prev) => prev.filter((i) => i.recipeId !== recipeId))
     setRecipeEntries((prev) => removeRecipeEntry(prev, recipeId))
-  }
+  }, [])
 
   async function handleChangeMultiplier(recipeId: string, newMultiplier: number) {
     if (newMultiplier < 0.5 || updatingRecipeId === recipeId) return
@@ -257,13 +268,15 @@ export default function ShoppingListPage() {
     manualInputRef.current?.focus()
   }
 
-  // Sort alphabetically by Hebrew name
-  const hebrewSort = (a: ShoppingItem, b: ShoppingItem) =>
-    a.ingredientName.localeCompare(b.ingredientName, 'he')
-
-  // Separate checked and unchecked, sorted
-  const uncheckedItems = items.filter((i) => !i.checked).sort(hebrewSort)
-  const checkedItems = items.filter((i) => i.checked).sort(hebrewSort)
+  // Separate checked and unchecked, sorted alphabetically by Hebrew name
+  const uncheckedItems = useMemo(
+    () => items.filter((i) => !i.checked).sort((a, b) => a.ingredientName.localeCompare(b.ingredientName, 'he')),
+    [items],
+  )
+  const checkedItems = useMemo(
+    () => items.filter((i) => i.checked).sort((a, b) => a.ingredientName.localeCompare(b.ingredientName, 'he')),
+    [items],
+  )
 
   function handleExportWhatsApp() {
     if (uncheckedItems.length === 0 && checkedItems.length === 0) return
