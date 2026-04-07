@@ -25,7 +25,7 @@ export default function Navbar() {
     if (tapCountRef.current >= 3) {
       tapCountRef.current = 0
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current)
-      router.push('/flappy')
+      router.push('/games')
       return
     }
     if (tapTimerRef.current) clearTimeout(tapTimerRef.current)

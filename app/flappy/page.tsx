@@ -427,7 +427,7 @@ export default function FlappyPage() {
         {/* Back button on idle screen */}
         {gameState === 'idle' && (
           <button
-            onClick={(e) => { e.stopPropagation(); router.push('/') }}
+            onClick={(e) => { e.stopPropagation(); router.push('/games') }}
             className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm text-gray-700 px-3 py-1.5 rounded-full text-sm font-bold shadow-md active:scale-95 transition-transform z-10"
           >
             חזרה
@@ -487,7 +487,7 @@ export default function FlappyPage() {
                     שחק שוב
                   </button>
                   <button
-                    onClick={() => router.push('/')}
+                    onClick={() => router.push('/games')}
                     className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-full font-bold active:scale-95 transition-transform"
                   >
                     חזרה
