@@ -55,6 +55,10 @@ export default function ShoppingListPage() {
   const [addingRecipeId, setAddingRecipeId] = useState<string | null>(null)
   const [updatingRecipeId, setUpdatingRecipeId] = useState<string | null>(null)
 
+  // Manual item add
+  const [manualInput, setManualInput] = useState('')
+  const manualInputRef = useRef<HTMLInputElement>(null)
+
   // Load from localStorage on mount
   useEffect(() => {
     setItems(loadShoppingList())
@@ -210,6 +214,56 @@ export default function ShoppingListPage() {
     }
   }
 
+  function handleAddManualItem() {
+    const text = manualInput.trim()
+    if (!text) return
+
+    // Parse: try to detect "quantity unit name" pattern like "3 כוסות קמח"
+    const match = text.match(/^(\d+(?:\.\d+)?)\s*(.+)$/)
+    let quantity = ''
+    let unit = ''
+    let name = text
+
+    if (match) {
+      quantity = match[1]
+      const rest = match[2].trim()
+      // Check if the first word is a unit
+      const unitWords = ['כוס', 'כוסות', 'כף', 'כפות', 'כפית', 'כפיות', 'גרם', 'ק״ג', 'קילו', 'מ״ל', 'ליטר', 'יחידה', 'יחידות', 'חבילה', 'חבילות']
+      const firstWord = rest.split(/\s+/)[0]
+      if (unitWords.includes(firstWord)) {
+        unit = firstWord
+        name = rest.slice(firstWord.length).trim()
+      } else {
+        name = rest
+      }
+    }
+
+    const newItem: ShoppingItem = {
+      id: `manual_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      ingredientName: name,
+      normalizedName: name,
+      quantity,
+      unit,
+      checked: false,
+      recipeId: 'manual',
+      recipeTitle: 'ידני',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    setItems((prev) => [...prev, newItem])
+    setManualInput('')
+    manualInputRef.current?.focus()
+  }
+
+  // Sort alphabetically by Hebrew name
+  const hebrewSort = (a: ShoppingItem, b: ShoppingItem) =>
+    a.ingredientName.localeCompare(b.ingredientName, 'he')
+
+  // Separate checked and unchecked, sorted
+  const uncheckedItems = items.filter((i) => !i.checked).sort(hebrewSort)
+  const checkedItems = items.filter((i) => i.checked).sort(hebrewSort)
+
   function handleExportWhatsApp() {
     if (uncheckedItems.length === 0 && checkedItems.length === 0) return
 
@@ -245,10 +299,6 @@ export default function ShoppingListPage() {
     const encoded = encodeURIComponent(text)
     window.open(`https://wa.me/?text=${encoded}`, '_blank')
   }
-
-  // Separate checked and unchecked
-  const uncheckedItems = items.filter((i) => !i.checked)
-  const checkedItems = items.filter((i) => i.checked)
 
   return (
     <div className="min-h-screen bg-surface pt-20 pb-28">
@@ -380,6 +430,40 @@ export default function ShoppingListPage() {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* Manual item input */}
+        <div className="mb-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleAddManualItem()
+            }}
+            className="flex items-center gap-2"
+          >
+            <div className="relative flex-1">
+              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg">
+                add_circle
+              </span>
+              <input
+                ref={manualInputRef}
+                type="text"
+                value={manualInput}
+                onChange={(e) => setManualInput(e.target.value)}
+                placeholder='הוסיפו פריט ידני, לדוגמה: "3 כוסות קמח"'
+                className="w-full rounded-xl border border-outline-variant bg-surface-container-lowest py-2.5 pr-10 pl-3 text-sm text-on-surface placeholder:text-outline focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                aria-label="הוסף פריט ידני"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!manualInput.trim()}
+              className="flex shrink-0 items-center gap-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary/90 active:scale-95 disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-lg">add</span>
+              <span className="hidden sm:inline">הוספה</span>
+            </button>
+          </form>
         </div>
 
         {/* Recipes in list summary */}
