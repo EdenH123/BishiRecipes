@@ -21,6 +21,7 @@ import {
 } from '@/lib/shopping-list'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
+import PageTransition from '@/components/PageTransition'
 
 const springTransition = { type: 'spring' as const, stiffness: 300, damping: 25 }
 
@@ -304,6 +305,7 @@ export default function ShoppingListPage() {
     <div className="min-h-screen bg-surface pt-20 pb-28">
       <Navbar />
 
+      <PageTransition>
       <div className="mx-auto max-w-2xl px-4 py-6 font-rubik" dir="rtl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -671,6 +673,7 @@ export default function ShoppingListPage() {
           </div>
         )}
       </div>
+      </PageTransition>
 
       <BottomNav />
     </div>

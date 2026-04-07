@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
+import PageTransition from '@/components/PageTransition'
 
 interface GameCard {
   id: string
@@ -185,6 +186,7 @@ export default function GamesPage() {
       </div>
 
       {/* Games Grid */}
+      <PageTransition>
       <div className="max-w-2xl mx-auto px-4 py-6 relative z-[1]">
         <div className="grid grid-cols-2 gap-3">
           {GAMES.map((game, i) => (
@@ -246,6 +248,7 @@ export default function GamesPage() {
           🤫 מצאתם את הסוד! 3 לחיצות על הלוגו...
         </motion.p>
       </div>
+      </PageTransition>
     </div>
   )
 }

@@ -18,6 +18,7 @@ import BottomNav from '@/components/BottomNav'
 import RecipeCard from '@/components/RecipeCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import PageTransition from '@/components/PageTransition'
 
 const TAB_ORDER = ['recipes', 'favorites', 'achievements', 'admin'] as const
 
@@ -283,6 +284,7 @@ export default function ProfilePage() {
     <div dir="rtl" className="min-h-screen bg-surface pt-20 pb-28">
       <Navbar />
 
+      <PageTransition>
       <div className="mx-auto max-w-3xl px-4 py-6">
         {/* Avatar */}
         <div className="flex justify-center">
@@ -566,6 +568,7 @@ export default function ProfilePage() {
           </button>
         </div>
       </div>
+      </PageTransition>
 
       <BottomNav />
     </div>

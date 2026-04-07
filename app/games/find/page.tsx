@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import PageTransition from '@/components/PageTransition'
 
 const FALAFEL = '🧆'
 const TOTAL_ROUNDS = 10
@@ -559,6 +560,7 @@ export default function FindFalafelGame() {
   const stars = '⭐'.repeat(starRating)
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-[#1a1028] flex flex-col items-center font-rubik" dir="rtl">
       {/* Header */}
       <div className="w-full max-w-lg px-4 py-3 flex items-center justify-between">
@@ -782,5 +784,6 @@ export default function FindFalafelGame() {
         )}
       </AnimatePresence>
     </div>
+    </PageTransition>
   )
 }

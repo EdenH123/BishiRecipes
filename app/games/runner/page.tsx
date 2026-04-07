@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import PageTransition from '@/components/PageTransition'
 
 // --- Types ---
 interface Obstacle {
@@ -877,6 +878,7 @@ export default function RunnerGame() {
   }
 
   return (
+    <PageTransition>
     <div
       className="min-h-screen bg-gradient-to-b from-[#0f0a1a] to-[#1a1a2e] flex flex-col items-center font-rubik select-none"
       dir="rtl"
@@ -1032,5 +1034,6 @@ export default function RunnerGame() {
         )}
       </AnimatePresence>
     </div>
+    </PageTransition>
   )
 }

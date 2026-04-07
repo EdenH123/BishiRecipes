@@ -10,6 +10,7 @@ import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import PageTransition from '@/components/PageTransition'
 
 // ── Category config (reused from TasteMap) ──
 const CATEGORY_CONFIG: Record<string, { emoji: string; bar: string }> = {
@@ -123,6 +124,11 @@ export default function AdminDashboard() {
   const [categories, setCategories] = useState<CategoryCount[]>([])
   const [topUsers, setTopUsers] = useState<ActiveUser[]>([])
   const [frameMap, setFrameMap] = useState<Map<string, string>>(new Map())
+
+  // Interactive chart state
+  const [hoveredBar, setHoveredBar] = useState<number | null>(null)
+  const [hoveredCat, setHoveredCat] = useState<string | null>(null)
+  const [selectedBar, setSelectedBar] = useState<number | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -432,6 +438,7 @@ export default function AdminDashboard() {
     <div dir="rtl" className="min-h-screen bg-surface pt-20 pb-28">
       <Navbar />
 
+      <PageTransition>
       <div className="mx-auto max-w-4xl px-4 py-6 space-y-8">
         {/* Title */}
         <motion.h1
@@ -506,77 +513,271 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
 
-        {/* ── Recipes Per Day Chart ── */}
+        {/* ── Recipes Per Day Chart (Interactive) ── */}
         <motion.div
           variants={sectionVariants}
           initial="hidden"
           animate="visible"
           className="rounded-2xl bg-surface-container-lowest border border-outline-variant/20 p-5 shadow-sm"
         >
-          <h2 className="text-lg font-bold text-on-surface font-rubik mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">bar_chart</span>
-            מתכונים ב-7 ימים אחרונים
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-on-surface font-rubik flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">bar_chart</span>
+              מתכונים ב-7 ימים אחרונים
+            </h2>
+            <span className="text-xs text-on-surface-variant font-rubik">
+              סה״כ: {dailyRecipes.reduce((s, d) => s + d.count, 0)}
+            </span>
+          </div>
 
-          <div className="flex items-end justify-between gap-2 h-40">
-            {dailyRecipes.map((bucket, i) => (
-              <div key={bucket.date} className="flex flex-col items-center flex-1 gap-1">
-                <span className="text-xs font-bold text-on-surface">{bucket.count}</span>
-                <motion.div
-                  className="w-full rounded-t-lg bg-primary"
-                  initial={{ height: 0 }}
-                  animate={{ height: `${Math.max((bucket.count / maxDaily) * 100, 4)}%` }}
-                  transition={{ duration: 0.5, delay: 0.2 + i * 0.07, ease: 'easeOut' }}
-                  style={{ minHeight: bucket.count > 0 ? 8 : 4 }}
-                />
-                <span className="text-[10px] text-on-surface-variant font-rubik whitespace-nowrap">
-                  {bucket.label}
+          {/* Grid lines */}
+          <div className="relative h-44">
+            {/* Horizontal grid lines */}
+            {maxDaily > 0 && [0.25, 0.5, 0.75, 1].map((pct) => (
+              <div
+                key={pct}
+                className="absolute w-full border-t border-outline-variant/10"
+                style={{ bottom: `${pct * 100}%` }}
+              >
+                <span className="absolute -top-2.5 -right-1 text-[9px] text-outline/40 font-rubik">
+                  {Math.round(maxDaily * pct)}
                 </span>
               </div>
             ))}
+
+            {/* Bars */}
+            <div className="flex items-end justify-between gap-2 h-full relative z-10">
+              {dailyRecipes.map((bucket, i) => {
+                const isHovered = hoveredBar === i
+                const isSelected = selectedBar === i
+                const pct = maxDaily > 0 ? (bucket.count / maxDaily) * 100 : 0
+
+                return (
+                  <div
+                    key={bucket.date}
+                    className="flex flex-col items-center flex-1 gap-1 relative cursor-pointer"
+                    onMouseEnter={() => setHoveredBar(i)}
+                    onMouseLeave={() => setHoveredBar(null)}
+                    onClick={() => setSelectedBar(selectedBar === i ? null : i)}
+                  >
+                    {/* Tooltip */}
+                    <AnimatePresence>
+                      {(isHovered || isSelected) && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 5, scale: 0.9 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 5, scale: 0.9 }}
+                          className="absolute -top-12 z-20 rounded-lg bg-on-surface px-2.5 py-1.5 shadow-lg"
+                        >
+                          <p className="text-xs font-bold text-surface whitespace-nowrap">
+                            {bucket.count} מתכונים
+                          </p>
+                          <p className="text-[10px] text-surface/70">{bucket.date}</p>
+                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 h-2 w-2 bg-on-surface" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Count label */}
+                    <motion.span
+                      className="text-xs font-bold"
+                      animate={{
+                        color: isHovered || isSelected ? 'var(--md-sys-color-primary, #6750A4)' : 'var(--md-sys-color-on-surface, #1C1B1F)',
+                        scale: isHovered ? 1.2 : 1,
+                      }}
+                    >
+                      {bucket.count}
+                    </motion.span>
+
+                    {/* Bar */}
+                    <motion.div
+                      className="w-full rounded-t-lg relative overflow-hidden"
+                      initial={{ height: 0 }}
+                      animate={{
+                        height: `${Math.max(pct, 4)}%`,
+                        backgroundColor: isHovered || isSelected ? '#7C5CFC' : '#6750A4',
+                      }}
+                      whileHover={{ scale: 1.08 }}
+                      transition={{ duration: 0.5, delay: 0.2 + i * 0.07, ease: 'easeOut' }}
+                      style={{ minHeight: bucket.count > 0 ? 8 : 4 }}
+                    >
+                      {/* Shine effect on hover */}
+                      {isHovered && (
+                        <motion.div
+                          initial={{ x: '-100%' }}
+                          animate={{ x: '200%' }}
+                          transition={{ duration: 0.6, ease: 'easeOut' }}
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                        />
+                      )}
+                    </motion.div>
+
+                    {/* Day label */}
+                    <motion.span
+                      className="text-[10px] font-rubik whitespace-nowrap"
+                      animate={{
+                        color: isHovered || isSelected ? 'var(--md-sys-color-primary, #6750A4)' : 'var(--md-sys-color-on-surface-variant, #49454F)',
+                        fontWeight: isHovered || isSelected ? 700 : 400,
+                      }}
+                    >
+                      {bucket.label}
+                    </motion.span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
+
+          {/* Selected day details */}
+          <AnimatePresence>
+            {selectedBar !== null && dailyRecipes[selectedBar] && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 pt-3 border-t border-outline-variant/20 flex items-center justify-between">
+                  <span className="text-sm font-rubik text-on-surface-variant">
+                    {dailyRecipes[selectedBar].label} ({dailyRecipes[selectedBar].date})
+                  </span>
+                  <span className="text-sm font-bold text-primary">
+                    {dailyRecipes[selectedBar].count} מתכונים נוספו
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
-        {/* ── Top Categories ── */}
+        {/* ── Top Categories (Interactive Donut + Bars) ── */}
         <motion.div
           variants={sectionVariants}
           initial="hidden"
           animate="visible"
           className="rounded-2xl bg-surface-container-lowest border border-outline-variant/20 p-5 shadow-sm"
         >
-          <h2 className="text-lg font-bold text-on-surface font-rubik mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">category</span>
-            מתכונים לפי קטגוריה
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-on-surface font-rubik flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">category</span>
+              מתכונים לפי קטגוריה
+            </h2>
+            <span className="text-xs text-on-surface-variant font-rubik">
+              {categories.length} קטגוריות
+            </span>
+          </div>
 
-          <div className="space-y-3">
-            {categories.map((cat, i) => (
-              <motion.div
-                key={cat.name}
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 + i * 0.05 }}
-              >
-                <div className="flex items-center gap-3">
+          {/* Donut chart */}
+          {categories.length > 0 && (
+            <div className="flex items-center justify-center mb-5">
+              <div className="relative w-36 h-36">
+                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                  {(() => {
+                    const total = categories.reduce((s, c) => s + c.count, 0)
+                    let offset = 0
+                    return categories.map((cat) => {
+                      const pct = (cat.count / total) * 100
+                      const circumference = Math.PI * 70
+                      const dashLen = (pct / 100) * circumference
+                      const dashOffset = (offset / 100) * circumference
+                      offset += pct
+                      const isHov = hoveredCat === cat.name
+                      return (
+                        <motion.circle
+                          key={cat.name}
+                          cx="50" cy="50" r="35"
+                          fill="none"
+                          stroke={cat.bar}
+                          strokeDasharray={`${dashLen} ${circumference - dashLen}`}
+                          strokeDashoffset={-dashOffset}
+                          strokeLinecap="round"
+                          className="cursor-pointer"
+                          onMouseEnter={() => setHoveredCat(cat.name)}
+                          onMouseLeave={() => setHoveredCat(null)}
+                          initial={{ strokeDasharray: `0 ${circumference}`, strokeWidth: 10 }}
+                          animate={{ strokeDasharray: `${dashLen} ${circumference - dashLen}`, strokeWidth: isHov ? 14 : 10 }}
+                          transition={{ duration: 0.8, ease: 'easeOut' }}
+                        />
+                      )
+                    })
+                  })()}
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  {hoveredCat ? (
+                    <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="text-center">
+                      <p className="text-lg font-bold text-on-surface">
+                        {categories.find((c) => c.name === hoveredCat)?.count}
+                      </p>
+                      <p className="text-[10px] text-on-surface-variant font-rubik">{hoveredCat}</p>
+                    </motion.div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-on-surface">
+                        {categories.reduce((s, c) => s + c.count, 0)}
+                      </p>
+                      <p className="text-[10px] text-on-surface-variant font-rubik">סה״כ</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Legend + bars */}
+          <div className="space-y-2.5">
+            {categories.map((cat, i) => {
+              const total = categories.reduce((s, c) => s + c.count, 0)
+              const pct = total > 0 ? Math.round((cat.count / total) * 100) : 0
+              const isHov = hoveredCat === cat.name
+
+              return (
+                <motion.div
+                  key={cat.name}
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: 0.1 + i * 0.05 }}
+                  className={`flex items-center gap-3 rounded-xl p-2 -mx-2 transition-colors cursor-pointer ${isHov ? 'bg-surface-container-low' : ''}`}
+                  onMouseEnter={() => setHoveredCat(cat.name)}
+                  onMouseLeave={() => setHoveredCat(null)}
+                >
                   <span className="text-xl w-8 text-center shrink-0">{cat.emoji}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-on-surface font-rubik">{cat.name}</span>
-                      <span className="text-sm font-bold text-on-surface">{cat.count}</span>
+                      <span className={`text-sm font-rubik transition-all ${isHov ? 'font-bold text-on-surface' : 'font-medium text-on-surface'}`}>
+                        {cat.name}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <motion.span
+                          className="text-xs text-on-surface-variant font-rubik"
+                          animate={{ opacity: isHov ? 1 : 0.5 }}
+                        >
+                          {pct}%
+                        </motion.span>
+                        <span className="text-sm font-bold text-on-surface">{cat.count}</span>
+                      </div>
                     </div>
                     <div className="h-2.5 rounded-full bg-surface-container-low overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${(cat.count / maxCat) * 100}%` }}
                         transition={{ duration: 0.6, delay: 0.2 + i * 0.05, ease: 'easeOut' }}
-                        className="h-full rounded-full"
+                        className="h-full rounded-full relative overflow-hidden"
                         style={{ backgroundColor: cat.bar }}
-                      />
+                      >
+                        {isHov && (
+                          <motion.div
+                            initial={{ x: '-100%' }}
+                            animate={{ x: '200%' }}
+                            transition={{ duration: 0.8, ease: 'easeOut' }}
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                          />
+                        )}
+                      </motion.div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              )
+            })}
             {categories.length === 0 && (
               <p className="text-sm text-on-surface-variant text-center py-4 font-rubik">אין נתונים עדיין</p>
             )}
@@ -780,6 +981,7 @@ export default function AdminDashboard() {
           </AnimatePresence>
         </motion.div>
       </div>
+      </PageTransition>
 
       <BottomNav />
     </div>
