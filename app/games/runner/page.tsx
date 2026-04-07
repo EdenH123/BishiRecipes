@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -191,29 +191,58 @@ export default function RunnerGame() {
     }
   })
 
+  // --- Canvas sizing ---
+  const canvasDims = useRef({ w: 0, h: 0 })
+
+  const resizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dpr = window.devicePixelRatio || 1
+    // On mobile, use full width with small padding; on desktop cap at 500
+    const isMobile = window.innerWidth <= 640
+    const w = isMobile
+      ? window.innerWidth - 16
+      : Math.min(window.innerWidth - 32, 500)
+    // On mobile, use more vertical space; leave room for controls
+    const maxH = isMobile
+      ? window.innerHeight * 0.45
+      : Math.min(window.innerHeight - 200, 300)
+    const h = Math.max(180, maxH)
+
+    canvas.width = w * dpr
+    canvas.height = h * dpr
+    canvas.style.width = `${w}px`
+    canvas.style.height = `${h}px`
+    const ctx = canvas.getContext('2d')!
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+    canvasDims.current = { w, h }
+    groundY.current = h - GROUND_Y_OFFSET
+    if (gameStateRef.current === 'idle') {
+      falafelY.current = groundY.current
+    }
+  }, [])
+
   // --- Game Loop ---
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
-    const dpr = window.devicePixelRatio || 1
 
-    const w = Math.min(window.innerWidth - 16, 500)
-    const h = Math.min(window.innerHeight - 200, 300)
-    canvas.width = w * dpr
-    canvas.height = h * dpr
-    canvas.style.width = `${w}px`
-    canvas.style.height = `${h}px`
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    resizeCanvas()
+    const w = () => canvasDims.current.w
+    const h = () => canvasDims.current.h
 
-    groundY.current = h - GROUND_Y_OFFSET
-    falafelY.current = groundY.current
+    // Handle resize / orientation change
+    const onResize = () => resizeCanvas()
+    window.addEventListener('resize', onResize)
+    window.addEventListener('orientationchange', () => setTimeout(onResize, 100))
 
     // Init clouds
     if (clouds.current.length === 0) {
       for (let i = 0; i < 6; i++) {
         clouds.current.push({
-          x: Math.random() * w,
+          x: Math.random() * (canvasDims.current.w || 400),
           y: 20 + Math.random() * 60,
           w: 30 + Math.random() * 50,
           speed: 0.2 + Math.random() * 0.5,
@@ -223,11 +252,11 @@ export default function RunnerGame() {
     }
 
     function drawBackground() {
-      const grd = ctx.createLinearGradient(0, 0, 0, h)
+      const grd = ctx.createLinearGradient(0, 0, 0, h())
       grd.addColorStop(0, '#0f0a1a')
       grd.addColorStop(1, '#1a1a2e')
       ctx.fillStyle = grd
-      ctx.fillRect(0, 0, w, h)
+      ctx.fillRect(0, 0, w(), h())
 
       // Clouds (parallax)
       clouds.current.forEach((c) => {
@@ -247,7 +276,7 @@ export default function RunnerGame() {
       ctx.lineWidth = 2
       ctx.beginPath()
       ctx.moveTo(0, gy)
-      ctx.lineTo(w, gy)
+      ctx.lineTo(w(), gy)
       ctx.stroke()
 
       // Scrolling dashes
@@ -255,7 +284,7 @@ export default function RunnerGame() {
       ctx.lineWidth = 1
       const dashW = 20
       const off = groundOffset.current % (dashW * 2)
-      for (let x = -off; x < w + dashW; x += dashW * 2) {
+      for (let x = -off; x < w() + dashW; x += dashW * 2) {
         ctx.beginPath()
         ctx.moveTo(x, gy + 8)
         ctx.lineTo(x + dashW, gy + 8)
@@ -356,11 +385,11 @@ export default function RunnerGame() {
       ctx.strokeStyle = `rgba(255,255,255,${0.03 + intensity * 0.05})`
       ctx.lineWidth = 1
       for (let i = 0; i < 5; i++) {
-        const y = Math.random() * h
+        const y = Math.random() * h()
         const len = 20 + Math.random() * 40 * intensity
         ctx.beginPath()
-        ctx.moveTo(Math.random() * w, y)
-        ctx.lineTo(Math.random() * w - len, y)
+        ctx.moveTo(Math.random() * w(), y)
+        ctx.lineTo(Math.random() * w() - len, y)
         ctx.stroke()
       }
     }
@@ -370,7 +399,7 @@ export default function RunnerGame() {
       ctx.font = 'bold 20px Rubik, sans-serif'
       ctx.textAlign = 'right'
       ctx.fillStyle = 'rgba(255,255,255,0.6)'
-      ctx.fillText(String(Math.floor(scoreRef.current)), w - 12, 28)
+      ctx.fillText(String(Math.floor(scoreRef.current)), w() - 12, 28)
       ctx.restore()
     }
 
@@ -381,7 +410,7 @@ export default function RunnerGame() {
       if (canFly) {
         const emoji = FLYING_OBSTACLES[Math.floor(Math.random() * FLYING_OBSTACLES.length)]
         obstacles.current.push({
-          x: w + 20,
+          x: w() + 20,
           y: groundY.current - 60 - Math.random() * 40,
           emoji, width: 28, height: 28, flying: true,
         })
@@ -390,7 +419,7 @@ export default function RunnerGame() {
         const tall = sc > 200 && Math.random() < 0.25
         const obstH = tall ? 45 : 30
         obstacles.current.push({
-          x: w + 20,
+          x: w() + 20,
           y: groundY.current - obstH + FALAFEL_SIZE / 2 + 2,
           emoji, width: OBSTACLE_WIDTH, height: obstH, flying: false,
         })
@@ -400,7 +429,7 @@ export default function RunnerGame() {
       if (sc > 200 && Math.random() < 0.15) {
         const emoji = FLYING_OBSTACLES[Math.floor(Math.random() * FLYING_OBSTACLES.length)]
         obstacles.current.push({
-          x: w + 60,
+          x: w() + 60,
           y: groundY.current - 55 - Math.random() * 30,
           emoji, width: 28, height: 28, flying: true,
         })
@@ -410,7 +439,7 @@ export default function RunnerGame() {
     function spawnCollectible() {
       const isGolden = Math.random() < 0.15
       collectibles.current.push({
-        x: w + 20,
+        x: w() + 20,
         y: groundY.current - 40 - Math.random() * 60,
         emoji: isGolden ? '🧆' : '🌟',
         collected: false,
@@ -438,7 +467,7 @@ export default function RunnerGame() {
       // Clouds
       clouds.current.forEach((c) => {
         c.x -= c.speed
-        if (c.x + c.w < 0) c.x = w + c.w
+        if (c.x + c.w < 0) c.x = w() + c.w
       })
 
       // Falafel physics
@@ -527,10 +556,10 @@ export default function RunnerGame() {
       ctx.fillStyle = 'rgba(255,255,255,0.9)'
       ctx.font = 'bold 22px Rubik, sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('ריצת הפלאפל 🧆', w / 2, h / 2 - 30)
+      ctx.fillText('ריצת הפלאפל 🧆', w() / 2, h() / 2 - 30)
       ctx.fillStyle = 'rgba(255,255,255,0.5)'
       ctx.font = '14px Rubik, sans-serif'
-      ctx.fillText('לחצו או לחצו רווח כדי להתחיל', w / 2, h / 2 + 5)
+      ctx.fillText('לחצו כדי להתחיל', w() / 2, h() / 2 + 5)
 
       // Draw static falafel
       ctx.font = `${FALAFEL_SIZE}px serif`
@@ -565,7 +594,7 @@ export default function RunnerGame() {
         // Red flash
         if (deathFlash.current > 0) {
           ctx.fillStyle = `rgba(255,0,0,${deathFlash.current / 15 * 0.3})`
-          ctx.fillRect(0, 0, w, h)
+          ctx.fillRect(0, 0, w(), h())
         }
       }
 
@@ -573,47 +602,145 @@ export default function RunnerGame() {
     }
 
     frameRef.current = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(frameRef.current)
+    return () => {
+      cancelAnimationFrame(frameRef.current)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [resizeCanvas])
+
+  // Prevent pull-to-refresh and bounce scroll on mobile
+  useEffect(() => {
+    function preventScroll(e: TouchEvent) {
+      // Allow scrolling only on game-over overlay buttons
+      const target = e.target as HTMLElement
+      if (target.tagName === 'BUTTON') return
+      e.preventDefault()
+    }
+    document.addEventListener('touchmove', preventScroll, { passive: false })
+    // Prevent double-tap zoom
+    let lastTap = 0
+    function preventDoubleTapZoom(e: TouchEvent) {
+      const now = Date.now()
+      if (now - lastTap < 300) e.preventDefault()
+      lastTap = now
+    }
+    document.addEventListener('touchend', preventDoubleTapZoom, { passive: false })
+
+    return () => {
+      document.removeEventListener('touchmove', preventScroll)
+      document.removeEventListener('touchend', preventDoubleTapZoom)
+    }
   }, [])
 
   return (
-    <div dir="rtl" className={`min-h-screen flex flex-col items-center justify-center font-rubik ${shakeClass ? 'animate-shake' : ''}`}
-      style={{ background: 'linear-gradient(to bottom, #0f0a1a, #1a1a2e)' }}
+    <div dir="rtl" className={`min-h-screen flex flex-col items-center font-rubik select-none ${shakeClass ? 'animate-shake' : ''}`}
+      style={{
+        background: 'linear-gradient(to bottom, #0f0a1a, #1a1a2e)',
+        touchAction: 'none',
+        overscrollBehavior: 'none',
+      }}
     >
       {/* Back button */}
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-3 right-3 z-50">
         <button
           onClick={() => router.push('/games')}
-          className="flex items-center gap-1 rounded-xl bg-white/10 backdrop-blur-sm px-3 py-2 text-white/70 text-sm hover:bg-white/20 transition-colors"
+          className="flex items-center gap-1 rounded-xl bg-white/10 backdrop-blur-sm px-3 py-2 text-white/70 text-sm hover:bg-white/20 transition-colors active:scale-95"
         >
           <span className="material-symbols-outlined text-lg">arrow_forward</span>
           משחקים
         </button>
       </div>
 
+      {/* Score display for mobile (above canvas) */}
+      {gameState === 'playing' && (
+        <div className="pt-14 pb-2 sm:pt-16">
+          <p className="text-white/50 text-sm text-center">
+            ניקוד: <span className="text-amber-400 font-bold text-lg">{score}</span>
+          </p>
+        </div>
+      )}
+
+      {/* Spacer when not playing */}
+      {gameState !== 'playing' && <div className="pt-14 sm:pt-20 flex-shrink-0" />}
+
       {/* Canvas */}
       <canvas
         ref={canvasRef}
-        onClick={() => jump()}
-        onTouchStart={(e) => {
-          // Detect swipe down for duck
-          const startY = e.touches[0].clientY
-          const onMove = (me: TouchEvent) => {
-            if (me.touches[0].clientY - startY > 30) duck(true)
-          }
-          const onEnd = () => {
-            duck(false)
-            window.removeEventListener('touchmove', onMove)
-            window.removeEventListener('touchend', onEnd)
-          }
-          window.addEventListener('touchmove', onMove)
-          window.addEventListener('touchend', onEnd)
-
-          // Tap = jump
-          if (!isDucking.current) jump()
+        onClick={() => {
+          if (gameStateRef.current === 'over') return
+          jump()
         }}
-        className="rounded-2xl border border-white/10 cursor-pointer"
+        onTouchStart={(e) => {
+          e.preventDefault()
+          if (gameStateRef.current === 'over') return
+
+          const touch = e.touches[0]
+          const canvas = canvasRef.current
+          if (!canvas) return
+
+          // Bottom third of canvas = duck, rest = jump
+          const rect = canvas.getBoundingClientRect()
+          const touchY = touch.clientY - rect.top
+          const isBottomArea = touchY > rect.height * 0.7
+
+          if (isBottomArea) {
+            duck(true)
+          } else {
+            jump()
+          }
+        }}
+        onTouchEnd={(e) => {
+          e.preventDefault()
+          duck(false)
+        }}
+        className="rounded-2xl border border-white/10 cursor-pointer flex-shrink-0"
       />
+
+      {/* Mobile on-screen controls */}
+      {gameState === 'playing' && (
+        <div className="flex gap-4 mt-4 sm:hidden">
+          <button
+            onTouchStart={(e) => { e.preventDefault(); jump() }}
+            onClick={() => jump()}
+            className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-500/20 border border-amber-500/30 py-5 px-8 text-amber-300 font-bold text-base active:bg-amber-500/40 active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-2xl">keyboard_arrow_up</span>
+            קפיצה
+          </button>
+          <button
+            onTouchStart={(e) => { e.preventDefault(); duck(true) }}
+            onTouchEnd={(e) => { e.preventDefault(); duck(false) }}
+            onMouseDown={() => duck(true)}
+            onMouseUp={() => duck(false)}
+            className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-blue-500/20 border border-blue-500/30 py-5 px-8 text-blue-300 font-bold text-base active:bg-blue-500/40 active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
+            התכופפות
+          </button>
+        </div>
+      )}
+
+      {/* Idle start prompt */}
+      {gameState === 'idle' && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 flex flex-col items-center gap-4"
+        >
+          <button
+            onClick={() => jump()}
+            className="rounded-2xl bg-amber-500/90 px-8 py-3.5 text-base font-bold text-white hover:bg-amber-500 active:scale-95 transition-all shadow-lg shadow-amber-500/20"
+          >
+            🧆 התחילו לרוץ!
+          </button>
+          <p className="text-white/30 text-xs hidden sm:block">
+            רווח = קפיצה · חץ למטה = התכופפות
+          </p>
+          <p className="text-white/30 text-xs sm:hidden">
+            לחצו כדי לקפוץ · החזיקו למטה להתכופף
+          </p>
+        </motion.div>
+      )}
 
       {/* Game Over overlay */}
       <AnimatePresence>
@@ -641,7 +768,7 @@ export default function RunnerGame() {
 
             <button
               onClick={() => startGame()}
-              className="mt-2 rounded-xl bg-amber-500/90 px-6 py-2.5 text-sm font-bold text-white hover:bg-amber-500 transition-colors active:scale-95"
+              className="mt-2 rounded-xl bg-amber-500/90 px-8 py-3 text-base font-bold text-white hover:bg-amber-500 transition-colors active:scale-95"
             >
               שחקו שוב
             </button>
@@ -649,13 +776,13 @@ export default function RunnerGame() {
         )}
       </AnimatePresence>
 
-      {/* Controls hint */}
+      {/* Controls hint - playing on desktop */}
       {gameState === 'playing' && (
         <motion.div
           initial={{ opacity: 1 }}
           animate={{ opacity: 0 }}
           transition={{ delay: 2, duration: 1 }}
-          className="mt-3 text-white/30 text-xs text-center"
+          className="mt-3 text-white/30 text-xs text-center hidden sm:block"
         >
           רווח/לחיצה = קפיצה · חץ למטה = התכופפות
         </motion.div>
