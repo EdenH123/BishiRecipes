@@ -162,38 +162,47 @@ export default function ShoppingListPage() {
     setUpdatingRecipeId(recipeId)
 
     try {
-      // Fetch fresh recipe ingredients from Supabase
+      // Build the new entries list with the updated multiplier
+      const newEntries = recipeEntries.map((e) =>
+        e.recipeId === recipeId
+          ? { ...e, multiplier: newMultiplier, addedAt: new Date().toISOString() }
+          : e,
+      )
+
+      // Fetch ALL recipes' ingredients and rebuild the entire list from scratch.
+      // This is necessary because items get merged across recipes (e.g. "סוכר"
+      // from two recipes becomes one line), so we can't just remove one recipe's
+      // items without losing the merged quantities.
+      const recipeIds = newEntries.map((e) => e.recipeId)
       const { data, error } = await supabase
         .from('recipes')
-        .select('ingredients, title')
-        .eq('id', recipeId)
-        .single()
+        .select('id, title, ingredients')
+        .in('id', recipeIds)
 
       if (error || !data) {
         toast.error('שגיאה בעדכון הכפלה')
         return
       }
 
-      // Remove old items for this recipe, then re-add with new multiplier
-      setItems((prev) => {
-        const withoutRecipe = prev.filter((i) => i.recipeId !== recipeId)
-        return addIngredientsToList(
-          withoutRecipe,
-          data.ingredients || [],
-          recipeId,
-          data.title,
-          newMultiplier,
-        )
-      })
+      // Rebuild list: start empty, add each recipe with its multiplier
+      let rebuilt: ShoppingItem[] = []
+      for (const entry of newEntries) {
+        const recipe = data.find((r) => r.id === entry.recipeId)
+        if (recipe) {
+          rebuilt = addIngredientsToList(
+            rebuilt,
+            recipe.ingredients || [],
+            recipe.id,
+            recipe.title,
+            entry.multiplier,
+          )
+        }
+      }
 
-      // Update recipe entry multiplier directly
-      setRecipeEntries((prev) =>
-        prev.map((e) =>
-          e.recipeId === recipeId
-            ? { ...e, multiplier: newMultiplier, addedAt: new Date().toISOString() }
-            : e,
-        ),
-      )
+      // Preserve checked items (already purchased) that aren't tied to any recipe
+      const checkedItems = items.filter((i) => i.checked)
+      setItems([...rebuilt, ...checkedItems])
+      setRecipeEntries(newEntries)
     } catch {
       toast.error('שגיאה בעדכון הכפלה')
     } finally {
