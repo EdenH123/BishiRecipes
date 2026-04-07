@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { type Recipe, type Collaborator, type Profile, parseIngredient, displayIngredient } from '@/lib/types'
 import { exportRecipeAsImage } from '@/lib/export-recipe'
+import { loadShoppingList, saveShoppingList, addIngredientsToList } from '@/lib/shopping-list'
 import RecipeCard from '@/components/RecipeCard'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
@@ -528,6 +529,24 @@ export default function RecipeDetailPage() {
             className="flex items-center gap-1.5 rounded-xl border border-outline-variant px-3.5 py-2.5 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low active:scale-95"
           >
             <span className="material-symbols-outlined text-lg">share</span>
+          </motion.button>
+          <motion.button
+            variants={actionButtonItemVariants}
+            onClick={() => {
+              const current = loadShoppingList()
+              const updated = addIngredientsToList(
+                current,
+                recipe.ingredients || [],
+                recipe.id,
+                recipe.title,
+              )
+              saveShoppingList(updated)
+              toast.success('המצרכים נוספו לרשימת הקניות')
+            }}
+            className="flex items-center gap-1.5 rounded-xl border border-outline-variant px-3.5 py-2.5 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low active:scale-95"
+            aria-label="הוסף לרשימת קניות"
+          >
+            <span className="material-symbols-outlined text-lg">shopping_cart</span>
           </motion.button>
           {userId && (
             <motion.div variants={actionButtonItemVariants}>

@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 const NAV_ITEMS = [
   { href: '/', icon: 'home', label: 'בית', fillOnActive: true },
   { href: '/recipe/new', icon: 'add_circle', label: 'הוספה', fillOnActive: false },
+  { href: '/shopping-list', icon: 'shopping_cart', label: 'קניות', fillOnActive: true },
   { href: '/leaderboard', icon: 'emoji_events', label: 'לידרבורד', fillOnActive: true },
   { href: '/profile', icon: 'person', label: 'פרופיל', fillOnActive: false },
 ]
