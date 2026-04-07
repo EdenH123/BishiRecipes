@@ -784,16 +784,20 @@ export default function RunnerGame() {
       })
 
       // Falafel physics
+      // Apply velocity first (so jump force actually moves the character)
+      falafelVY.current += GRAVITY
+      falafelY.current += falafelVY.current
+
+      // Ground collision
       const onGround = falafelY.current >= groundY.current
-      if (!onGround) {
-        falafelVY.current += GRAVITY
-        falafelY.current += falafelVY.current
-      }
-      if (falafelY.current >= groundY.current) {
+      if (onGround) {
         falafelY.current = groundY.current
-        falafelVY.current = 0
-        jumpsLeft.current = 2
-        if (squash.current > 1) squash.current = 0.7 // squash on land
+        // Only reset velocity if falling (not if just jumped)
+        if (falafelVY.current > 0) {
+          falafelVY.current = 0
+          jumpsLeft.current = 2
+          if (squash.current > 1) squash.current = 0.7 // squash on land
+        }
       }
       // Recover squash
       squash.current += (1 - squash.current) * 0.15
