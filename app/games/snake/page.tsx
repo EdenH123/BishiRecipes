@@ -227,26 +227,36 @@ export default function SnakeGame() {
       const fx = food.current.x * CELL + CELL / 2
       const fy = food.current.y * CELL + CELL / 2
 
-      // Golden food blinks
+      // Pulsing glow behind food
+      const pulse = Math.sin(Date.now() * 0.005) * 0.3 + 0.7
+      ctx.save()
+
       if (foodType.current === 'golden') {
         const blink = Math.sin(Date.now() * 0.008) * 0.3 + 0.7
         ctx.globalAlpha = blink
-        // Glow around golden food
-        ctx.save()
         ctx.shadowColor = '#ffd700'
-        ctx.shadowBlur = 10 + 5 * Math.sin(Date.now() * 0.006)
-        ctx.font = `${CELL - 2}px serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(foodEmoji.current, fx, fy)
-        ctx.restore()
-        ctx.globalAlpha = 1
+        ctx.shadowBlur = 14 + 6 * Math.sin(Date.now() * 0.006)
       } else {
-        ctx.font = `${CELL - 2}px serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(foodEmoji.current, fx, fy)
+        // Regular food glow
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.5)'
+        ctx.shadowBlur = 6 + 3 * pulse
       }
+
+      // Draw food emoji larger for visibility
+      ctx.font = `${CELL + 4}px serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(foodEmoji.current, fx, fy)
+
+      // Draw a subtle circle behind for extra visibility
+      ctx.globalAlpha = 0.15 * pulse
+      ctx.beginPath()
+      ctx.arc(fx, fy, CELL * 0.7, 0, Math.PI * 2)
+      ctx.fillStyle = foodType.current === 'golden' ? '#ffd700' : '#4ade80'
+      ctx.fill()
+
+      ctx.restore()
+      ctx.globalAlpha = 1
     }
 
     function drawSnake() {
