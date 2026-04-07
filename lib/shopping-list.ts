@@ -285,20 +285,36 @@ export function addIngredientsToList(
     const scaledAmount = scaleQuantity(ing.amount, multiplier)
     const normalized = normalizeIngredientName(ing.name)
 
-    // Find existing item with same normalized name and compatible unit
-    const existingIdx = newList.findIndex(
+    // Find existing item with same normalized name — prefer same unit, fallback to any
+    const sameUnitIdx = newList.findIndex(
       (item) =>
         !item.checked &&
         item.normalizedName === normalized &&
         unitsCompatible(item.unit, ing.unit),
     )
+    const anyUnitIdx = sameUnitIdx >= 0
+      ? sameUnitIdx
+      : newList.findIndex(
+          (item) => !item.checked && item.normalizedName === normalized,
+        )
 
-    if (existingIdx >= 0) {
-      // Merge quantities
-      const existing = newList[existingIdx]
-      newList[existingIdx] = {
+    if (sameUnitIdx >= 0) {
+      // Same unit — merge quantities numerically
+      const existing = newList[sameUnitIdx]
+      newList[sameUnitIdx] = {
         ...existing,
         quantity: mergeQuantities(existing.quantity, scaledAmount),
+        updatedAt: now,
+      }
+    } else if (anyUnitIdx >= 0) {
+      // Different unit — combine into one line as "7 כפות + 100 גרם"
+      const existing = newList[anyUnitIdx]
+      const existingDisplay = [existing.quantity, existing.unit].filter(Boolean).join(' ')
+      const newDisplay = [scaledAmount, ing.unit].filter(Boolean).join(' ')
+      newList[anyUnitIdx] = {
+        ...existing,
+        quantity: existingDisplay && newDisplay ? `${existingDisplay} + ${newDisplay}` : existingDisplay || newDisplay,
+        unit: '', // clear unit since it's now mixed into the quantity string
         updatedAt: now,
       }
     } else {

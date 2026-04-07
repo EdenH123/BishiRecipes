@@ -125,14 +125,14 @@ describe('addIngredientsToList', () => {
     expect(result[0].id).toBe('existing1') // same item
   })
 
-  it('keeps items separate when units differ', () => {
+  it('merges items with different units into one line', () => {
     const existing: ShoppingItem[] = [
       {
         id: 'existing1',
         ingredientName: 'סוכר',
         normalizedName: normalizeIngredientName('סוכר'),
-        quantity: '2',
-        unit: 'כוסות',
+        quantity: '7',
+        unit: 'כפות',
         checked: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -141,9 +141,9 @@ describe('addIngredientsToList', () => {
     const newIngredients = [makeIngredient('סוכר', '100', 'גרם')]
     const result = addIngredientsToList(existing, newIngredients)
 
-    expect(result).toHaveLength(2)
-    expect(result[0].unit).toBe('כוסות')
-    expect(result[1].unit).toBe('גרם')
+    expect(result).toHaveLength(1)
+    expect(result[0].quantity).toBe('7 כפות + 100 גרם')
+    expect(result[0].unit).toBe('') // unit cleared since it's mixed
   })
 
   it('does not merge with checked items', () => {
