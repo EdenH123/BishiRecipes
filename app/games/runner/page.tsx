@@ -168,20 +168,26 @@ export default function RunnerGame() {
     setHighScores(newScores)
   }
 
+  // Use refs for stable function references in touch handlers
+  const jumpRef = useRef(jump)
+  const duckRef = useRef(duck)
+  jumpRef.current = jump
+  duckRef.current = duck
+
   // --- Controls ---
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.code === 'Space' || e.code === 'ArrowUp') {
         e.preventDefault()
-        jump()
+        jumpRef.current()
       }
       if (e.code === 'ArrowDown') {
         e.preventDefault()
-        duck(true)
+        duckRef.current(true)
       }
     }
     function onKeyUp(e: KeyboardEvent) {
-      if (e.code === 'ArrowDown') duck(false)
+      if (e.code === 'ArrowDown') duckRef.current(false)
     }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
@@ -189,7 +195,7 @@ export default function RunnerGame() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  })
+  }, [])
 
   // --- Canvas sizing ---
   const canvasDims = useRef({ w: 0, h: 0 })
@@ -296,37 +302,290 @@ export default function RunnerGame() {
       const fx = 80
       const fy = falafelY.current
       const ducking = isDucking.current && falafelY.current >= groundY.current - 2
-      const sq = squash.current
+      const onGround = falafelY.current >= groundY.current - 2
+      const playing = gameStateRef.current === 'playing'
+      const fc = frameCount.current
+      const runCycle = fc * 0.15 // animation speed for limbs
 
       ctx.save()
       ctx.translate(fx, fy)
 
       // Running bounce when on ground
-      const onGround = falafelY.current >= groundY.current - 2
       let bounce = 0
-      if (onGround && gameStateRef.current === 'playing' && !ducking) {
-        bounce = Math.sin(frameCount.current * 0.3) * 3
+      if (onGround && playing && !ducking) {
+        bounce = Math.sin(fc * 0.3) * 2
       }
 
-      // Squash/stretch
-      const scaleX = ducking ? 1.4 : (2 - sq)
-      const scaleY = ducking ? 0.5 : sq
-      ctx.scale(scaleX, scaleY)
+      if (ducking) {
+        // --- DUCKING POSE ---
+        // Body (squashed falafel ball)
+        ctx.shadowColor = '#d4a054'
+        ctx.shadowBlur = 8
+        // Body ellipse
+        ctx.fillStyle = '#c4913e'
+        ctx.beginPath()
+        ctx.ellipse(0, 4, 18, 9, 0, 0, Math.PI * 2)
+        ctx.fill()
+        // Darker top
+        ctx.fillStyle = '#a87830'
+        ctx.beginPath()
+        ctx.ellipse(0, 2, 16, 6, 0, Math.PI, Math.PI * 2)
+        ctx.fill()
+        // Speckles
+        ctx.fillStyle = '#8b6020'
+        for (const [sx, sy] of [[-7, 2], [0, 5], [8, 3], [-4, 6], [5, 1]]) {
+          ctx.beginPath()
+          ctx.arc(sx, sy, 1.2, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.shadowBlur = 0
+        // Eyes (wide, scared)
+        ctx.fillStyle = '#fff'
+        ctx.beginPath()
+        ctx.ellipse(-6, 0, 3.5, 3, 0, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.ellipse(6, 0, 3.5, 3, 0, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#222'
+        ctx.beginPath()
+        ctx.arc(-5.5, 0.5, 1.8, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(6.5, 0.5, 1.8, 0, Math.PI * 2)
+        ctx.fill()
+        // Stubby arms tucked in
+        ctx.strokeStyle = '#a87830'
+        ctx.lineWidth = 3
+        ctx.lineCap = 'round'
+        ctx.beginPath()
+        ctx.moveTo(-16, 3)
+        ctx.lineTo(-12, 6)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(16, 3)
+        ctx.lineTo(12, 6)
+        ctx.stroke()
+        // Stubby legs
+        ctx.beginPath()
+        ctx.moveTo(-7, 10)
+        ctx.lineTo(-10, 14)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(7, 10)
+        ctx.lineTo(10, 14)
+        ctx.stroke()
+      } else {
+        // --- NORMAL / RUNNING / JUMPING POSE ---
+        const sq = squash.current
+        const scaleX = 2 - sq
+        const scaleY = sq
+        ctx.scale(scaleX, scaleY)
 
-      // Glow
-      ctx.shadowColor = '#d4a054'
-      ctx.shadowBlur = 8
+        // Legs (behind body)
+        ctx.strokeStyle = '#a87830'
+        ctx.lineWidth = 3.5
+        ctx.lineCap = 'round'
 
-      // Draw falafel emoji
-      const size = ducking ? FALAFEL_SIZE * 0.7 : FALAFEL_SIZE
-      ctx.font = `${size}px serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('🧆', 0, bounce)
+        if (!onGround) {
+          // In air: legs tucked up
+          ctx.beginPath()
+          ctx.moveTo(-6, 14)
+          ctx.lineTo(-10, 8)
+          ctx.stroke()
+          ctx.beginPath()
+          ctx.moveTo(6, 14)
+          ctx.lineTo(10, 8)
+          ctx.stroke()
+          // Shoes
+          ctx.fillStyle = '#e74c3c'
+          ctx.beginPath()
+          ctx.ellipse(-10, 7, 4, 2.5, -0.3, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.beginPath()
+          ctx.ellipse(10, 7, 4, 2.5, 0.3, 0, Math.PI * 2)
+          ctx.fill()
+        } else if (playing) {
+          // Running animation: alternating legs
+          const legSwing = Math.sin(runCycle) * 12
+          const legSwing2 = Math.sin(runCycle + Math.PI) * 12
+
+          // Left leg
+          ctx.beginPath()
+          ctx.moveTo(-5, 14 + bounce)
+          ctx.lineTo(-5 + legSwing * 0.4, 22 + bounce)
+          ctx.stroke()
+          // Right leg
+          ctx.beginPath()
+          ctx.moveTo(5, 14 + bounce)
+          ctx.lineTo(5 + legSwing2 * 0.4, 22 + bounce)
+          ctx.stroke()
+
+          // Shoes
+          ctx.fillStyle = '#e74c3c'
+          ctx.beginPath()
+          ctx.ellipse(-5 + legSwing * 0.4, 23 + bounce, 4, 2.5, 0, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.beginPath()
+          ctx.ellipse(5 + legSwing2 * 0.4, 23 + bounce, 4, 2.5, 0, 0, Math.PI * 2)
+          ctx.fill()
+        } else {
+          // Idle: standing straight
+          ctx.beginPath()
+          ctx.moveTo(-5, 14)
+          ctx.lineTo(-6, 22)
+          ctx.stroke()
+          ctx.beginPath()
+          ctx.moveTo(5, 14)
+          ctx.lineTo(6, 22)
+          ctx.stroke()
+          ctx.fillStyle = '#e74c3c'
+          ctx.beginPath()
+          ctx.ellipse(-6, 23, 4, 2.5, 0, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.beginPath()
+          ctx.ellipse(6, 23, 4, 2.5, 0, 0, Math.PI * 2)
+          ctx.fill()
+        }
+
+        // Body (falafel ball)
+        ctx.shadowColor = '#d4a054'
+        ctx.shadowBlur = 10
+        ctx.fillStyle = '#c4913e'
+        ctx.beginPath()
+        ctx.arc(0, bounce, 16, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.shadowBlur = 0
+
+        // Darker top half (crispy)
+        ctx.fillStyle = '#a87830'
+        ctx.beginPath()
+        ctx.arc(0, bounce, 14, Math.PI, Math.PI * 2)
+        ctx.fill()
+
+        // Speckles (falafel texture)
+        ctx.fillStyle = '#8b6020'
+        const speckles = [[-6, -5], [2, -8], [8, -3], [-3, 3], [5, 5], [-8, 1], [0, -2]]
+        for (const [sx, sy] of speckles) {
+          ctx.beginPath()
+          ctx.arc(sx, sy + bounce, 1.3, 0, Math.PI * 2)
+          ctx.fill()
+        }
+
+        // Arms
+        ctx.strokeStyle = '#a87830'
+        ctx.lineWidth = 3.5
+        ctx.lineCap = 'round'
+
+        if (!onGround) {
+          // In air: arms up
+          ctx.beginPath()
+          ctx.moveTo(-14, -2 + bounce)
+          ctx.lineTo(-20, -10 + bounce)
+          ctx.stroke()
+          ctx.beginPath()
+          ctx.moveTo(14, -2 + bounce)
+          ctx.lineTo(20, -10 + bounce)
+          ctx.stroke()
+          // Hands (white gloves)
+          ctx.fillStyle = '#fff'
+          ctx.beginPath()
+          ctx.arc(-21, -11 + bounce, 3, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.beginPath()
+          ctx.arc(21, -11 + bounce, 3, 0, Math.PI * 2)
+          ctx.fill()
+        } else if (playing) {
+          // Running: pump arms
+          const armSwing = Math.sin(runCycle) * 15
+          const armSwing2 = Math.sin(runCycle + Math.PI) * 15
+
+          ctx.beginPath()
+          ctx.moveTo(-14, 0 + bounce)
+          ctx.lineTo(-18 + armSwing * 0.2, 8 + armSwing * 0.3 + bounce)
+          ctx.stroke()
+          ctx.beginPath()
+          ctx.moveTo(14, 0 + bounce)
+          ctx.lineTo(18 + armSwing2 * 0.2, 8 + armSwing2 * 0.3 + bounce)
+          ctx.stroke()
+
+          // Hands
+          ctx.fillStyle = '#fff'
+          ctx.beginPath()
+          ctx.arc(-18 + armSwing * 0.2, 9 + armSwing * 0.3 + bounce, 3, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.beginPath()
+          ctx.arc(18 + armSwing2 * 0.2, 9 + armSwing2 * 0.3 + bounce, 3, 0, Math.PI * 2)
+          ctx.fill()
+        } else {
+          // Idle: arms relaxed
+          ctx.beginPath()
+          ctx.moveTo(-14, 0)
+          ctx.lineTo(-18, 10)
+          ctx.stroke()
+          ctx.beginPath()
+          ctx.moveTo(14, 0)
+          ctx.lineTo(18, 10)
+          ctx.stroke()
+          ctx.fillStyle = '#fff'
+          ctx.beginPath()
+          ctx.arc(-18, 11, 3, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.beginPath()
+          ctx.arc(18, 11, 3, 0, Math.PI * 2)
+          ctx.fill()
+        }
+
+        // Face — Eyes
+        ctx.fillStyle = '#fff'
+        ctx.beginPath()
+        ctx.ellipse(-5, -4 + bounce, 4, 4.5, 0, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.ellipse(5, -4 + bounce, 4, 4.5, 0, 0, Math.PI * 2)
+        ctx.fill()
+        // Pupils (look right = direction of running)
+        ctx.fillStyle = '#222'
+        ctx.beginPath()
+        ctx.arc(-4, -3.5 + bounce, 2.2, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(6, -3.5 + bounce, 2.2, 0, Math.PI * 2)
+        ctx.fill()
+        // Eye shine
+        ctx.fillStyle = '#fff'
+        ctx.beginPath()
+        ctx.arc(-4.5, -4.5 + bounce, 0.8, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(5.5, -4.5 + bounce, 0.8, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Mouth
+        if (!onGround) {
+          // Open mouth when in air (excited)
+          ctx.fillStyle = '#222'
+          ctx.beginPath()
+          ctx.ellipse(1, 5 + bounce, 4, 3, 0, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.fillStyle = '#e74c3c'
+          ctx.beginPath()
+          ctx.ellipse(1, 6 + bounce, 2.5, 1.5, 0, 0, Math.PI)
+          ctx.fill()
+        } else {
+          // Happy smile
+          ctx.strokeStyle = '#222'
+          ctx.lineWidth = 1.5
+          ctx.beginPath()
+          ctx.arc(1, 3 + bounce, 5, 0.1, Math.PI - 0.1)
+          ctx.stroke()
+        }
+      }
+
       ctx.restore()
 
       // Running dust
-      if (onGround && gameStateRef.current === 'playing' && frameCount.current % 4 === 0) {
+      if (onGround && playing && fc % 4 === 0) {
         particles.current.push({
           x: fx - 15, y: groundY.current + 10,
           vx: -1 - Math.random(), vy: -0.5 - Math.random() * 0.5,
@@ -556,17 +815,13 @@ export default function RunnerGame() {
       ctx.fillStyle = 'rgba(255,255,255,0.9)'
       ctx.font = 'bold 22px Rubik, sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText('ריצת הפלאפל 🧆', w() / 2, h() / 2 - 30)
+      ctx.fillText('ריצת הפלאפל', w() / 2, h() / 2 - 30)
       ctx.fillStyle = 'rgba(255,255,255,0.5)'
       ctx.font = '14px Rubik, sans-serif'
       ctx.fillText('לחצו כדי להתחיל', w() / 2, h() / 2 + 5)
 
-      // Draw static falafel
-      ctx.font = `${FALAFEL_SIZE}px serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      const bob = Math.sin(Date.now() * 0.003) * 5
-      ctx.fillText('🧆', 80, groundY.current + bob)
+      // Draw the falafel character idle
+      drawFalafel()
     }
 
     function loop() {
@@ -611,24 +866,13 @@ export default function RunnerGame() {
   // Prevent pull-to-refresh and bounce scroll on mobile
   useEffect(() => {
     function preventScroll(e: TouchEvent) {
-      // Allow scrolling only on game-over overlay buttons
       const target = e.target as HTMLElement
       if (target.tagName === 'BUTTON') return
       e.preventDefault()
     }
     document.addEventListener('touchmove', preventScroll, { passive: false })
-    // Prevent double-tap zoom
-    let lastTap = 0
-    function preventDoubleTapZoom(e: TouchEvent) {
-      const now = Date.now()
-      if (now - lastTap < 300) e.preventDefault()
-      lastTap = now
-    }
-    document.addEventListener('touchend', preventDoubleTapZoom, { passive: false })
-
     return () => {
       document.removeEventListener('touchmove', preventScroll)
-      document.removeEventListener('touchend', preventDoubleTapZoom)
     }
   }, [])
 
@@ -636,8 +880,10 @@ export default function RunnerGame() {
     <div dir="rtl" className={`min-h-screen flex flex-col items-center font-rubik select-none ${shakeClass ? 'animate-shake' : ''}`}
       style={{
         background: 'linear-gradient(to bottom, #0f0a1a, #1a1a2e)',
-        touchAction: 'none',
+        touchAction: 'manipulation',
         overscrollBehavior: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
       }}
     >
       {/* Back button */}
@@ -663,56 +909,35 @@ export default function RunnerGame() {
       {/* Spacer when not playing */}
       {gameState !== 'playing' && <div className="pt-14 sm:pt-20 flex-shrink-0" />}
 
-      {/* Canvas */}
+      {/* Canvas - tap anywhere to jump */}
       <canvas
         ref={canvasRef}
-        onClick={() => {
-          if (gameStateRef.current === 'over') return
-          jump()
-        }}
-        onTouchStart={(e) => {
+        onPointerDown={(e) => {
           e.preventDefault()
           if (gameStateRef.current === 'over') return
-
-          const touch = e.touches[0]
-          const canvas = canvasRef.current
-          if (!canvas) return
-
-          // Bottom third of canvas = duck, rest = jump
-          const rect = canvas.getBoundingClientRect()
-          const touchY = touch.clientY - rect.top
-          const isBottomArea = touchY > rect.height * 0.7
-
-          if (isBottomArea) {
-            duck(true)
-          } else {
-            jump()
-          }
-        }}
-        onTouchEnd={(e) => {
-          e.preventDefault()
-          duck(false)
+          jumpRef.current()
         }}
         className="rounded-2xl border border-white/10 cursor-pointer flex-shrink-0"
+        style={{ touchAction: 'none' }}
       />
 
       {/* Mobile on-screen controls */}
       {gameState === 'playing' && (
-        <div className="flex gap-4 mt-4 sm:hidden">
+        <div className="flex gap-4 mt-4 sm:hidden w-full px-4">
           <button
-            onTouchStart={(e) => { e.preventDefault(); jump() }}
-            onClick={() => jump()}
+            onPointerDown={(e) => { e.preventDefault(); jumpRef.current() }}
             className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-500/20 border border-amber-500/30 py-5 px-8 text-amber-300 font-bold text-base active:bg-amber-500/40 active:scale-95 transition-all"
+            style={{ touchAction: 'none' }}
           >
             <span className="material-symbols-outlined text-2xl">keyboard_arrow_up</span>
             קפיצה
           </button>
           <button
-            onTouchStart={(e) => { e.preventDefault(); duck(true) }}
-            onTouchEnd={(e) => { e.preventDefault(); duck(false) }}
-            onMouseDown={() => duck(true)}
-            onMouseUp={() => duck(false)}
+            onPointerDown={(e) => { e.preventDefault(); duckRef.current(true) }}
+            onPointerUp={(e) => { e.preventDefault(); duckRef.current(false) }}
+            onPointerLeave={() => { duckRef.current(false) }}
             className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-blue-500/20 border border-blue-500/30 py-5 px-8 text-blue-300 font-bold text-base active:bg-blue-500/40 active:scale-95 transition-all"
+            style={{ touchAction: 'none' }}
           >
             <span className="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
             התכופפות
@@ -728,10 +953,11 @@ export default function RunnerGame() {
           className="mt-6 flex flex-col items-center gap-4"
         >
           <button
-            onClick={() => jump()}
+            onPointerDown={(e) => { e.preventDefault(); jumpRef.current() }}
             className="rounded-2xl bg-amber-500/90 px-8 py-3.5 text-base font-bold text-white hover:bg-amber-500 active:scale-95 transition-all shadow-lg shadow-amber-500/20"
+            style={{ touchAction: 'none' }}
           >
-            🧆 התחילו לרוץ!
+            התחילו לרוץ!
           </button>
           <p className="text-white/30 text-xs hidden sm:block">
             רווח = קפיצה · חץ למטה = התכופפות
@@ -767,8 +993,9 @@ export default function RunnerGame() {
             )}
 
             <button
-              onClick={() => startGame()}
+              onPointerDown={(e) => { e.preventDefault(); startGame() }}
               className="mt-2 rounded-xl bg-amber-500/90 px-8 py-3 text-base font-bold text-white hover:bg-amber-500 transition-colors active:scale-95"
+              style={{ touchAction: 'none' }}
             >
               שחקו שוב
             </button>
