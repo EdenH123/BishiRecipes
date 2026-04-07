@@ -376,6 +376,53 @@ describe('clearCheckedItems', () => {
   })
 })
 
+describe('consolidation on load', () => {
+  it('re-parses old "+" format items and converts to grams', () => {
+    // Simulate old localStorage data: "2 כפות + 100 גרם" with unit=""
+    const oldItems: ShoppingItem[] = [
+      {
+        id: 'old1',
+        ingredientName: 'סוכר',
+        normalizedName: 'סוכר',
+        quantity: '2 כפות + 100 גרם',
+        unit: '',
+        checked: false,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    ]
+    storage.set('bishi_shopping_list', JSON.stringify(oldItems))
+    const loaded = loadShoppingList()
+
+    // 2 כפות = 30g + 100g = 130g
+    expect(loaded).toHaveLength(1)
+    expect(loaded[0].quantity).toBe('130')
+    expect(loaded[0].unit).toBe('גרם')
+    expect(loaded[0].ingredientName).toBe('סוכר')
+  })
+
+  it('re-parses old "+" format with non-empty unit', () => {
+    const oldItems: ShoppingItem[] = [
+      {
+        id: 'old1',
+        ingredientName: 'סוכר',
+        normalizedName: 'סוכר',
+        quantity: '2 כפות + 100 גרם',
+        unit: 'כפות',
+        checked: false,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    ]
+    storage.set('bishi_shopping_list', JSON.stringify(oldItems))
+    const loaded = loadShoppingList()
+
+    expect(loaded).toHaveLength(1)
+    expect(loaded[0].quantity).toBe('130')
+    expect(loaded[0].unit).toBe('גרם')
+  })
+})
+
 describe('persistence', () => {
   it('saves and loads shopping list', () => {
     const items: ShoppingItem[] = [

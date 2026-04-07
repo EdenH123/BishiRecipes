@@ -48,22 +48,29 @@ export function loadShoppingList(): ShoppingItem[] {
 function reparsePlusFormat(items: ShoppingItem[]): ShoppingItem[] {
   const expanded: ShoppingItem[] = []
   for (const item of items) {
-    // If quantity contains " + " and unit is empty, split into separate items to re-merge
-    if (item.quantity.includes(' + ') && !item.unit) {
+    // If quantity contains " + ", split into separate items to re-merge with gram conversion
+    if (item.quantity.includes('+')) {
       const parts = item.quantity.split(/\s*\+\s*/)
       let first = true
       for (const part of parts) {
-        // Try to extract quantity and unit from "7 כפות" or "100 גרם"
-        const match = part.match(/^([\d½¼¾⅓⅔⅛⅜⅝⅞./]+)\s*(.*)$/)
+        const trimmed = part.trim()
+        // Try to extract quantity and unit from "7 כפות" or "100 גרם" or "1½ כוס"
+        const match = trimmed.match(/^([\d½¼¾⅓⅔⅛⅜⅝⅞/.]+)\s+(.+)$/)
         if (match) {
           expanded.push({
             ...item,
             id: first ? item.id : item.id + '_' + Math.random().toString(36).slice(2, 6),
             quantity: match[1],
-            unit: match[2] || '',
+            unit: match[2].trim(),
           })
         } else {
-          expanded.push({ ...item, quantity: part, unit: '' })
+          // Could be just a number — keep the original unit if it exists
+          expanded.push({
+            ...item,
+            id: first ? item.id : item.id + '_' + Math.random().toString(36).slice(2, 6),
+            quantity: trimmed,
+            unit: first ? item.unit : '',
+          })
         }
         first = false
       }
