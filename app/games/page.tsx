@@ -77,6 +77,26 @@ const GAMES: GameCard[] = [
     glowColor: 'rgba(99, 102, 241, 0.4)',
     available: true,
   },
+  {
+    id: 'find',
+    title: 'מצא את הפלאפל',
+    description: 'הפלאפל מתחבא — מצאו אותו בין האוכל!',
+    emoji: '🔍',
+    href: '/games/find',
+    gradient: 'linear-gradient(135deg, #4a1942 0%, #2d1b4e 100%)',
+    glowColor: 'rgba(192, 132, 252, 0.4)',
+    available: true,
+  },
+  {
+    id: 'runner',
+    title: 'ריצת הפלאפל',
+    description: 'רוצו, קפצו והימנעו ממכשולי אוכל!',
+    emoji: '🏃',
+    href: '/games/runner',
+    gradient: 'linear-gradient(135deg, #78350f 0%, #451a03 100%)',
+    glowColor: 'rgba(251, 191, 36, 0.4)',
+    available: true,
+  },
 ]
 
 // Floating background emojis
