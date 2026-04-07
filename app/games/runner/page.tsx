@@ -4,36 +4,22 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 
-// --- Constants ---
-const GRAVITY = 0.6
-const JUMP_FORCE = -11
-const DOUBLE_JUMP_FORCE = -9
-const GROUND_Y_OFFSET = 60 // from bottom
-const FALAFEL_SIZE = 36
-const OBSTACLE_WIDTH = 30
-const COLLECTIBLE_SIZE = 22
-const INITIAL_SPEED = 5
-const MAX_SPEED = 14
-
-const GROUND_OBSTACLES = ['🥤', '🍰', '🧁', '🍕', '🌯']
-const FLYING_OBSTACLES = ['🐦', '🦅']
-const COLLECTIBLES = ['🌟', '🧆']
-
+// --- Types ---
 interface Obstacle {
   x: number
   y: number
+  w: number
+  h: number
   emoji: string
-  width: number
-  height: number
-  flying: boolean
+  type: 'ground' | 'tall' | 'flying'
 }
 
 interface Collectible {
   x: number
   y: number
   emoji: string
-  collected: boolean
   points: number
+  collected: boolean
   glow: boolean
 }
 
@@ -42,14 +28,19 @@ interface Particle {
   life: number; maxLife: number; color: string; size: number
 }
 
-interface CloudLayer {
-  x: number; y: number; w: number; speed: number; alpha: number
+interface Cloud {
+  x: number; y: number; w: number; alpha: number; speed: number
 }
 
+interface Building {
+  x: number; w: number; h: number; color: string; speed: number
+}
+
+// --- Helpers ---
 function getHighScores(): number[] {
   try {
-    const s = localStorage.getItem('runner_high_scores')
-    if (s) return JSON.parse(s)
+    const saved = localStorage.getItem('runner_high_scores')
+    if (saved) return JSON.parse(saved)
   } catch {}
   return []
 }
@@ -63,54 +54,166 @@ function saveHighScore(score: number): number[] {
   return top3
 }
 
+const GROUND_EMOJIS: [string, number, number][] = [
+  ['🥤', 24, 30], ['🍰', 30, 28], ['🧁', 26, 30],
+]
+const TALL_EMOJIS: [string, number, number][] = [
+  ['🌯', 30, 50], ['🍕', 36, 48],
+]
+const FLYING_EMOJIS: [string, number, number][] = [
+  ['🐦', 28, 24], ['🥙', 30, 26],
+]
+
+const GRAVITY = 0.6
+const JUMP_FORCE = -12
+const DUCK_HEIGHT = 20
+const NORMAL_HEIGHT = 36
+const PLAYER_WIDTH = 32
+
 export default function RunnerGame() {
   const router = useRouter()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef(0)
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'over'>('idle')
-  const [score, setScore] = useState(0)
+  const [displayScore, setDisplayScore] = useState(0)
   const [highScores, setHighScores] = useState<number[]>([])
+  const [isPaused, setIsPaused] = useState(false)
+  const [scoreKey, setScoreKey] = useState(0)
   const [shakeClass, setShakeClass] = useState(false)
+  const [currentSpeed, setCurrentSpeed] = useState(5)
 
+  // Game refs
   const gameStateRef = useRef<'idle' | 'playing' | 'over'>('idle')
+  const pausedRef = useRef(false)
   const scoreRef = useRef(0)
-  const speedRef = useRef(INITIAL_SPEED)
+  const speedRef = useRef(5)
   const frameCount = useRef(0)
 
-  // Falafel state
-  const falafelY = useRef(0)
-  const falafelVY = useRef(0)
+  // Player refs
+  const playerY = useRef(0)
+  const playerVY = useRef(0)
+  const playerHeight = useRef(NORMAL_HEIGHT)
+  const isGrounded = useRef(true)
   const jumpsLeft = useRef(2)
   const isDucking = useRef(false)
-  const squash = useRef(1) // 1 = normal, <1 = squashed, >1 = stretched
+  const bouncePhase = useRef(0)
+  const squashStretch = useRef({ sx: 1, sy: 1 })
   const groundY = useRef(0)
 
-  // World
+  // World refs
   const obstacles = useRef<Obstacle[]>([])
   const collectibles = useRef<Collectible[]>([])
   const particles = useRef<Particle[]>([])
-  const clouds = useRef<CloudLayer[]>([])
+  const clouds = useRef<Cloud[]>([])
+  const buildings = useRef<Building[]>([])
   const groundOffset = useRef(0)
-  const deathFlash = useRef(0)
+  const nextObstacleFrame = useRef(80)
+  const nextCollectibleFrame = useRef(120)
+  const flashAlpha = useRef(0)
+  const shakeOffset = useRef({ x: 0, y: 0 })
 
-  useEffect(() => {
-    setHighScores(getHighScores())
-  }, [])
+  // Canvas dimensions
+  const W = useRef(0)
+  const H = useRef(0)
+
+  useEffect(() => { setHighScores(getHighScores()) }, [])
+
+  function spawnClouds(w: number, h: number) {
+    clouds.current = []
+    for (let i = 0; i < 6; i++) {
+      clouds.current.push({
+        x: Math.random() * w, y: 20 + Math.random() * (h * 0.3),
+        w: 40 + Math.random() * 60, alpha: 0.05 + Math.random() * 0.08,
+        speed: 0.2 + Math.random() * 0.3,
+      })
+    }
+  }
+
+  function spawnBuildings(w: number, h: number) {
+    buildings.current = []
+    let bx = 0
+    while (bx < w + 100) {
+      const bw = 30 + Math.random() * 50
+      const bh = 40 + Math.random() * 80
+      const lightness = 10 + Math.random() * 8
+      buildings.current.push({ x: bx, w: bw, h: bh, color: `hsl(240, 20%, ${lightness}%)`, speed: 0.5 })
+      bx += bw + 10 + Math.random() * 40
+    }
+  }
+
+  function spawnObstacle() {
+    const score = scoreRef.current
+    const types: ('ground' | 'tall' | 'flying')[] = ['ground']
+    if (score >= 100) types.push('flying')
+    if (score >= 50) types.push('tall')
+    // After 200, allow combos
+    const doDouble = score >= 200 && Math.random() < 0.3
+    const spawn = (type: 'ground' | 'tall' | 'flying') => {
+      let pool: [string, number, number][]
+      if (type === 'ground') pool = GROUND_EMOJIS
+      else if (type === 'tall') pool = TALL_EMOJIS
+      else pool = FLYING_EMOJIS
+      const [emoji, ow, oh] = pool[Math.floor(Math.random() * pool.length)]
+      const gy = groundY.current
+      let oy: number
+      if (type === 'flying') oy = gy - 70 - Math.random() * 40
+      else oy = gy - oh
+      obstacles.current.push({ x: W.current + 10, y: oy, w: ow, h: oh, emoji, type })
+    }
+    const t = types[Math.floor(Math.random() * types.length)]
+    spawn(t)
+    if (doDouble && t === 'ground') spawn('flying')
+  }
+
+  function spawnCollectible() {
+    const gy = groundY.current
+    const isGolden = Math.random() < 0.15
+    collectibles.current.push({
+      x: W.current + 10,
+      y: gy - 60 - Math.random() * 50,
+      emoji: isGolden ? '🧆' : '🌟',
+      points: isGolden ? 10 : 5,
+      collected: false,
+      glow: isGolden,
+    })
+  }
+
+  function addParticles(x: number, y: number, color: string, count: number) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const spd = 1 + Math.random() * 3
+      particles.current.push({
+        x, y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd - 1,
+        life: 1, maxLife: 15 + Math.random() * 15, color, size: 2 + Math.random() * 3,
+      })
+    }
+  }
 
   function resetGame() {
-    scoreRef.current = 0
-    setScore(0)
-    speedRef.current = INITIAL_SPEED
-    frameCount.current = 0
-    falafelVY.current = 0
+    const gy = groundY.current
+    playerY.current = gy - NORMAL_HEIGHT
+    playerVY.current = 0
+    playerHeight.current = NORMAL_HEIGHT
+    isGrounded.current = true
     jumpsLeft.current = 2
     isDucking.current = false
-    squash.current = 1
+    bouncePhase.current = 0
+    squashStretch.current = { sx: 1, sy: 1 }
+    scoreRef.current = 0
+    speedRef.current = 5
+    frameCount.current = 0
     obstacles.current = []
     collectibles.current = []
     particles.current = []
-    deathFlash.current = 0
-    groundOffset.current = 0
+    nextObstacleFrame.current = 80
+    nextCollectibleFrame.current = 120
+    flashAlpha.current = 0
+    shakeOffset.current = { x: 0, y: 0 }
+    setDisplayScore(0)
+    setScoreKey(k => k + 1)
+    setCurrentSpeed(5)
+    setIsPaused(false)
+    pausedRef.current = false
   }
 
   function startGame() {
@@ -119,570 +222,322 @@ export default function RunnerGame() {
     setGameState('playing')
   }
 
-  function jump() {
-    if (gameStateRef.current === 'idle') {
-      startGame()
-      return
-    }
-    if (gameStateRef.current === 'over') return
-    if (jumpsLeft.current > 0) {
-      const force = jumpsLeft.current === 2 ? JUMP_FORCE : DOUBLE_JUMP_FORCE
-      falafelVY.current = force
-      jumpsLeft.current--
-      squash.current = 1.3 // stretch on jump
-      isDucking.current = false
-      // Jump particles
-      spawnParticles(80, groundY.current, 6, ['#d4a054', '#c4913e', '#e8c078'])
-    }
-  }
-
-  function duck(active: boolean) {
+  function togglePause() {
     if (gameStateRef.current !== 'playing') return
-    isDucking.current = active
+    pausedRef.current = !pausedRef.current
+    setIsPaused(pausedRef.current)
   }
 
-  function spawnParticles(x: number, y: number, count: number, colors: string[]) {
-    for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2
-      const speed = 1 + Math.random() * 2.5
-      particles.current.push({
-        x, y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 1,
-        life: 1, maxLife: 15 + Math.random() * 10,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        size: 2 + Math.random() * 3,
-      })
-    }
-  }
-
-  function die() {
-    gameStateRef.current = 'over'
-    setGameState('over')
-    deathFlash.current = 15
-    setShakeClass(true)
-    setTimeout(() => setShakeClass(false), 400)
-    // Death particles
-    spawnParticles(80, falafelY.current, 20, ['#d4a054', '#c4913e', '#8b6914', '#fff'])
-    const newScores = saveHighScore(scoreRef.current)
-    setHighScores(newScores)
-  }
-
-  // Use refs for stable function references in event handlers
-  const jumpRef = useRef(jump)
-  const duckRef = useRef(duck)
-  const startGameRef = useRef(startGame)
-  jumpRef.current = jump
-  duckRef.current = duck
-  startGameRef.current = startGame
-
-  // --- All controls: keyboard + touch + mouse ---
-  useEffect(() => {
-    // Keyboard
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.code === 'Space' || e.code === 'ArrowUp') {
-        e.preventDefault()
-        jumpRef.current()
+  const doJump = useCallback(() => {
+    if (gameStateRef.current === 'idle') { startGame(); return }
+    if (gameStateRef.current === 'over') return
+    if (pausedRef.current) return
+    if (jumpsLeft.current > 0) {
+      playerVY.current = JUMP_FORCE
+      isGrounded.current = false
+      jumpsLeft.current--
+      isDucking.current = false
+      playerHeight.current = NORMAL_HEIGHT
+      squashStretch.current = { sx: 0.8, sy: 1.3 }
+      // Dust particles
+      if (jumpsLeft.current === 1) {
+        addParticles(60, groundY.current, 'rgba(200,180,150,0.8)', 5)
       }
-      if (e.code === 'ArrowDown') {
-        e.preventDefault()
-        duckRef.current(true)
-      }
-    }
-    function onKeyUp(e: KeyboardEvent) {
-      if (e.code === 'ArrowDown') duckRef.current(false)
-    }
-
-    // Global touch handler for the whole game area
-    function onTouchStart(e: TouchEvent) {
-      const target = e.target as HTMLElement
-      // Skip if touching the back button
-      if (target.closest('[data-back-btn]')) return
-
-      e.preventDefault()
-
-      // Check if touching the duck button area
-      const duckBtn = document.getElementById('duck-btn')
-      if (duckBtn) {
-        const rect = duckBtn.getBoundingClientRect()
-        const tx = e.touches[0].clientX
-        const ty = e.touches[0].clientY
-        if (tx >= rect.left && tx <= rect.right && ty >= rect.top && ty <= rect.bottom) {
-          duckRef.current(true)
-          return
-        }
-      }
-
-      // Everything else = jump / start
-      if (gameStateRef.current === 'over') {
-        // Check if touching the play-again button
-        const replayBtn = document.getElementById('replay-btn')
-        if (replayBtn) {
-          const rect = replayBtn.getBoundingClientRect()
-          const tx = e.touches[0].clientX
-          const ty = e.touches[0].clientY
-          if (tx >= rect.left && tx <= rect.right && ty >= rect.top && ty <= rect.bottom) {
-            startGameRef.current()
-            return
-          }
-        }
-        return
-      }
-
-      jumpRef.current()
-    }
-
-    function onTouchEnd(e: TouchEvent) {
-      const target = e.target as HTMLElement
-      if (target.closest('[data-back-btn]')) return
-      duckRef.current(false)
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    window.addEventListener('keyup', onKeyUp)
-    document.addEventListener('touchstart', onTouchStart, { passive: false })
-    document.addEventListener('touchend', onTouchEnd, { passive: false })
-
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('keyup', onKeyUp)
-      document.removeEventListener('touchstart', onTouchStart)
-      document.removeEventListener('touchend', onTouchEnd)
     }
   }, [])
 
-  // --- Canvas sizing ---
-  const canvasDims = useRef({ w: 0, h: 0 })
+  const doDuck = useCallback((active: boolean) => {
+    if (gameStateRef.current !== 'playing' || pausedRef.current) return
+    isDucking.current = active
+    playerHeight.current = active ? DUCK_HEIGHT : NORMAL_HEIGHT
+    if (active && isGrounded.current) {
+      playerY.current = groundY.current - DUCK_HEIGHT
+    }
+  }, [])
 
-  const resizeCanvas = useCallback(() => {
+  // Main game loop
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+    const ctx = canvas.getContext('2d')!
     const dpr = window.devicePixelRatio || 1
-    // On mobile, use full width with small padding; on desktop cap at 500
-    const isMobile = window.innerWidth <= 640
-    const w = isMobile
-      ? window.innerWidth - 16
-      : Math.min(window.innerWidth - 32, 500)
-    // On mobile, use more vertical space; leave room for controls
-    const maxH = isMobile
-      ? window.innerHeight * 0.45
-      : Math.min(window.innerHeight - 200, 300)
-    const h = Math.max(180, maxH)
 
+    const w = Math.min(window.innerWidth - 16, 600)
+    const h = Math.min(window.innerHeight - 220, 300)
     canvas.width = w * dpr
     canvas.height = h * dpr
     canvas.style.width = `${w}px`
     canvas.style.height = `${h}px`
-    const ctx = canvas.getContext('2d')!
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    canvasDims.current = { w, h }
-    groundY.current = h - GROUND_Y_OFFSET
-    if (gameStateRef.current === 'idle') {
-      falafelY.current = groundY.current
-    }
-  }, [])
+    W.current = w
+    H.current = h
+    groundY.current = h - 40
+    playerY.current = groundY.current - NORMAL_HEIGHT
 
-  // --- Game Loop ---
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-
-    resizeCanvas()
-    const w = () => canvasDims.current.w
-    const h = () => canvasDims.current.h
-
-    // Handle resize / orientation change
-    const onResize = () => resizeCanvas()
-    window.addEventListener('resize', onResize)
-    window.addEventListener('orientationchange', () => setTimeout(onResize, 100))
-
-    // Init clouds
-    if (clouds.current.length === 0) {
-      for (let i = 0; i < 6; i++) {
-        clouds.current.push({
-          x: Math.random() * (canvasDims.current.w || 400),
-          y: 20 + Math.random() * 60,
-          w: 30 + Math.random() * 50,
-          speed: 0.2 + Math.random() * 0.5,
-          alpha: 0.05 + Math.random() * 0.08,
-        })
-      }
-    }
+    spawnClouds(w, h)
+    spawnBuildings(w, h)
 
     function drawBackground() {
-      const grd = ctx.createLinearGradient(0, 0, 0, h())
+      const grd = ctx.createLinearGradient(0, 0, 0, h)
       grd.addColorStop(0, '#0f0a1a')
       grd.addColorStop(1, '#1a1a2e')
       ctx.fillStyle = grd
-      ctx.fillRect(0, 0, w(), h())
+      ctx.fillRect(0, 0, w, h)
+    }
 
-      // Clouds (parallax)
-      clouds.current.forEach((c) => {
+    function drawClouds() {
+      clouds.current.forEach(c => {
         ctx.globalAlpha = c.alpha
         ctx.fillStyle = '#ffffff'
         ctx.beginPath()
-        ctx.ellipse(c.x, c.y, c.w, c.w * 0.35, 0, 0, Math.PI * 2)
+        ctx.ellipse(c.x, c.y, c.w / 2, c.w / 4, 0, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.ellipse(c.x - c.w * 0.2, c.y + 5, c.w / 3, c.w / 5, 0, 0, Math.PI * 2)
         ctx.fill()
       })
       ctx.globalAlpha = 1
     }
 
-    function drawGround() {
-      const gy = groundY.current + FALAFEL_SIZE / 2 + 2
-      // Ground line
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(0, gy)
-      ctx.lineTo(w(), gy)
-      ctx.stroke()
-
-      // Scrolling dashes
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)'
-      ctx.lineWidth = 1
-      const dashW = 20
-      const off = groundOffset.current % (dashW * 2)
-      for (let x = -off; x < w() + dashW; x += dashW * 2) {
-        ctx.beginPath()
-        ctx.moveTo(x, gy + 8)
-        ctx.lineTo(x + dashW, gy + 8)
-        ctx.stroke()
-      }
+    function drawBuildings() {
+      const gy = groundY.current
+      buildings.current.forEach(b => {
+        ctx.fillStyle = b.color
+        ctx.fillRect(b.x, gy - b.h, b.w, b.h)
+        // Windows
+        ctx.fillStyle = 'rgba(255,200,50,0.15)'
+        for (let wy = gy - b.h + 8; wy < gy - 5; wy += 14) {
+          for (let wx = b.x + 5; wx < b.x + b.w - 8; wx += 12) {
+            ctx.fillRect(wx, wy, 6, 8)
+          }
+        }
+      })
     }
 
-    function drawFalafel() {
-      const fx = 80
-      const fy = falafelY.current
-      const ducking = isDucking.current && falafelY.current >= groundY.current - 2
-      const onGround = falafelY.current >= groundY.current - 2
-      const playing = gameStateRef.current === 'playing'
+    function drawGround() {
+      const gy = groundY.current
+      // Ground surface
+      ctx.fillStyle = '#2a1f3d'
+      ctx.fillRect(0, gy, w, h - gy)
+      // Scrolling dashes on ground
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)'
+      ctx.lineWidth = 2
+      const off = groundOffset.current % 30
+      for (let x = -off; x < w + 30; x += 30) {
+        ctx.beginPath()
+        ctx.moveTo(x, gy + 2)
+        ctx.lineTo(x + 15, gy + 2)
+        ctx.stroke()
+      }
+      // Ground line
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(0, gy)
+      ctx.lineTo(w, gy)
+      ctx.stroke()
+    }
+
+    function drawPlayer() {
+      const gy = groundY.current
+      const ph = playerHeight.current
+      const py = playerY.current
+      const px = 60
+      const { sx, sy } = squashStretch.current
+      const bounce = isGrounded.current ? Math.sin(bouncePhase.current) * 2 : 0
+      const drawY = py + bounce
       const fc = frameCount.current
-      const runCycle = fc * 0.15 // animation speed for limbs
+      const runCycle = fc * 0.15
+      const grounded = isGrounded.current
+      const playing = gameStateRef.current === 'playing' && !pausedRef.current
+      const ducking = isDucking.current
+
+      // Center of body
+      const cx = px + PLAYER_WIDTH / 2
+      const cy = drawY + ph / 2
 
       ctx.save()
-      ctx.translate(fx, fy)
 
-      // Running bounce when on ground
-      let bounce = 0
-      if (onGround && playing && !ducking) {
-        bounce = Math.sin(fc * 0.3) * 2
-      }
+      // Shadow on ground
+      ctx.globalAlpha = 0.3
+      ctx.fillStyle = '#000'
+      ctx.beginPath()
+      const shadowScale = 1 - Math.max(0, (gy - py - ph) / 100) * 0.5
+      ctx.ellipse(cx, gy + 2, 14 * shadowScale, 4 * shadowScale, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+
+      ctx.translate(cx, cy)
+      ctx.scale(sx, sy)
 
       if (ducking) {
-        // --- DUCKING POSE ---
-        // Body (squashed falafel ball)
-        ctx.shadowColor = '#d4a054'
-        ctx.shadowBlur = 8
-        // Body ellipse
+        // --- DUCKING ---
+        // Squashed body
         ctx.fillStyle = '#c4913e'
         ctx.beginPath()
-        ctx.ellipse(0, 4, 18, 9, 0, 0, Math.PI * 2)
+        ctx.ellipse(0, 2, 18, 9, 0, 0, Math.PI * 2)
         ctx.fill()
-        // Darker top
         ctx.fillStyle = '#a87830'
         ctx.beginPath()
-        ctx.ellipse(0, 2, 16, 6, 0, Math.PI, Math.PI * 2)
+        ctx.ellipse(0, 0, 16, 6, 0, Math.PI, Math.PI * 2)
         ctx.fill()
         // Speckles
         ctx.fillStyle = '#8b6020'
-        for (const [sx, sy] of [[-7, 2], [0, 5], [8, 3], [-4, 6], [5, 1]]) {
-          ctx.beginPath()
-          ctx.arc(sx, sy, 1.2, 0, Math.PI * 2)
-          ctx.fill()
+        for (const [spx, spy] of [[-7, 2], [0, 5], [8, 3], [-4, 6], [5, 1]]) {
+          ctx.beginPath(); ctx.arc(spx, spy, 1.2, 0, Math.PI * 2); ctx.fill()
         }
-        ctx.shadowBlur = 0
-        // Eyes (wide, scared)
+        // Eyes (wide)
         ctx.fillStyle = '#fff'
-        ctx.beginPath()
-        ctx.ellipse(-6, 0, 3.5, 3, 0, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.ellipse(6, 0, 3.5, 3, 0, 0, Math.PI * 2)
-        ctx.fill()
+        ctx.beginPath(); ctx.ellipse(-5, -1, 3.5, 3, 0, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.ellipse(5, -1, 3.5, 3, 0, 0, Math.PI * 2); ctx.fill()
         ctx.fillStyle = '#222'
-        ctx.beginPath()
-        ctx.arc(-5.5, 0.5, 1.8, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(6.5, 0.5, 1.8, 0, Math.PI * 2)
-        ctx.fill()
-        // Stubby arms tucked in
-        ctx.strokeStyle = '#a87830'
-        ctx.lineWidth = 3
-        ctx.lineCap = 'round'
-        ctx.beginPath()
-        ctx.moveTo(-16, 3)
-        ctx.lineTo(-12, 6)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.moveTo(16, 3)
-        ctx.lineTo(12, 6)
-        ctx.stroke()
-        // Stubby legs
-        ctx.beginPath()
-        ctx.moveTo(-7, 10)
-        ctx.lineTo(-10, 14)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.moveTo(7, 10)
-        ctx.lineTo(10, 14)
-        ctx.stroke()
+        ctx.beginPath(); ctx.arc(-4.5, 0, 1.8, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(5.5, 0, 1.8, 0, Math.PI * 2); ctx.fill()
+        // Stubby arms & legs
+        ctx.strokeStyle = '#a87830'; ctx.lineWidth = 3; ctx.lineCap = 'round'
+        ctx.beginPath(); ctx.moveTo(-16, 3); ctx.lineTo(-12, 7); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(16, 3); ctx.lineTo(12, 7); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(-7, 9); ctx.lineTo(-10, 13); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(7, 9); ctx.lineTo(10, 13); ctx.stroke()
       } else {
-        // --- NORMAL / RUNNING / JUMPING POSE ---
-        const sq = squash.current
-        const scaleX = 2 - sq
-        const scaleY = sq
-        ctx.scale(scaleX, scaleY)
+        // --- NORMAL / RUNNING / JUMPING ---
+        const bodyR = 15
 
         // Legs (behind body)
         ctx.strokeStyle = '#a87830'
         ctx.lineWidth = 3.5
         ctx.lineCap = 'round'
 
-        if (!onGround) {
-          // In air: legs tucked up
-          ctx.beginPath()
-          ctx.moveTo(-6, 14)
-          ctx.lineTo(-10, 8)
-          ctx.stroke()
-          ctx.beginPath()
-          ctx.moveTo(6, 14)
-          ctx.lineTo(10, 8)
-          ctx.stroke()
-          // Shoes
+        if (!grounded) {
+          // Air: legs tucked
+          ctx.beginPath(); ctx.moveTo(-5, bodyR - 2); ctx.lineTo(-10, bodyR - 8); ctx.stroke()
+          ctx.beginPath(); ctx.moveTo(5, bodyR - 2); ctx.lineTo(10, bodyR - 8); ctx.stroke()
           ctx.fillStyle = '#e74c3c'
-          ctx.beginPath()
-          ctx.ellipse(-10, 7, 4, 2.5, -0.3, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.beginPath()
-          ctx.ellipse(10, 7, 4, 2.5, 0.3, 0, Math.PI * 2)
-          ctx.fill()
+          ctx.beginPath(); ctx.ellipse(-10, bodyR - 9, 4, 2.5, -0.3, 0, Math.PI * 2); ctx.fill()
+          ctx.beginPath(); ctx.ellipse(10, bodyR - 9, 4, 2.5, 0.3, 0, Math.PI * 2); ctx.fill()
         } else if (playing) {
-          // Running animation: alternating legs
-          const legSwing = Math.sin(runCycle) * 12
-          const legSwing2 = Math.sin(runCycle + Math.PI) * 12
-
-          // Left leg
-          ctx.beginPath()
-          ctx.moveTo(-5, 14 + bounce)
-          ctx.lineTo(-5 + legSwing * 0.4, 22 + bounce)
-          ctx.stroke()
-          // Right leg
-          ctx.beginPath()
-          ctx.moveTo(5, 14 + bounce)
-          ctx.lineTo(5 + legSwing2 * 0.4, 22 + bounce)
-          ctx.stroke()
-
-          // Shoes
+          // Running legs
+          const ls1 = Math.sin(runCycle) * 10
+          const ls2 = Math.sin(runCycle + Math.PI) * 10
+          ctx.beginPath(); ctx.moveTo(-5, bodyR - 2); ctx.lineTo(-5 + ls1 * 0.4, bodyR + 8); ctx.stroke()
+          ctx.beginPath(); ctx.moveTo(5, bodyR - 2); ctx.lineTo(5 + ls2 * 0.4, bodyR + 8); ctx.stroke()
           ctx.fillStyle = '#e74c3c'
-          ctx.beginPath()
-          ctx.ellipse(-5 + legSwing * 0.4, 23 + bounce, 4, 2.5, 0, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.beginPath()
-          ctx.ellipse(5 + legSwing2 * 0.4, 23 + bounce, 4, 2.5, 0, 0, Math.PI * 2)
-          ctx.fill()
+          ctx.beginPath(); ctx.ellipse(-5 + ls1 * 0.4, bodyR + 9, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill()
+          ctx.beginPath(); ctx.ellipse(5 + ls2 * 0.4, bodyR + 9, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill()
         } else {
-          // Idle: standing straight
-          ctx.beginPath()
-          ctx.moveTo(-5, 14)
-          ctx.lineTo(-6, 22)
-          ctx.stroke()
-          ctx.beginPath()
-          ctx.moveTo(5, 14)
-          ctx.lineTo(6, 22)
-          ctx.stroke()
+          // Idle standing
+          ctx.beginPath(); ctx.moveTo(-5, bodyR - 2); ctx.lineTo(-6, bodyR + 8); ctx.stroke()
+          ctx.beginPath(); ctx.moveTo(5, bodyR - 2); ctx.lineTo(6, bodyR + 8); ctx.stroke()
           ctx.fillStyle = '#e74c3c'
-          ctx.beginPath()
-          ctx.ellipse(-6, 23, 4, 2.5, 0, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.beginPath()
-          ctx.ellipse(6, 23, 4, 2.5, 0, 0, Math.PI * 2)
-          ctx.fill()
+          ctx.beginPath(); ctx.ellipse(-6, bodyR + 9, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill()
+          ctx.beginPath(); ctx.ellipse(6, bodyR + 9, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill()
         }
 
         // Body (falafel ball)
-        ctx.shadowColor = '#d4a054'
-        ctx.shadowBlur = 10
+        ctx.shadowColor = '#d4a054'; ctx.shadowBlur = 8
         ctx.fillStyle = '#c4913e'
-        ctx.beginPath()
-        ctx.arc(0, bounce, 16, 0, Math.PI * 2)
-        ctx.fill()
+        ctx.beginPath(); ctx.arc(0, 0, bodyR, 0, Math.PI * 2); ctx.fill()
         ctx.shadowBlur = 0
-
-        // Darker top half (crispy)
+        // Darker top (crispy)
         ctx.fillStyle = '#a87830'
-        ctx.beginPath()
-        ctx.arc(0, bounce, 14, Math.PI, Math.PI * 2)
-        ctx.fill()
-
-        // Speckles (falafel texture)
+        ctx.beginPath(); ctx.arc(0, 0, bodyR - 2, Math.PI, Math.PI * 2); ctx.fill()
+        // Speckles
         ctx.fillStyle = '#8b6020'
-        const speckles = [[-6, -5], [2, -8], [8, -3], [-3, 3], [5, 5], [-8, 1], [0, -2]]
-        for (const [sx, sy] of speckles) {
-          ctx.beginPath()
-          ctx.arc(sx, sy + bounce, 1.3, 0, Math.PI * 2)
-          ctx.fill()
+        for (const [spx, spy] of [[-6, -5], [2, -8], [8, -3], [-3, 3], [5, 5], [-8, 1]]) {
+          ctx.beginPath(); ctx.arc(spx, spy, 1.3, 0, Math.PI * 2); ctx.fill()
         }
 
         // Arms
-        ctx.strokeStyle = '#a87830'
-        ctx.lineWidth = 3.5
-        ctx.lineCap = 'round'
-
-        if (!onGround) {
-          // In air: arms up
-          ctx.beginPath()
-          ctx.moveTo(-14, -2 + bounce)
-          ctx.lineTo(-20, -10 + bounce)
-          ctx.stroke()
-          ctx.beginPath()
-          ctx.moveTo(14, -2 + bounce)
-          ctx.lineTo(20, -10 + bounce)
-          ctx.stroke()
-          // Hands (white gloves)
+        ctx.strokeStyle = '#a87830'; ctx.lineWidth = 3.5; ctx.lineCap = 'round'
+        if (!grounded) {
+          // Arms up in air
+          ctx.beginPath(); ctx.moveTo(-bodyR + 1, -2); ctx.lineTo(-bodyR - 6, -10); ctx.stroke()
+          ctx.beginPath(); ctx.moveTo(bodyR - 1, -2); ctx.lineTo(bodyR + 6, -10); ctx.stroke()
           ctx.fillStyle = '#fff'
-          ctx.beginPath()
-          ctx.arc(-21, -11 + bounce, 3, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.beginPath()
-          ctx.arc(21, -11 + bounce, 3, 0, Math.PI * 2)
-          ctx.fill()
+          ctx.beginPath(); ctx.arc(-bodyR - 7, -11, 3, 0, Math.PI * 2); ctx.fill()
+          ctx.beginPath(); ctx.arc(bodyR + 7, -11, 3, 0, Math.PI * 2); ctx.fill()
         } else if (playing) {
-          // Running: pump arms
-          const armSwing = Math.sin(runCycle) * 15
-          const armSwing2 = Math.sin(runCycle + Math.PI) * 15
-
-          ctx.beginPath()
-          ctx.moveTo(-14, 0 + bounce)
-          ctx.lineTo(-18 + armSwing * 0.2, 8 + armSwing * 0.3 + bounce)
-          ctx.stroke()
-          ctx.beginPath()
-          ctx.moveTo(14, 0 + bounce)
-          ctx.lineTo(18 + armSwing2 * 0.2, 8 + armSwing2 * 0.3 + bounce)
-          ctx.stroke()
-
-          // Hands
+          // Pumping arms
+          const as1 = Math.sin(runCycle) * 12
+          const as2 = Math.sin(runCycle + Math.PI) * 12
+          ctx.beginPath(); ctx.moveTo(-bodyR + 1, 0); ctx.lineTo(-bodyR - 4 + as1 * 0.2, 6 + as1 * 0.3); ctx.stroke()
+          ctx.beginPath(); ctx.moveTo(bodyR - 1, 0); ctx.lineTo(bodyR + 4 + as2 * 0.2, 6 + as2 * 0.3); ctx.stroke()
           ctx.fillStyle = '#fff'
-          ctx.beginPath()
-          ctx.arc(-18 + armSwing * 0.2, 9 + armSwing * 0.3 + bounce, 3, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.beginPath()
-          ctx.arc(18 + armSwing2 * 0.2, 9 + armSwing2 * 0.3 + bounce, 3, 0, Math.PI * 2)
-          ctx.fill()
+          ctx.beginPath(); ctx.arc(-bodyR - 4 + as1 * 0.2, 7 + as1 * 0.3, 3, 0, Math.PI * 2); ctx.fill()
+          ctx.beginPath(); ctx.arc(bodyR + 4 + as2 * 0.2, 7 + as2 * 0.3, 3, 0, Math.PI * 2); ctx.fill()
         } else {
-          // Idle: arms relaxed
-          ctx.beginPath()
-          ctx.moveTo(-14, 0)
-          ctx.lineTo(-18, 10)
-          ctx.stroke()
-          ctx.beginPath()
-          ctx.moveTo(14, 0)
-          ctx.lineTo(18, 10)
-          ctx.stroke()
+          // Relaxed arms
+          ctx.beginPath(); ctx.moveTo(-bodyR + 1, 0); ctx.lineTo(-bodyR - 4, 8); ctx.stroke()
+          ctx.beginPath(); ctx.moveTo(bodyR - 1, 0); ctx.lineTo(bodyR + 4, 8); ctx.stroke()
           ctx.fillStyle = '#fff'
-          ctx.beginPath()
-          ctx.arc(-18, 11, 3, 0, Math.PI * 2)
-          ctx.fill()
-          ctx.beginPath()
-          ctx.arc(18, 11, 3, 0, Math.PI * 2)
-          ctx.fill()
+          ctx.beginPath(); ctx.arc(-bodyR - 4, 9, 3, 0, Math.PI * 2); ctx.fill()
+          ctx.beginPath(); ctx.arc(bodyR + 4, 9, 3, 0, Math.PI * 2); ctx.fill()
         }
 
         // Face — Eyes
         ctx.fillStyle = '#fff'
-        ctx.beginPath()
-        ctx.ellipse(-5, -4 + bounce, 4, 4.5, 0, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.ellipse(5, -4 + bounce, 4, 4.5, 0, 0, Math.PI * 2)
-        ctx.fill()
-        // Pupils (look right = direction of running)
+        ctx.beginPath(); ctx.ellipse(-5, -4, 4, 4.5, 0, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.ellipse(5, -4, 4, 4.5, 0, 0, Math.PI * 2); ctx.fill()
+        // Pupils (look forward)
         ctx.fillStyle = '#222'
-        ctx.beginPath()
-        ctx.arc(-4, -3.5 + bounce, 2.2, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(6, -3.5 + bounce, 2.2, 0, Math.PI * 2)
-        ctx.fill()
+        ctx.beginPath(); ctx.arc(-4, -3.5, 2.2, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(6, -3.5, 2.2, 0, Math.PI * 2); ctx.fill()
         // Eye shine
         ctx.fillStyle = '#fff'
-        ctx.beginPath()
-        ctx.arc(-4.5, -4.5 + bounce, 0.8, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(5.5, -4.5 + bounce, 0.8, 0, Math.PI * 2)
-        ctx.fill()
+        ctx.beginPath(); ctx.arc(-4.5, -4.5, 0.8, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(5.5, -4.5, 0.8, 0, Math.PI * 2); ctx.fill()
 
         // Mouth
-        if (!onGround) {
-          // Open mouth when in air (excited)
+        if (!grounded) {
+          // Excited open mouth
           ctx.fillStyle = '#222'
-          ctx.beginPath()
-          ctx.ellipse(1, 5 + bounce, 4, 3, 0, 0, Math.PI * 2)
-          ctx.fill()
+          ctx.beginPath(); ctx.ellipse(1, 5, 4, 3, 0, 0, Math.PI * 2); ctx.fill()
           ctx.fillStyle = '#e74c3c'
-          ctx.beginPath()
-          ctx.ellipse(1, 6 + bounce, 2.5, 1.5, 0, 0, Math.PI)
-          ctx.fill()
+          ctx.beginPath(); ctx.ellipse(1, 6, 2.5, 1.5, 0, 0, Math.PI); ctx.fill()
         } else {
           // Happy smile
-          ctx.strokeStyle = '#222'
-          ctx.lineWidth = 1.5
-          ctx.beginPath()
-          ctx.arc(1, 3 + bounce, 5, 0.1, Math.PI - 0.1)
-          ctx.stroke()
+          ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5
+          ctx.beginPath(); ctx.arc(1, 3, 5, 0.1, Math.PI - 0.1); ctx.stroke()
         }
       }
 
       ctx.restore()
 
       // Running dust
-      if (onGround && playing && fc % 4 === 0) {
-        particles.current.push({
-          x: fx - 15, y: groundY.current + 10,
-          vx: -1 - Math.random(), vy: -0.5 - Math.random() * 0.5,
-          life: 1, maxLife: 10 + Math.random() * 5,
-          color: 'rgba(255,255,255,0.3)', size: 2 + Math.random() * 2,
-        })
+      if (grounded && playing && fc % 4 === 0) {
+        addParticles(px, gy, 'rgba(180,160,130,0.6)', 1)
       }
     }
 
     function drawObstacles() {
-      for (const obs of obstacles.current) {
-        ctx.font = `${obs.height}px serif`
+      obstacles.current.forEach(o => {
+        ctx.font = `${Math.max(o.w, o.h) - 4}px serif`
         ctx.textAlign = 'center'
-        ctx.textBaseline = 'bottom'
-        if (obs.flying) {
-          ctx.globalAlpha = 0.9
-          ctx.fillText(obs.emoji, obs.x, obs.y + obs.height)
-          ctx.globalAlpha = 1
-        } else {
-          ctx.fillText(obs.emoji, obs.x, obs.y + obs.height)
-        }
-      }
+        ctx.textBaseline = 'middle'
+        ctx.fillText(o.emoji, o.x + o.w / 2, o.y + o.h / 2)
+      })
     }
 
     function drawCollectibles() {
-      for (const c of collectibles.current) {
-        if (c.collected) continue
+      collectibles.current.forEach(c => {
+        if (c.collected) return
         ctx.save()
+        const bob = Math.sin(Date.now() * 0.005 + c.x) * 4
         if (c.glow) {
           ctx.shadowColor = '#ffd700'
-          ctx.shadowBlur = 10 + Math.sin(frameCount.current * 0.1) * 5
+          ctx.shadowBlur = 10 + 4 * Math.sin(Date.now() * 0.008)
         }
-        const bob = Math.sin(frameCount.current * 0.06 + c.x) * 4
-        ctx.font = `${COLLECTIBLE_SIZE}px serif`
+        ctx.font = '22px serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(c.emoji, c.x, c.y + bob)
+        ctx.fillText(c.emoji, c.x + 12, c.y + 12 + bob)
         ctx.restore()
-      }
+      })
     }
 
     function drawParticles() {
-      particles.current.forEach((p) => {
+      particles.current.forEach(p => {
         ctx.globalAlpha = p.life
         ctx.fillStyle = p.color
         ctx.beginPath()
@@ -693,305 +548,414 @@ export default function RunnerGame() {
     }
 
     function drawSpeedLines() {
-      if (speedRef.current < 8) return
-      const intensity = (speedRef.current - 8) / (MAX_SPEED - 8)
-      ctx.strokeStyle = `rgba(255,255,255,${0.03 + intensity * 0.05})`
-      ctx.lineWidth = 1
-      for (let i = 0; i < 5; i++) {
-        const y = Math.random() * h()
-        const len = 20 + Math.random() * 40 * intensity
-        ctx.beginPath()
-        ctx.moveTo(Math.random() * w(), y)
-        ctx.lineTo(Math.random() * w() - len, y)
-        ctx.stroke()
+      if (speedRef.current > 8) {
+        const intensity = Math.min((speedRef.current - 8) / 7, 1)
+        ctx.strokeStyle = `rgba(255,255,255,${0.05 * intensity})`
+        ctx.lineWidth = 1
+        for (let i = 0; i < 6; i++) {
+          const ly = 20 + Math.random() * (groundY.current - 40)
+          const lx = Math.random() * w
+          ctx.beginPath()
+          ctx.moveTo(lx, ly)
+          ctx.lineTo(lx - 30 - Math.random() * 40, ly)
+          ctx.stroke()
+        }
       }
     }
 
-    function drawScore() {
+    function drawFlash() {
+      if (flashAlpha.current > 0) {
+        ctx.globalAlpha = flashAlpha.current
+        ctx.fillStyle = '#ff0000'
+        ctx.fillRect(0, 0, w, h)
+        ctx.globalAlpha = 1
+        flashAlpha.current -= 0.05
+      }
+    }
+
+    function drawCanvasScore() {
       ctx.save()
-      ctx.font = 'bold 20px Rubik, sans-serif'
+      ctx.font = 'bold 16px Rubik, sans-serif'
       ctx.textAlign = 'right'
-      ctx.fillStyle = 'rgba(255,255,255,0.6)'
-      ctx.fillText(String(Math.floor(scoreRef.current)), w() - 12, 28)
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'
+      ctx.fillText(String(Math.floor(scoreRef.current)), w - 10, 22)
       ctx.restore()
-    }
-
-    function spawnObstacle() {
-      const sc = scoreRef.current
-      // Flying obstacles after score 100
-      const canFly = sc > 100 && Math.random() < 0.3
-      if (canFly) {
-        const emoji = FLYING_OBSTACLES[Math.floor(Math.random() * FLYING_OBSTACLES.length)]
-        obstacles.current.push({
-          x: w() + 20,
-          y: groundY.current - 60 - Math.random() * 40,
-          emoji, width: 28, height: 28, flying: true,
-        })
-      } else {
-        const emoji = GROUND_OBSTACLES[Math.floor(Math.random() * GROUND_OBSTACLES.length)]
-        const tall = sc > 200 && Math.random() < 0.25
-        const obstH = tall ? 45 : 30
-        obstacles.current.push({
-          x: w() + 20,
-          y: groundY.current - obstH + FALAFEL_SIZE / 2 + 2,
-          emoji, width: OBSTACLE_WIDTH, height: obstH, flying: false,
-        })
-      }
-
-      // Double obstacles after 200
-      if (sc > 200 && Math.random() < 0.15) {
-        const emoji = FLYING_OBSTACLES[Math.floor(Math.random() * FLYING_OBSTACLES.length)]
-        obstacles.current.push({
-          x: w() + 60,
-          y: groundY.current - 55 - Math.random() * 30,
-          emoji, width: 28, height: 28, flying: true,
-        })
-      }
-    }
-
-    function spawnCollectible() {
-      const isGolden = Math.random() < 0.15
-      collectibles.current.push({
-        x: w() + 20,
-        y: groundY.current - 40 - Math.random() * 60,
-        emoji: isGolden ? '🧆' : '🌟',
-        collected: false,
-        points: isGolden ? 10 : 5,
-        glow: isGolden,
-      })
     }
 
     function update() {
       const spd = speedRef.current
       frameCount.current++
 
-      // Speed up
-      if (speedRef.current < MAX_SPEED) {
-        speedRef.current += 0.002
+      // Progressive difficulty
+      speedRef.current += 0.002
+      if (speedRef.current > 15) speedRef.current = 15
+
+      // Score from distance
+      scoreRef.current += spd * 0.02
+      if (frameCount.current % 10 === 0) {
+        setDisplayScore(Math.floor(scoreRef.current))
+        setCurrentSpeed(Math.round(speedRef.current * 10) / 10)
+        if (Math.floor(scoreRef.current) % 50 === 0 && Math.floor(scoreRef.current) > 0) {
+          setScoreKey(k => k + 1)
+        }
       }
 
-      // Score
-      scoreRef.current += spd * 0.02
-      setScore(Math.floor(scoreRef.current))
+      // Player physics
+      if (!isGrounded.current) {
+        playerVY.current += GRAVITY
+        playerY.current += playerVY.current
+        const gy = groundY.current
+        if (playerY.current >= gy - playerHeight.current) {
+          playerY.current = gy - playerHeight.current
+          playerVY.current = 0
+          isGrounded.current = true
+          jumpsLeft.current = 2
+          squashStretch.current = { sx: 1.2, sy: 0.8 }
+          addParticles(60, gy, 'rgba(180,160,130,0.6)', 3)
+        }
+      } else {
+        playerY.current = groundY.current - playerHeight.current
+      }
 
-      // Ground scroll
+      // Squash/stretch lerp back to 1
+      squashStretch.current.sx += (1 - squashStretch.current.sx) * 0.15
+      squashStretch.current.sy += (1 - squashStretch.current.sy) * 0.15
+
+      // Bounce phase
+      bouncePhase.current += 0.15 * spd
+
+      // Move world
       groundOffset.current += spd
 
       // Clouds
-      clouds.current.forEach((c) => {
+      clouds.current.forEach(c => {
         c.x -= c.speed
-        if (c.x + c.w < 0) c.x = w() + c.w
+        if (c.x + c.w < 0) { c.x = w + c.w; c.y = 20 + Math.random() * (h * 0.3) }
       })
 
-      // Falafel physics
-      // Apply velocity first (so jump force actually moves the character)
-      falafelVY.current += GRAVITY
-      falafelY.current += falafelVY.current
-
-      // Ground collision
-      const onGround = falafelY.current >= groundY.current
-      if (onGround) {
-        falafelY.current = groundY.current
-        // Only reset velocity if falling (not if just jumped)
-        if (falafelVY.current > 0) {
-          falafelVY.current = 0
-          jumpsLeft.current = 2
-          if (squash.current > 1) squash.current = 0.7 // squash on land
+      // Buildings
+      buildings.current.forEach(b => {
+        b.x -= b.speed * (spd / 5)
+        if (b.x + b.w < 0) {
+          b.x = w + 10 + Math.random() * 50
+          b.h = 40 + Math.random() * 80
+          b.w = 30 + Math.random() * 50
         }
+      })
+
+      // Obstacles
+      nextObstacleFrame.current -= 1
+      if (nextObstacleFrame.current <= 0) {
+        spawnObstacle()
+        const minGap = Math.max(30, 70 - scoreRef.current * 0.05)
+        nextObstacleFrame.current = minGap + Math.random() * 40
       }
-      // Recover squash
-      squash.current += (1 - squash.current) * 0.15
+      obstacles.current.forEach(o => { o.x -= spd })
+      obstacles.current = obstacles.current.filter(o => o.x + o.w > -50)
 
-      // Spawn obstacles
-      const spawnRate = Math.max(40, 90 - Math.floor(speedRef.current * 3))
-      if (frameCount.current % spawnRate === 0) spawnObstacle()
-
-      // Spawn collectibles
-      if (frameCount.current % 70 === 0 && Math.random() < 0.5) spawnCollectible()
-
-      // Move obstacles
-      for (const obs of obstacles.current) {
-        obs.x -= spd
+      // Collectibles
+      nextCollectibleFrame.current -= 1
+      if (nextCollectibleFrame.current <= 0) {
+        spawnCollectible()
+        nextCollectibleFrame.current = 80 + Math.random() * 100
       }
-      obstacles.current = obstacles.current.filter((o) => o.x > -50)
+      collectibles.current.forEach(c => { c.x -= spd })
+      collectibles.current = collectibles.current.filter(c => c.x > -50)
 
-      // Move collectibles
-      for (const c of collectibles.current) {
-        if (!c.collected) c.x -= spd
-      }
-      collectibles.current = collectibles.current.filter((c) => c.x > -50 || c.collected)
+      // Particles
+      particles.current = particles.current.filter(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life -= 1 / p.maxLife
+        return p.life > 0
+      })
 
-      // Collision: falafel hitbox (forgiving)
-      const fx = 80
-      const fy = falafelY.current
-      const ducking = isDucking.current && onGround
-      const fHalfW = ducking ? 16 : 12
-      const fHalfH = ducking ? 8 : 16
-      const fTop = fy - fHalfH
-      const fBottom = fy + fHalfH
-      const fLeft = fx - fHalfW
-      const fRight = fx + fHalfW
+      // Shake decay
+      shakeOffset.current.x *= 0.9
+      shakeOffset.current.y *= 0.9
 
-      for (const obs of obstacles.current) {
-        const oLeft = obs.x - obs.width / 2 + 4 // forgiving hitbox
-        const oRight = obs.x + obs.width / 2 - 4
-        const oTop = obs.y + 4
-        const oBottom = obs.y + obs.height - 4
+      // Collision detection (forgiving hitbox)
+      const px = 60 + 4
+      const py = playerY.current + 4
+      const pw = PLAYER_WIDTH - 8
+      const ph = playerHeight.current - 8
 
-        if (fRight > oLeft && fLeft < oRight && fBottom > oTop && fTop < oBottom) {
-          die()
+      for (const o of obstacles.current) {
+        const ox = o.x + 4; const oy = o.y + 4
+        const ow = o.w - 8; const oh = o.h - 8
+        if (px < ox + ow && px + pw > ox && py < oy + oh && py + ph > oy) {
+          triggerDeath()
           return
         }
       }
 
       // Collect items
-      for (const c of collectibles.current) {
-        if (c.collected) continue
-        const dx = Math.abs(fx - c.x)
-        const dy = Math.abs(fy - c.y)
-        if (dx < 22 && dy < 22) {
+      collectibles.current.forEach(c => {
+        if (c.collected) return
+        const cx = c.x; const cy = c.y
+        if (px < cx + 24 && px + pw > cx && py < cy + 24 && py + ph > cy) {
           c.collected = true
           scoreRef.current += c.points
-          spawnParticles(c.x, c.y, 8, c.glow ? ['#ffd700', '#ffec80'] : ['#44ff44', '#fff'])
+          setDisplayScore(Math.floor(scoreRef.current))
+          setScoreKey(k => k + 1)
+          addParticles(cx + 12, cy + 12, c.glow ? '#ffd700' : '#fbbf24', c.glow ? 15 : 8)
         }
-      }
-
-      // Particles
-      particles.current = particles.current.filter((p) => {
-        p.x += p.vx
-        p.y += p.vy
-        p.vy += 0.05
-        p.life -= 1 / p.maxLife
-        return p.life > 0
       })
-
-      // Death flash
-      if (deathFlash.current > 0) deathFlash.current--
+      collectibles.current = collectibles.current.filter(c => !c.collected || c.x > -50)
     }
 
-    function drawIdle() {
-      ctx.fillStyle = 'rgba(255,255,255,0.9)'
-      ctx.font = 'bold 22px Rubik, sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText('ריצת הפלאפל', w() / 2, h() / 2 - 30)
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'
-      ctx.font = '14px Rubik, sans-serif'
-      ctx.fillText('לחצו כדי להתחיל', w() / 2, h() / 2 + 5)
+    function triggerDeath() {
+      gameStateRef.current = 'over'
+      setGameState('over')
+      flashAlpha.current = 0.4
+      shakeOffset.current = { x: 8, y: 4 }
+      setShakeClass(true)
+      setTimeout(() => setShakeClass(false), 400)
+      // Death particles (crumble)
+      const px = 60; const py = playerY.current
+      for (let i = 0; i < 20; i++) {
+        const angle = Math.random() * Math.PI * 2
+        const spd = 2 + Math.random() * 4
+        particles.current.push({
+          x: px + PLAYER_WIDTH / 2, y: py + playerHeight.current / 2,
+          vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd - 3,
+          life: 1, maxLife: 25 + Math.random() * 20,
+          color: ['#c8a050', '#a07830', '#e0c070', '#806020'][Math.floor(Math.random() * 4)],
+          size: 3 + Math.random() * 4,
+        })
+      }
+      const newScores = saveHighScore(Math.floor(scoreRef.current))
+      setHighScores(newScores)
+      setDisplayScore(Math.floor(scoreRef.current))
+    }
 
-      // Draw the falafel character idle
-      drawFalafel()
+    function drawIdleScreen() {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'
+      ctx.fillRect(0, 0, w, h)
+      ctx.font = 'bold 26px Rubik, sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillStyle = '#fbbf24'
+      ctx.fillText('🧆 ריצת הפלאפל', w / 2, h / 2 - 24)
+      ctx.font = '13px Rubik, sans-serif'
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'
+      ctx.fillText('לחצו או לחצו רווח כדי להתחיל', w / 2, h / 2 + 14)
+    }
+
+    function drawPauseScreen() {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'
+      ctx.fillRect(0, 0, w, h)
+      ctx.font = 'bold 28px Rubik, sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillStyle = '#fff'
+      ctx.fillText('⏸ השהייה', w / 2, h / 2)
+      ctx.font = '14px Rubik, sans-serif'
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'
+      ctx.fillText('לחצו רווח להמשיך', w / 2, h / 2 + 30)
     }
 
     function loop() {
-      drawBackground()
-      drawGround()
-      drawSpeedLines()
+      ctx.save()
+      ctx.translate(shakeOffset.current.x, shakeOffset.current.y)
 
-      if (gameStateRef.current === 'idle') {
-        drawIdle()
-      } else if (gameStateRef.current === 'playing') {
+      if (gameStateRef.current === 'playing' && !pausedRef.current) {
         update()
-        drawObstacles()
-        drawCollectibles()
-        drawFalafel()
-        drawParticles()
-        drawScore()
-      } else {
-        // Game over — still draw last frame
-        drawObstacles()
-        drawCollectibles()
-        drawFalafel()
-        drawParticles()
-        drawScore()
+      }
 
-        // Red flash
-        if (deathFlash.current > 0) {
-          ctx.fillStyle = `rgba(255,0,0,${deathFlash.current / 15 * 0.3})`
-          ctx.fillRect(0, 0, w(), h())
+      drawBackground()
+      drawClouds()
+      drawBuildings()
+      drawGround()
+
+      if (gameStateRef.current === 'playing' || gameStateRef.current === 'over') {
+        drawObstacles()
+        drawCollectibles()
+        drawSpeedLines()
+        drawPlayer()
+        drawParticles()
+        drawCanvasScore()
+        drawFlash()
+
+        // Animate remaining particles even when dead
+        if (gameStateRef.current === 'over') {
+          particles.current = particles.current.filter(p => {
+            p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 1 / p.maxLife
+            return p.life > 0
+          })
+          shakeOffset.current.x *= 0.9
+          shakeOffset.current.y *= 0.9
+          if (flashAlpha.current > 0) flashAlpha.current -= 0.03
+
+          ctx.fillStyle = 'rgba(0,0,0,0.5)'
+          ctx.fillRect(0, 0, w, h)
         }
       }
 
+      if (gameStateRef.current === 'idle') {
+        drawGround()
+        drawPlayer()
+        drawIdleScreen()
+      }
+
+      if (pausedRef.current && gameStateRef.current === 'playing') {
+        drawPauseScreen()
+      }
+
+      ctx.restore()
       frameRef.current = requestAnimationFrame(loop)
     }
 
     frameRef.current = requestAnimationFrame(loop)
-    return () => {
-      cancelAnimationFrame(frameRef.current)
-      window.removeEventListener('resize', onResize)
-    }
-  }, [resizeCanvas])
-
-  // Prevent pull-to-refresh and bounce scroll on mobile
-  useEffect(() => {
-    function preventScroll(e: TouchEvent) {
-      const target = e.target as HTMLElement
-      if (target.closest('[data-back-btn]')) return
-      e.preventDefault()
-    }
-    document.addEventListener('touchmove', preventScroll, { passive: false })
-    return () => {
-      document.removeEventListener('touchmove', preventScroll)
-    }
+    return () => cancelAnimationFrame(frameRef.current)
   }, [])
 
+  // Keyboard controls
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === ' ' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (gameStateRef.current === 'idle') { startGame(); return }
+        if (gameStateRef.current === 'over') return
+        if (pausedRef.current && e.key === ' ') { togglePause(); return }
+        doJump()
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        doDuck(true)
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        togglePause()
+      }
+    }
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.key === 'ArrowDown') { doDuck(false) }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [doJump, doDuck])
+
+  // Touch controls — jump fires instantly on touchStart
+  const touchStartY = useRef(0)
+
+  function onTouchStart(e: React.TouchEvent) {
+    const target = e.target as HTMLElement
+    if (target.closest('[data-back-btn]')) return
+    e.preventDefault()
+    touchStartY.current = e.touches[0].clientY
+
+    if (gameStateRef.current === 'idle') { startGame(); return }
+    if (gameStateRef.current === 'over') return
+
+    // Check if touching the duck button
+    const duckBtn = document.getElementById('duck-btn')
+    if (duckBtn) {
+      const rect = duckBtn.getBoundingClientRect()
+      const tx = e.touches[0].clientX
+      const ty = e.touches[0].clientY
+      if (tx >= rect.left && tx <= rect.right && ty >= rect.top && ty <= rect.bottom) {
+        doDuck(true)
+        return
+      }
+    }
+
+    // Otherwise jump immediately
+    doJump()
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    // Swipe down while touching = duck
+    const dy = e.touches[0].clientY - touchStartY.current
+    if (dy > 30) {
+      doDuck(true)
+    }
+  }
+
+  function onTouchEnd() {
+    doDuck(false)
+  }
+
   return (
-    <div dir="rtl" className={`min-h-screen flex flex-col items-center font-rubik select-none ${shakeClass ? 'animate-shake' : ''}`}
-      style={{
-        background: 'linear-gradient(to bottom, #0f0a1a, #1a1a2e)',
-        touchAction: 'none',
-        overscrollBehavior: 'none',
-        WebkitUserSelect: 'none',
-        userSelect: 'none',
-      }}
+    <div
+      className="min-h-screen bg-gradient-to-b from-[#0f0a1a] to-[#1a1a2e] flex flex-col items-center font-rubik select-none"
+      dir="rtl"
+      style={{ touchAction: 'none', overscrollBehavior: 'none' }}
     >
-      {/* Back button */}
-      <div className="fixed top-3 right-3 z-50" data-back-btn>
-        <button
-          onClick={() => router.push('/games')}
-          className="flex items-center gap-1 rounded-xl bg-white/10 backdrop-blur-sm px-3 py-2 text-white/70 text-sm hover:bg-white/20 transition-colors active:scale-95"
-        >
-          <span className="material-symbols-outlined text-lg">arrow_forward</span>
-          משחקים
-        </button>
+      {/* Header */}
+      <div className="w-full max-w-2xl px-4 py-3 flex items-center justify-between" data-back-btn>
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🧆</span>
+          <h1 className="text-lg font-bold text-amber-400">ריצת הפלאפל</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          {gameState === 'playing' && (
+            <button
+              onClick={togglePause}
+              className="text-white/50 text-sm active:scale-95 hover:text-white/80 transition-colors"
+            >
+              {isPaused ? '▶ המשך' : '⏸ השהה'}
+            </button>
+          )}
+          <button onClick={() => router.push('/games')} className="text-white/50 hover:text-white/80 transition-colors">
+            <span className="material-symbols-outlined text-xl">arrow_back</span>
+          </button>
+        </div>
       </div>
 
-      {/* Score display for mobile (above canvas) */}
-      {gameState === 'playing' && (
-        <div className="pt-14 pb-2 sm:pt-16">
-          <p className="text-white/50 text-sm text-center">
-            ניקוד: <span className="text-amber-400 font-bold text-lg">{score}</span>
-          </p>
-        </div>
-      )}
+      {/* Score bar */}
+      <div className="flex gap-6 text-sm text-white/60 mb-3">
+        <span>
+          ניקוד:{' '}
+          <AnimatePresence mode="wait">
+            <motion.b
+              key={scoreKey}
+              initial={{ scale: 1.6, color: '#fbbf24' }}
+              animate={{ scale: 1, color: '#f59e0b' }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              className="inline-block text-amber-400"
+            >
+              {displayScore}
+            </motion.b>
+          </AnimatePresence>
+        </span>
+        <span>שיא: <b className="text-amber-400">{highScores[0] || 0}</b></span>
+        {gameState === 'playing' && (
+          <span>מהירות: <b className="text-orange-400">{currentSpeed}</b></span>
+        )}
+      </div>
 
-      {/* Spacer when not playing */}
-      {gameState !== 'playing' && <div className="pt-14 sm:pt-20 flex-shrink-0" />}
-
-      {/* Canvas - tap anywhere to jump (handled by global touch listener) */}
-      <canvas
-        ref={canvasRef}
-        onClick={() => {
-          // Desktop mouse click fallback
-          if (gameStateRef.current === 'over') return
-          jump()
-        }}
-        className="rounded-2xl border border-white/10 cursor-pointer flex-shrink-0"
-      />
+      {/* Canvas */}
+      <div className={shakeClass ? 'animate-shake' : ''}>
+        <canvas
+          ref={canvasRef}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onClick={() => {
+            if (gameStateRef.current === 'idle') startGame()
+            else if (gameStateRef.current === 'playing' && !pausedRef.current) doJump()
+          }}
+          className="rounded-xl border-2 border-white/10 cursor-pointer"
+          style={{ touchAction: 'none' }}
+        />
+      </div>
 
       {/* Mobile on-screen controls */}
       {gameState === 'playing' && (
         <div className="flex gap-4 mt-4 sm:hidden w-full px-4">
-          {/* Jump button — touch handled globally, this is just visual */}
           <div
-            className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-500/20 border border-amber-500/30 py-5 px-8 text-amber-300 font-bold text-base active:bg-amber-500/40 active:scale-95 transition-all"
+            onTouchStart={(e) => { e.stopPropagation(); doJump() }}
+            className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-500/20 border border-amber-500/30 py-5 text-amber-300 font-bold text-base active:bg-amber-500/40 active:scale-95 transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-2xl">keyboard_arrow_up</span>
             קפיצה
           </div>
-          {/* Duck button — detected by global touch handler via id */}
           <div
             id="duck-btn"
-            className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-blue-500/20 border border-blue-500/30 py-5 px-8 text-blue-300 font-bold text-base active:bg-blue-500/40 active:scale-95 transition-all"
+            onTouchStart={(e) => { e.stopPropagation(); doDuck(true) }}
+            onTouchEnd={(e) => { e.stopPropagation(); doDuck(false) }}
+            className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-blue-500/20 border border-blue-500/30 py-5 text-blue-300 font-bold text-base active:bg-blue-500/40 active:scale-95 transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
             התכופפות
@@ -999,81 +963,74 @@ export default function RunnerGame() {
         </div>
       )}
 
-      {/* Idle start prompt — tap anywhere starts, this is visual */}
-      {gameState === 'idle' && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-6 flex flex-col items-center gap-4"
-        >
-          <div className="rounded-2xl bg-amber-500/90 px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-amber-500/20">
-            לחצו כדי להתחיל!
-          </div>
-          <p className="text-white/30 text-xs hidden sm:block">
-            רווח = קפיצה · חץ למטה = התכופפות
-          </p>
-          <p className="text-white/30 text-xs sm:hidden">
-            לחצו כדי לקפוץ · החזיקו ⬇ להתכופף
-          </p>
-        </motion.div>
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10% { transform: translateX(-6px) translateY(2px); }
+          20% { transform: translateX(6px) translateY(-2px); }
+          30% { transform: translateX(-5px) translateY(1px); }
+          40% { transform: translateX(5px) translateY(-1px); }
+          50% { transform: translateX(-3px); }
+          60% { transform: translateX(3px); }
+          70% { transform: translateX(-2px); }
+          80% { transform: translateX(2px); }
+          90% { transform: translateX(-1px); }
+        }
+        .animate-shake {
+          animation: shake 0.4s ease-out;
+        }
+      `}</style>
+
+      {/* Desktop hint */}
+      {gameState === 'playing' && (
+        <div className="mt-3 text-xs text-white/30 text-center hidden sm:block">
+          רווח/למעלה = קפיצה | למטה = התכופפות | כפול = קפיצה כפולה
+        </div>
       )}
 
-      {/* Game Over overlay */}
       <AnimatePresence>
         {gameState === 'over' && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mt-6 flex flex-col items-center gap-3"
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="mt-4 text-center"
           >
-            <p className="text-white/90 text-xl font-bold">נגמר! 💥</p>
-            <p className="text-white/70 text-lg">
-              ניקוד: <span className="text-amber-400 font-bold">{Math.floor(scoreRef.current)}</span>
+            <p className="text-red-400 font-bold text-lg mb-2">
+              נגמר! ניקוד: {displayScore}
             </p>
 
             {highScores.length > 0 && (
-              <div className="flex gap-3 text-sm text-white/50">
-                {highScores.slice(0, 3).map((s, i) => (
-                  <span key={i}>
-                    {['🥇', '🥈', '🥉'][i]} {s}
-                  </span>
+              <div className="mb-3 bg-white/5 rounded-xl px-4 py-2 inline-block">
+                <p className="text-amber-400 text-sm font-bold mb-1">🏆 שיאים</p>
+                {highScores.map((hs, i) => (
+                  <div key={i} className="text-white/70 text-sm flex items-center gap-2 justify-center">
+                    <span className="text-amber-300">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
+                    <span className={hs === displayScore ? 'text-amber-400 font-bold' : ''}>{hs}</span>
+                  </div>
                 ))}
               </div>
             )}
 
-            <div
-              id="replay-btn"
-              className="mt-2 rounded-xl bg-amber-500/90 px-8 py-3 text-base font-bold text-white cursor-pointer active:scale-95 transition-all"
-            >
-              שחקו שוב
+            <div className="flex gap-3 justify-center">
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={startGame}
+                className="bg-amber-500 text-white px-6 py-2.5 rounded-full font-bold"
+              >
+                שחקו שוב
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => router.push('/games')}
+                className="bg-white/10 text-white px-6 py-2.5 rounded-full font-bold"
+              >
+                חזרה
+              </motion.button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Controls hint - playing on desktop */}
-      {gameState === 'playing' && (
-        <motion.div
-          initial={{ opacity: 1 }}
-          animate={{ opacity: 0 }}
-          transition={{ delay: 2, duration: 1 }}
-          className="mt-3 text-white/30 text-xs text-center hidden sm:block"
-        >
-          רווח/לחיצה = קפיצה · חץ למטה = התכופפות
-        </motion.div>
-      )}
-
-      <style jsx global>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          20% { transform: translateX(-4px); }
-          40% { transform: translateX(4px); }
-          60% { transform: translateX(-3px); }
-          80% { transform: translateX(2px); }
-        }
-        .animate-shake { animation: shake 0.4s ease-out; }
-      `}</style>
     </div>
   )
 }
