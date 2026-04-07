@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface CookingModeProps {
@@ -14,6 +14,32 @@ export default function CookingMode({ steps, title, onClose }: CookingModeProps)
   const [timerSeconds, setTimerSeconds] = useState(0)
   const [timerRunning, setTimerRunning] = useState(false)
   const [timerInput, setTimerInput] = useState(5) // minutes
+
+  // Memoize AudioContext: create once, reuse across timer alarms
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const getAudioContext = useCallback(() => {
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+      audioCtxRef.current = new AudioContext()
+    }
+    // Resume if suspended (browsers suspend AudioContext until user gesture)
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume()
+    }
+    return audioCtxRef.current
+  }, [])
+
+  // Clean up AudioContext on unmount
+  useEffect(() => {
+    return () => {
+      audioCtxRef.current?.close()
+    }
+  }, [])
+
+  // Stable ref for onClose to avoid re-registering keyboard listener
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   // Keep screen awake
   useEffect(() => {
@@ -29,6 +55,23 @@ export default function CookingMode({ steps, title, onClose }: CookingModeProps)
     return () => { wakeLock?.release() }
   }, [])
 
+  // Play alarm sound using the memoized AudioContext
+  const playAlarm = useCallback(() => {
+    try {
+      const audioCtx = getAudioContext()
+      for (let i = 0; i < 3; i++) {
+        const osc = audioCtx.createOscillator()
+        const gain = audioCtx.createGain()
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
+        osc.frequency.value = 880
+        gain.gain.value = 0.3
+        osc.start(audioCtx.currentTime + i * 0.3)
+        osc.stop(audioCtx.currentTime + i * 0.3 + 0.2)
+      }
+    } catch {}
+  }, [getAudioContext])
+
   // Timer countdown
   useEffect(() => {
     if (!timerRunning || timerSeconds <= 0) return
@@ -36,32 +79,19 @@ export default function CookingMode({ steps, title, onClose }: CookingModeProps)
       setTimerSeconds((s) => {
         if (s <= 1) {
           setTimerRunning(false)
-          // Play alarm sound
-          try {
-            const audioCtx = new AudioContext()
-            for (let i = 0; i < 3; i++) {
-              const osc = audioCtx.createOscillator()
-              const gain = audioCtx.createGain()
-              osc.connect(gain)
-              gain.connect(audioCtx.destination)
-              osc.frequency.value = 880
-              gain.gain.value = 0.3
-              osc.start(audioCtx.currentTime + i * 0.3)
-              osc.stop(audioCtx.currentTime + i * 0.3 + 0.2)
-            }
-          } catch {}
+          playAlarm()
           return 0
         }
         return s - 1
       })
     }, 1000)
     return () => clearInterval(interval)
-  }, [timerRunning, timerSeconds])
+  }, [timerRunning, timerSeconds, playAlarm])
 
   const timerMM = String(Math.floor(timerSeconds / 60)).padStart(2, '0')
   const timerSS = String(timerSeconds % 60).padStart(2, '0')
 
-  // Keyboard navigation
+  // Keyboard navigation (uses stable ref for onClose to avoid re-registering)
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
@@ -69,12 +99,12 @@ export default function CookingMode({ steps, title, onClose }: CookingModeProps)
       } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
         setCurrent((c) => Math.max(c - 1, 0))
       } else if (e.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [steps.length, onClose])
+  }, [steps.length])
 
   const isFirst = current === 0
   const isLast = current === steps.length - 1

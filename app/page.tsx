@@ -82,6 +82,7 @@ export default function HomePage() {
   const [animatedCount, setAnimatedCount] = useState(0)
   const [countPulse, setCountPulse] = useState(false)
   const [recentActivity, setRecentActivity] = useState<{ type: string; title: string; user: string; time: string }[]>([])
+  const allRecipeIdsRef = useRef<string[]>([])
 
   // Track hidden filters
   const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set())
@@ -94,8 +95,8 @@ export default function HomePage() {
         supabase.from('profiles').select('id, display_name'),
         supabase.auth.getUser(),
         supabase.from('hidden_filters').select('type, value'),
-        // Fetch all recipes but only tags + category for building filter options
-        supabase.from('recipes').select('tags, category'),
+        // Fetch all recipes: tags + category for building filter options, id for surprise button
+        supabase.from('recipes').select('id, tags, category'),
       ])
 
       const hCats = new Set<string>()
@@ -112,6 +113,8 @@ export default function HomePage() {
       if (allRecipesMetaRes.data) {
         const recipeTags = new Set<string>([...DEFAULT_TAGS])
         const recipeCategories = new Set<string>([...CATEGORIES])
+        // Cache all recipe IDs for the surprise button so it doesn't need a separate fetch
+        allRecipeIdsRef.current = allRecipesMetaRes.data.map((r) => r.id)
         for (const recipe of allRecipesMetaRes.data) {
           if (recipe.tags) {
             for (const tag of recipe.tags) {
@@ -184,7 +187,7 @@ export default function HomePage() {
     }
 
     fetchMetadata()
-  }, [])
+  }, [supabase])
 
   // Build a Supabase query with current filters applied
   const buildFilteredQuery = useCallback(
@@ -399,18 +402,19 @@ export default function HomePage() {
     )
   }, [])
 
-  const router = useRouter()
-  const [surpriseLoading, setSurpriseLoading] = useState(false)
+  const handleToggleFavorites = useCallback(function handleToggleFavorites() {
+    setShowFavoritesOnly((prev) => !prev)
+  }, [])
 
-  const handleSurprise = useCallback(async function handleSurprise() {
-    setSurpriseLoading(true)
-    const { data } = await supabase.from('recipes').select('id')
-    if (data && data.length > 0) {
-      const random = data[Math.floor(Math.random() * data.length)]
-      router.push(`/recipe/${random.id}`)
+  const router = useRouter()
+
+  const handleSurprise = useCallback(function handleSurprise() {
+    const ids = allRecipeIdsRef.current
+    if (ids.length > 0) {
+      const randomId = ids[Math.floor(Math.random() * ids.length)]
+      router.push(`/recipe/${randomId}`)
     }
-    setSurpriseLoading(false)
-  }, [supabase, router])
+  }, [router])
 
   return (
     <div className="min-h-screen bg-surface" dir="rtl">
@@ -433,14 +437,13 @@ export default function HomePage() {
           </div>
           <motion.button
             onClick={handleSurprise}
-            disabled={surpriseLoading}
             whileTap={{ scale: 0.9 }}
             whileHover={{ rotate: [0, -10, 10, -10, 0] }}
             transition={{ duration: 0.4 }}
-            className="shrink-0 flex items-center justify-center h-[52px] w-[52px] rounded-full bg-primary text-white shadow-md hover:bg-primary-container transition-colors disabled:opacity-50"
+            className="shrink-0 flex items-center justify-center h-[52px] w-[52px] rounded-full bg-primary text-white shadow-md hover:bg-primary-container transition-colors"
             title="הפתע אותי!"
           >
-            <span className="text-2xl">{surpriseLoading ? '⏳' : '🎲'}</span>
+            <span className="text-2xl">🎲</span>
           </motion.button>
         </div>
 
@@ -462,7 +465,7 @@ export default function HomePage() {
             selectedMember={selectedMember}
             onSelectMember={setSelectedMember}
             showFavoritesOnly={showFavoritesOnly}
-            onToggleFavorites={() => setShowFavoritesOnly((prev) => !prev)}
+            onToggleFavorites={handleToggleFavorites}
           />
         </motion.div>
 
