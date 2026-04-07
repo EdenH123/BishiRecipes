@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
@@ -16,6 +16,21 @@ export default function Navbar() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [equippedFrame, setEquippedFrame] = useState<string | null>(null)
   const [logoSpin, setLogoSpin] = useState(0)
+  const tapCountRef = useRef(0)
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleLogoTap() {
+    setLogoSpin((prev) => prev + 360)
+    tapCountRef.current++
+    if (tapCountRef.current >= 3) {
+      tapCountRef.current = 0
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current)
+      router.push('/flappy')
+      return
+    }
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current)
+    tapTimerRef.current = setTimeout(() => { tapCountRef.current = 0 }, 800)
+  }
 
   useEffect(() => {
     let userId: string | null = null
@@ -108,7 +123,7 @@ export default function Navbar() {
           <motion.div
             animate={{ rotate: logoSpin }}
             transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-            onTap={() => setLogoSpin((prev) => prev + 360)}
+            onTap={handleLogoTap}
             className="cursor-pointer shrink-0"
           >
             <Image src="/logo.png" alt="BISHILicious" width={64} height={64} className="rounded-full shrink-0" priority />

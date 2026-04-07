@@ -307,3 +307,19 @@ CREATE POLICY "Users can view own items" ON user_items FOR SELECT TO authenticat
 CREATE POLICY "Users can insert own items" ON user_items FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own items" ON user_items FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete own votes" ON feedback_votes FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+-- ===========================================
+-- Flappy Falafel Leaderboard (Easter Egg)
+-- ===========================================
+
+CREATE TABLE IF NOT EXISTS flappy_scores (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  display_name text NOT NULL,
+  score integer NOT NULL DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE flappy_scores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view flappy scores" ON flappy_scores FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Users can insert own flappy scores" ON flappy_scores FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
