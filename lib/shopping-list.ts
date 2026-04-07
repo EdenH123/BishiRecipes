@@ -30,9 +30,53 @@ const RECIPES_STORAGE_KEY = 'bishi_shopping_recipes'
 export function loadShoppingList(): ShoppingItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw)
+    if (raw) {
+      const items: ShoppingItem[] = JSON.parse(raw)
+      // Re-normalize names on load to pick up normalization improvements,
+      // then consolidate duplicates that may have been created before merging logic
+      const renormalized = items.map((item) => ({
+        ...item,
+        normalizedName: normalizeIngredientName(item.ingredientName),
+      }))
+      return consolidateItems(renormalized)
+    }
   } catch {}
   return []
+}
+
+/** Merge items with the same normalizedName that ended up as separate entries */
+function consolidateItems(items: ShoppingItem[]): ShoppingItem[] {
+  const result: ShoppingItem[] = []
+  for (const item of items) {
+    const existingIdx = result.findIndex(
+      (r) =>
+        !r.checked &&
+        !item.checked &&
+        r.normalizedName === item.normalizedName,
+    )
+    if (existingIdx >= 0) {
+      const existing = result[existingIdx]
+      if (unitsCompatible(existing.unit, item.unit)) {
+        result[existingIdx] = {
+          ...existing,
+          quantity: mergeQuantities(existing.quantity, item.quantity),
+          updatedAt: item.updatedAt > existing.updatedAt ? item.updatedAt : existing.updatedAt,
+        }
+      } else {
+        const existingDisplay = [existing.quantity, existing.unit].filter(Boolean).join(' ')
+        const newDisplay = [item.quantity, item.unit].filter(Boolean).join(' ')
+        result[existingIdx] = {
+          ...existing,
+          quantity: existingDisplay && newDisplay ? `${existingDisplay} + ${newDisplay}` : existingDisplay || newDisplay,
+          unit: '',
+          updatedAt: item.updatedAt > existing.updatedAt ? item.updatedAt : existing.updatedAt,
+        }
+      }
+    } else {
+      result.push(item)
+    }
+  }
+  return result
 }
 
 export function saveShoppingList(items: ShoppingItem[]): void {
