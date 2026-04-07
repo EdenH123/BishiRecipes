@@ -168,14 +168,17 @@ export default function RunnerGame() {
     setHighScores(newScores)
   }
 
-  // Use refs for stable function references in touch handlers
+  // Use refs for stable function references in event handlers
   const jumpRef = useRef(jump)
   const duckRef = useRef(duck)
+  const startGameRef = useRef(startGame)
   jumpRef.current = jump
   duckRef.current = duck
+  startGameRef.current = startGame
 
-  // --- Controls ---
+  // --- All controls: keyboard + touch + mouse ---
   useEffect(() => {
+    // Keyboard
     function onKeyDown(e: KeyboardEvent) {
       if (e.code === 'Space' || e.code === 'ArrowUp') {
         e.preventDefault()
@@ -189,11 +192,62 @@ export default function RunnerGame() {
     function onKeyUp(e: KeyboardEvent) {
       if (e.code === 'ArrowDown') duckRef.current(false)
     }
+
+    // Global touch handler for the whole game area
+    function onTouchStart(e: TouchEvent) {
+      const target = e.target as HTMLElement
+      // Skip if touching the back button
+      if (target.closest('[data-back-btn]')) return
+
+      e.preventDefault()
+
+      // Check if touching the duck button area
+      const duckBtn = document.getElementById('duck-btn')
+      if (duckBtn) {
+        const rect = duckBtn.getBoundingClientRect()
+        const tx = e.touches[0].clientX
+        const ty = e.touches[0].clientY
+        if (tx >= rect.left && tx <= rect.right && ty >= rect.top && ty <= rect.bottom) {
+          duckRef.current(true)
+          return
+        }
+      }
+
+      // Everything else = jump / start
+      if (gameStateRef.current === 'over') {
+        // Check if touching the play-again button
+        const replayBtn = document.getElementById('replay-btn')
+        if (replayBtn) {
+          const rect = replayBtn.getBoundingClientRect()
+          const tx = e.touches[0].clientX
+          const ty = e.touches[0].clientY
+          if (tx >= rect.left && tx <= rect.right && ty >= rect.top && ty <= rect.bottom) {
+            startGameRef.current()
+            return
+          }
+        }
+        return
+      }
+
+      jumpRef.current()
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      const target = e.target as HTMLElement
+      if (target.closest('[data-back-btn]')) return
+      duckRef.current(false)
+    }
+
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    document.addEventListener('touchstart', onTouchStart, { passive: false })
+    document.addEventListener('touchend', onTouchEnd, { passive: false })
+
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      document.removeEventListener('touchstart', onTouchStart)
+      document.removeEventListener('touchend', onTouchEnd)
     }
   }, [])
 
@@ -867,7 +921,7 @@ export default function RunnerGame() {
   useEffect(() => {
     function preventScroll(e: TouchEvent) {
       const target = e.target as HTMLElement
-      if (target.tagName === 'BUTTON') return
+      if (target.closest('[data-back-btn]')) return
       e.preventDefault()
     }
     document.addEventListener('touchmove', preventScroll, { passive: false })
@@ -880,14 +934,14 @@ export default function RunnerGame() {
     <div dir="rtl" className={`min-h-screen flex flex-col items-center font-rubik select-none ${shakeClass ? 'animate-shake' : ''}`}
       style={{
         background: 'linear-gradient(to bottom, #0f0a1a, #1a1a2e)',
-        touchAction: 'manipulation',
+        touchAction: 'none',
         overscrollBehavior: 'none',
         WebkitUserSelect: 'none',
         userSelect: 'none',
       }}
     >
       {/* Back button */}
-      <div className="fixed top-3 right-3 z-50">
+      <div className="fixed top-3 right-3 z-50" data-back-btn>
         <button
           onClick={() => router.push('/games')}
           className="flex items-center gap-1 rounded-xl bg-white/10 backdrop-blur-sm px-3 py-2 text-white/70 text-sm hover:bg-white/20 transition-colors active:scale-95"
@@ -909,61 +963,53 @@ export default function RunnerGame() {
       {/* Spacer when not playing */}
       {gameState !== 'playing' && <div className="pt-14 sm:pt-20 flex-shrink-0" />}
 
-      {/* Canvas - tap anywhere to jump */}
+      {/* Canvas - tap anywhere to jump (handled by global touch listener) */}
       <canvas
         ref={canvasRef}
-        onPointerDown={(e) => {
-          e.preventDefault()
+        onClick={() => {
+          // Desktop mouse click fallback
           if (gameStateRef.current === 'over') return
-          jumpRef.current()
+          jump()
         }}
         className="rounded-2xl border border-white/10 cursor-pointer flex-shrink-0"
-        style={{ touchAction: 'none' }}
       />
 
       {/* Mobile on-screen controls */}
       {gameState === 'playing' && (
         <div className="flex gap-4 mt-4 sm:hidden w-full px-4">
-          <button
-            onPointerDown={(e) => { e.preventDefault(); jumpRef.current() }}
+          {/* Jump button — touch handled globally, this is just visual */}
+          <div
             className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-500/20 border border-amber-500/30 py-5 px-8 text-amber-300 font-bold text-base active:bg-amber-500/40 active:scale-95 transition-all"
-            style={{ touchAction: 'none' }}
           >
             <span className="material-symbols-outlined text-2xl">keyboard_arrow_up</span>
             קפיצה
-          </button>
-          <button
-            onPointerDown={(e) => { e.preventDefault(); duckRef.current(true) }}
-            onPointerUp={(e) => { e.preventDefault(); duckRef.current(false) }}
-            onPointerLeave={() => { duckRef.current(false) }}
+          </div>
+          {/* Duck button — detected by global touch handler via id */}
+          <div
+            id="duck-btn"
             className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-blue-500/20 border border-blue-500/30 py-5 px-8 text-blue-300 font-bold text-base active:bg-blue-500/40 active:scale-95 transition-all"
-            style={{ touchAction: 'none' }}
           >
             <span className="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
             התכופפות
-          </button>
+          </div>
         </div>
       )}
 
-      {/* Idle start prompt */}
+      {/* Idle start prompt — tap anywhere starts, this is visual */}
       {gameState === 'idle' && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-6 flex flex-col items-center gap-4"
         >
-          <button
-            onPointerDown={(e) => { e.preventDefault(); jumpRef.current() }}
-            className="rounded-2xl bg-amber-500/90 px-8 py-3.5 text-base font-bold text-white hover:bg-amber-500 active:scale-95 transition-all shadow-lg shadow-amber-500/20"
-            style={{ touchAction: 'none' }}
-          >
-            התחילו לרוץ!
-          </button>
+          <div className="rounded-2xl bg-amber-500/90 px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-amber-500/20">
+            לחצו כדי להתחיל!
+          </div>
           <p className="text-white/30 text-xs hidden sm:block">
             רווח = קפיצה · חץ למטה = התכופפות
           </p>
           <p className="text-white/30 text-xs sm:hidden">
-            לחצו כדי לקפוץ · החזיקו למטה להתכופף
+            לחצו כדי לקפוץ · החזיקו ⬇ להתכופף
           </p>
         </motion.div>
       )}
@@ -992,13 +1038,12 @@ export default function RunnerGame() {
               </div>
             )}
 
-            <button
-              onPointerDown={(e) => { e.preventDefault(); startGame() }}
-              className="mt-2 rounded-xl bg-amber-500/90 px-8 py-3 text-base font-bold text-white hover:bg-amber-500 transition-colors active:scale-95"
-              style={{ touchAction: 'none' }}
+            <div
+              id="replay-btn"
+              className="mt-2 rounded-xl bg-amber-500/90 px-8 py-3 text-base font-bold text-white cursor-pointer active:scale-95 transition-all"
             >
               שחקו שוב
-            </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
