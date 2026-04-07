@@ -53,6 +53,7 @@ export default function ShoppingListPage() {
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [addingRecipeId, setAddingRecipeId] = useState<string | null>(null)
+  const [updatingRecipeId, setUpdatingRecipeId] = useState<string | null>(null)
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -154,6 +155,50 @@ export default function ShoppingListPage() {
   function handleRemoveRecipeFromList(recipeId: string) {
     setItems((prev) => prev.filter((i) => i.recipeId !== recipeId))
     setRecipeEntries((prev) => removeRecipeEntry(prev, recipeId))
+  }
+
+  async function handleChangeMultiplier(recipeId: string, newMultiplier: number) {
+    if (newMultiplier < 0.5 || updatingRecipeId === recipeId) return
+    setUpdatingRecipeId(recipeId)
+
+    try {
+      // Fetch fresh recipe ingredients from Supabase
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('ingredients, title')
+        .eq('id', recipeId)
+        .single()
+
+      if (error || !data) {
+        toast.error('שגיאה בעדכון הכפלה')
+        return
+      }
+
+      // Remove old items for this recipe, then re-add with new multiplier
+      setItems((prev) => {
+        const withoutRecipe = prev.filter((i) => i.recipeId !== recipeId)
+        return addIngredientsToList(
+          withoutRecipe,
+          data.ingredients || [],
+          recipeId,
+          data.title,
+          newMultiplier,
+        )
+      })
+
+      // Update recipe entry multiplier directly
+      setRecipeEntries((prev) =>
+        prev.map((e) =>
+          e.recipeId === recipeId
+            ? { ...e, multiplier: newMultiplier, addedAt: new Date().toISOString() }
+            : e,
+        ),
+      )
+    } catch {
+      toast.error('שגיאה בעדכון הכפלה')
+    } finally {
+      setUpdatingRecipeId(null)
+    }
   }
 
   // Separate checked and unchecked
@@ -315,9 +360,27 @@ export default function ShoppingListPage() {
                       {entry.recipeTitle}
                     </span>
                   </div>
-                  <span className="shrink-0 rounded-full bg-tertiary/15 px-2.5 py-0.5 text-xs font-bold text-tertiary" dir="ltr">
-                    x{entry.multiplier % 1 === 0 ? entry.multiplier : entry.multiplier.toFixed(1)}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-1 rounded-full bg-surface-container px-1 py-0.5" dir="ltr">
+                    <button
+                      onClick={() => handleChangeMultiplier(entry.recipeId, Math.max(0.5, entry.multiplier - 0.5))}
+                      disabled={entry.multiplier <= 0.5 || updatingRecipeId === entry.recipeId}
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 disabled:opacity-30"
+                      aria-label="הפחת הכפלה"
+                    >
+                      <span className="material-symbols-outlined text-sm">remove</span>
+                    </button>
+                    <span className="min-w-[2rem] text-center text-xs font-bold text-tertiary">
+                      x{entry.multiplier % 1 === 0 ? entry.multiplier : entry.multiplier.toFixed(1)}
+                    </span>
+                    <button
+                      onClick={() => handleChangeMultiplier(entry.recipeId, entry.multiplier + 0.5)}
+                      disabled={updatingRecipeId === entry.recipeId}
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 disabled:opacity-30"
+                      aria-label="הגדל הכפלה"
+                    >
+                      <span className="material-symbols-outlined text-sm">add</span>
+                    </button>
+                  </div>
                   <button
                     onClick={() => handleRemoveRecipeFromList(entry.recipeId)}
                     className="shrink-0 rounded-lg p-1 text-outline transition-colors hover:bg-error/10 hover:text-error"
