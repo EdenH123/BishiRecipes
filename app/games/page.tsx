@@ -31,7 +31,7 @@ const GAMES: GameCard[] = [
     emoji: '🃏',
     href: '/games/memory',
     color: 'from-purple-700 to-pink-700',
-    available: false,
+    available: true,
   },
   {
     id: 'quiz',
@@ -40,7 +40,7 @@ const GAMES: GameCard[] = [
     emoji: '🧠',
     href: '/games/quiz',
     color: 'from-amber-700 to-orange-700',
-    available: false,
+    available: true,
   },
   {
     id: 'snake',
@@ -49,7 +49,7 @@ const GAMES: GameCard[] = [
     emoji: '🐍',
     href: '/games/snake',
     color: 'from-green-700 to-emerald-800',
-    available: false,
+    available: true,
   },
   {
     id: 'catch',
@@ -58,7 +58,7 @@ const GAMES: GameCard[] = [
     emoji: '🍽️',
     href: '/games/catch',
     color: 'from-rose-700 to-red-700',
-    available: false,
+    available: true,
   },
   {
     id: 'word',
@@ -67,7 +67,7 @@ const GAMES: GameCard[] = [
     emoji: '📝',
     href: '/games/word',
     color: 'from-blue-700 to-indigo-700',
-    available: false,
+    available: true,
   },
 ]
 
