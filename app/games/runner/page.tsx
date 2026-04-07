@@ -66,7 +66,9 @@ const FLYING_EMOJIS: [string, number, number][] = [
 ]
 
 const GRAVITY = 0.6
-const JUMP_FORCE = -12
+const INITIAL_JUMP_VEL = -8
+const JUMP_HOLD_BOOST = -0.5
+const MAX_JUMP_HOLD_FRAMES = 15
 const DUCK_HEIGHT = 20
 const NORMAL_HEIGHT = 36
 const PLAYER_WIDTH = 32
@@ -95,7 +97,8 @@ export default function RunnerGame() {
   const playerVY = useRef(0)
   const playerHeight = useRef(NORMAL_HEIGHT)
   const isGrounded = useRef(true)
-  const jumpsLeft = useRef(2)
+  const jumpHeld = useRef(false)
+  const jumpHoldFrames = useRef(0)
   const isDucking = useRef(false)
   const bouncePhase = useRef(0)
   const squashStretch = useRef({ sx: 1, sy: 1 })
@@ -196,7 +199,8 @@ export default function RunnerGame() {
     playerVY.current = 0
     playerHeight.current = NORMAL_HEIGHT
     isGrounded.current = true
-    jumpsLeft.current = 2
+    jumpHeld.current = false
+    jumpHoldFrames.current = 0
     isDucking.current = false
     bouncePhase.current = 0
     squashStretch.current = { sx: 1, sy: 1 }
@@ -233,18 +237,20 @@ export default function RunnerGame() {
     if (gameStateRef.current === 'idle') { startGame(); return }
     if (gameStateRef.current === 'over') return
     if (pausedRef.current) return
-    if (jumpsLeft.current > 0) {
-      playerVY.current = JUMP_FORCE
+    if (isGrounded.current) {
+      playerVY.current = INITIAL_JUMP_VEL
       isGrounded.current = false
-      jumpsLeft.current--
+      jumpHeld.current = true
+      jumpHoldFrames.current = 0
       isDucking.current = false
       playerHeight.current = NORMAL_HEIGHT
       squashStretch.current = { sx: 0.8, sy: 1.3 }
-      // Dust particles
-      if (jumpsLeft.current === 1) {
-        addParticles(60, groundY.current, 'rgba(200,180,150,0.8)', 5)
-      }
+      addParticles(60, groundY.current, 'rgba(200,180,150,0.8)', 5)
     }
+  }, [])
+
+  const doJumpRelease = useCallback(() => {
+    jumpHeld.current = false
   }, [])
 
   const doDuck = useCallback((active: boolean) => {
@@ -603,6 +609,11 @@ export default function RunnerGame() {
 
       // Player physics
       if (!isGrounded.current) {
+        // Variable jump height: apply hold boost while button held and under max frames
+        if (jumpHeld.current && jumpHoldFrames.current < MAX_JUMP_HOLD_FRAMES && playerVY.current < 0) {
+          playerVY.current += JUMP_HOLD_BOOST
+          jumpHoldFrames.current++
+        }
         playerVY.current += GRAVITY
         playerY.current += playerVY.current
         const gy = groundY.current
@@ -610,7 +621,8 @@ export default function RunnerGame() {
           playerY.current = gy - playerHeight.current
           playerVY.current = 0
           isGrounded.current = true
-          jumpsLeft.current = 2
+          jumpHeld.current = false
+          jumpHoldFrames.current = 0
           squashStretch.current = { sx: 1.2, sy: 0.8 }
           addParticles(60, gy, 'rgba(180,160,130,0.6)', 3)
         }
@@ -828,6 +840,7 @@ export default function RunnerGame() {
     }
     function onKeyUp(e: KeyboardEvent) {
       if (e.key === 'ArrowDown') { doDuck(false) }
+      if (e.key === ' ' || e.key === 'ArrowUp') { doJumpRelease() }
     }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
@@ -835,7 +848,7 @@ export default function RunnerGame() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [doJump, doDuck])
+  }, [doJump, doJumpRelease, doDuck])
 
   // Touch controls — jump fires instantly on touchStart
   const touchStartY = useRef(0)
@@ -875,6 +888,7 @@ export default function RunnerGame() {
 
   function onTouchEnd() {
     doDuck(false)
+    doJumpRelease()
   }
 
   return (
@@ -934,10 +948,11 @@ export default function RunnerGame() {
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
-          onClick={() => {
+          onMouseDown={() => {
             if (gameStateRef.current === 'idle') startGame()
             else if (gameStateRef.current === 'playing' && !pausedRef.current) doJump()
           }}
+          onMouseUp={() => { doJumpRelease() }}
           className="rounded-xl border-2 border-white/10 cursor-pointer"
           style={{ touchAction: 'none' }}
         />
@@ -948,6 +963,7 @@ export default function RunnerGame() {
         <div className="flex gap-4 mt-4 sm:hidden w-full px-4">
           <div
             onTouchStart={(e) => { e.stopPropagation(); doJump() }}
+            onTouchEnd={(e) => { e.stopPropagation(); doJumpRelease() }}
             className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-500/20 border border-amber-500/30 py-5 text-amber-300 font-bold text-base active:bg-amber-500/40 active:scale-95 transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-2xl">keyboard_arrow_up</span>
@@ -986,7 +1002,7 @@ export default function RunnerGame() {
       {/* Desktop hint */}
       {gameState === 'playing' && (
         <div className="mt-3 text-xs text-white/30 text-center hidden sm:block">
-          רווח/למעלה = קפיצה | למטה = התכופפות | כפול = קפיצה כפולה
+          רווח/למעלה = קפיצה (החזיקו לגובה) | למטה = התכופפות
         </div>
       )}
 
