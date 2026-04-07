@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { type Recipe, type Collaborator, type Profile, parseIngredient, displayIngredient } from '@/lib/types'
 import { exportRecipeAsImage } from '@/lib/export-recipe'
-import { loadShoppingList, saveShoppingList, addIngredientsToList } from '@/lib/shopping-list'
+import { loadShoppingList, saveShoppingList, addIngredientsToList, loadRecipeEntries, saveRecipeEntries, addRecipeEntry } from '@/lib/shopping-list'
 import RecipeCard from '@/components/RecipeCard'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
@@ -542,6 +542,8 @@ export default function RecipeDetailPage() {
                 servingsMultiplier,
               )
               saveShoppingList(updated)
+              const entries = loadRecipeEntries()
+              saveRecipeEntries(addRecipeEntry(entries, recipe.id, recipe.title, servingsMultiplier))
               toast.success(
                 servingsMultiplier !== 1
                   ? `המצרכים נוספו (x${servingsMultiplier}) לרשימת הקניות`

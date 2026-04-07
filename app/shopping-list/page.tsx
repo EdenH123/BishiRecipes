@@ -7,12 +7,17 @@ import { toast } from 'sonner'
 import { type Recipe, parseIngredient, displayIngredient } from '@/lib/types'
 import {
   type ShoppingItem,
+  type RecipeEntry,
   loadShoppingList,
   saveShoppingList,
   addIngredientsToList,
   toggleItem,
   removeItem,
   clearCheckedItems,
+  loadRecipeEntries,
+  saveRecipeEntries,
+  addRecipeEntry,
+  removeRecipeEntry,
 } from '@/lib/shopping-list'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
@@ -36,6 +41,7 @@ const containerVariants = {
 export default function ShoppingListPage() {
   const supabase = useMemo(() => createClient(), [])
   const [items, setItems] = useState<ShoppingItem[]>([])
+  const [recipeEntries, setRecipeEntries] = useState<RecipeEntry[]>([])
   const [loaded, setLoaded] = useState(false)
 
   // Recipe search state
@@ -51,13 +57,17 @@ export default function ShoppingListPage() {
   // Load from localStorage on mount
   useEffect(() => {
     setItems(loadShoppingList())
+    setRecipeEntries(loadRecipeEntries())
     setLoaded(true)
   }, [])
 
   // Persist on change
   useEffect(() => {
-    if (loaded) saveShoppingList(items)
-  }, [items, loaded])
+    if (loaded) {
+      saveShoppingList(items)
+      saveRecipeEntries(recipeEntries)
+    }
+  }, [items, recipeEntries, loaded])
 
   // --- Recipe search ---
   const handleSearch = useCallback(
@@ -98,21 +108,22 @@ export default function ShoppingListPage() {
     debounceRef.current = setTimeout(() => handleSearch(value), 300)
   }
 
-  function handleAddRecipe(recipe: Recipe) {
+  function handleAddRecipe(recipe: Recipe, multiplier: number = 1) {
     if (addingRecipeId === recipe.id) return // prevent double-click
     setAddingRecipeId(recipe.id)
 
-    setItems((prev) => {
-      const updated = addIngredientsToList(
-        prev,
-        recipe.ingredients || [],
-        recipe.id,
-        recipe.title,
-      )
-      return updated
-    })
+    setItems((prev) =>
+      addIngredientsToList(prev, recipe.ingredients || [], recipe.id, recipe.title, multiplier),
+    )
+    setRecipeEntries((prev) =>
+      addRecipeEntry(prev, recipe.id, recipe.title, multiplier),
+    )
 
-    toast.success(`המצרכים של "${recipe.title}" נוספו לרשימה`)
+    toast.success(
+      multiplier !== 1
+        ? `המצרכים של "${recipe.title}" נוספו (x${multiplier}) לרשימה`
+        : `המצרכים של "${recipe.title}" נוספו לרשימה`,
+    )
 
     setTimeout(() => setAddingRecipeId(null), 1000)
   }
@@ -136,7 +147,13 @@ export default function ShoppingListPage() {
     if (items.length === 0) return
     if (!confirm('למחוק את כל הרשימה?')) return
     setItems([])
+    setRecipeEntries([])
     toast.success('הרשימה נוקתה')
+  }
+
+  function handleRemoveRecipeFromList(recipeId: string) {
+    setItems((prev) => prev.filter((i) => i.recipeId !== recipeId))
+    setRecipeEntries((prev) => removeRecipeEntry(prev, recipeId))
   }
 
   // Separate checked and unchecked
@@ -285,6 +302,45 @@ export default function ShoppingListPage() {
             )}
           </AnimatePresence>
         </div>
+
+        {/* Recipes in list summary */}
+        {recipeEntries.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
+          >
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-on-surface">
+              <span className="material-symbols-outlined text-lg text-tertiary">menu_book</span>
+              מתכונים ברשימה
+            </h2>
+            <div className="flex flex-col gap-2">
+              {recipeEntries.map((entry) => (
+                <div
+                  key={entry.recipeId}
+                  className="flex items-center gap-3 rounded-lg bg-surface-container-low/60 px-3 py-2"
+                >
+                  <span className="material-symbols-outlined text-base text-primary">restaurant</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm font-medium text-on-surface">
+                      {entry.recipeTitle}
+                    </span>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-tertiary/15 px-2.5 py-0.5 text-xs font-bold text-tertiary" dir="ltr">
+                    x{entry.multiplier % 1 === 0 ? entry.multiplier : entry.multiplier.toFixed(1)}
+                  </span>
+                  <button
+                    onClick={() => handleRemoveRecipeFromList(entry.recipeId)}
+                    className="shrink-0 rounded-lg p-1 text-outline transition-colors hover:bg-error/10 hover:text-error"
+                    aria-label={`הסר את ${entry.recipeTitle} מהרשימה`}
+                  >
+                    <span className="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Empty state */}
         {items.length === 0 && loaded && (

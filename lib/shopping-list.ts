@@ -15,7 +15,15 @@ export interface ShoppingItem {
   updatedAt: string
 }
 
+export interface RecipeEntry {
+  recipeId: string
+  recipeTitle: string
+  multiplier: number
+  addedAt: string
+}
+
 const STORAGE_KEY = 'bishi_shopping_list'
+const RECIPES_STORAGE_KEY = 'bishi_shopping_recipes'
 
 // --- Persistence ---
 
@@ -31,6 +39,45 @@ export function saveShoppingList(items: ShoppingItem[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
   } catch {}
+}
+
+export function loadRecipeEntries(): RecipeEntry[] {
+  try {
+    const raw = localStorage.getItem(RECIPES_STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return []
+}
+
+export function saveRecipeEntries(entries: RecipeEntry[]): void {
+  try {
+    localStorage.setItem(RECIPES_STORAGE_KEY, JSON.stringify(entries))
+  } catch {}
+}
+
+export function addRecipeEntry(
+  entries: RecipeEntry[],
+  recipeId: string,
+  recipeTitle: string,
+  multiplier: number,
+): RecipeEntry[] {
+  // If same recipe already exists, update its multiplier (accumulate)
+  const existing = entries.find((e) => e.recipeId === recipeId)
+  if (existing) {
+    return entries.map((e) =>
+      e.recipeId === recipeId
+        ? { ...e, multiplier: e.multiplier + multiplier, addedAt: new Date().toISOString() }
+        : e,
+    )
+  }
+  return [
+    ...entries,
+    { recipeId, recipeTitle, multiplier, addedAt: new Date().toISOString() },
+  ]
+}
+
+export function removeRecipeEntry(entries: RecipeEntry[], recipeId: string): RecipeEntry[] {
+  return entries.filter((e) => e.recipeId !== recipeId)
 }
 
 // --- Normalization ---
