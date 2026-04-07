@@ -44,10 +44,41 @@ export function loadShoppingList(): ShoppingItem[] {
   return []
 }
 
+/** Try to re-parse items that were saved with old "X + Y" quantity format */
+function reparsePlusFormat(items: ShoppingItem[]): ShoppingItem[] {
+  const expanded: ShoppingItem[] = []
+  for (const item of items) {
+    // If quantity contains " + " and unit is empty, split into separate items to re-merge
+    if (item.quantity.includes(' + ') && !item.unit) {
+      const parts = item.quantity.split(/\s*\+\s*/)
+      let first = true
+      for (const part of parts) {
+        // Try to extract quantity and unit from "7 כפות" or "100 גרם"
+        const match = part.match(/^([\d½¼¾⅓⅔⅛⅜⅝⅞./]+)\s*(.*)$/)
+        if (match) {
+          expanded.push({
+            ...item,
+            id: first ? item.id : item.id + '_' + Math.random().toString(36).slice(2, 6),
+            quantity: match[1],
+            unit: match[2] || '',
+          })
+        } else {
+          expanded.push({ ...item, quantity: part, unit: '' })
+        }
+        first = false
+      }
+    } else {
+      expanded.push(item)
+    }
+  }
+  return expanded
+}
+
 /** Merge items with the same normalizedName that ended up as separate entries */
 function consolidateItems(items: ShoppingItem[]): ShoppingItem[] {
+  const reparsed = reparsePlusFormat(items)
   const result: ShoppingItem[] = []
-  for (const item of items) {
+  for (const item of reparsed) {
     const existingIdx = result.findIndex(
       (r) =>
         !r.checked &&
