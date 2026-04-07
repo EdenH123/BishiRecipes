@@ -102,6 +102,7 @@ export default function Navbar() {
                       src={profile.avatar_url}
                       alt={profile.display_name}
                       loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   ) : (

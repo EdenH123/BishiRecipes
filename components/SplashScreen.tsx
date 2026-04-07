@@ -25,6 +25,12 @@ const LOADING_TEXTS = [
 export default function SplashScreen() {
   const [show, setShow] = useState(true)
   const [textIndex, setTextIndex] = useState(0)
+  const [reducedMotion, setReducedMotion] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReducedMotion(mq.matches)
+  }, [])
 
   useEffect(() => {
     if (sessionStorage.getItem('splash_shown')) {
@@ -65,7 +71,7 @@ export default function SplashScreen() {
           />
 
           {/* Falling food rain */}
-          {RAIN_DROPS.map((drop, i) => (
+          {!reducedMotion && RAIN_DROPS.map((drop, i) => (
             <motion.span
               key={i}
               initial={{ y: '-10%', opacity: 0, rotate: 0 }}

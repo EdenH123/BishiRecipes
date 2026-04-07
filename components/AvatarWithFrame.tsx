@@ -24,7 +24,7 @@ export default memo(function AvatarWithFrame({ userId, avatarUrl, displayName, f
         style={{ width: size, height: size }}
       >
         {avatarUrl ? (
-          <img src={avatarUrl} alt={displayName || ''} className="w-full h-full object-cover" />
+          <img src={avatarUrl} alt={displayName || ''} loading="lazy" decoding="async" className="w-full h-full object-cover" />
         ) : (
           <div
             className="w-full h-full flex items-center justify-center text-white font-bold"
@@ -45,7 +45,7 @@ export default memo(function AvatarWithFrame({ userId, avatarUrl, displayName, f
       >
         <div className="w-full h-full rounded-full overflow-hidden">
           {avatarUrl ? (
-            <img src={avatarUrl} alt={displayName || ''} className="w-full h-full object-cover" />
+            <img src={avatarUrl} alt={displayName || ''} loading="lazy" decoding="async" className="w-full h-full object-cover" />
           ) : (
             <div
               className="w-full h-full flex items-center justify-center text-white font-bold"
