@@ -80,6 +80,41 @@ function extractJsonLd(html: string): ScrapedRecipe | null {
   return null
 }
 
+/** Split raw step text (before stripHtml) into individual steps, handling newlines, numbered lists, and Hebrew sentences. */
+function splitRawSteps(raw: string): string[] {
+  if (!raw || !raw.trim()) return []
+
+  // Split by newlines first (before stripHtml collapses them)
+  const lines = raw.split(/\n+/).map(s => stripHtml(s).trim()).filter(Boolean)
+
+  // Then further split each line by numbered patterns or Hebrew sentence boundaries
+  const result: string[] = []
+  for (const line of lines) {
+    result.push(...splitSingleStep(line))
+  }
+  return result.filter(Boolean)
+}
+
+/** Split a single step string that may contain multiple numbered steps. */
+function splitSingleStep(text: string): string[] {
+  const trimmed = text.trim()
+  if (!trimmed) return []
+
+  // Try splitting on numbered patterns like "1. ... 2. ... 3. ..."
+  const numberedParts = trimmed.split(/(?:^|\s)(?=\d+\.\s)/).map(s => s.trim()).filter(Boolean)
+  if (numberedParts.length > 1) {
+    return numberedParts.map(s => s.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
+  }
+
+  // For long text, try splitting on Hebrew sentence boundaries (period + space + Hebrew letter)
+  if (trimmed.length > 80) {
+    const sentences = trimmed.split(/(?<=\.)\s+(?=[א-ת])/).filter(s => s.trim().length > 0)
+    if (sentences.length > 1) return sentences.map(s => s.trim())
+  }
+
+  return [trimmed]
+}
+
 function findRecipeInLd(data: unknown): ScrapedRecipe | null {
   if (!data || typeof data !== 'object') return null
 
@@ -123,11 +158,11 @@ function findRecipeInLd(data: unknown): ScrapedRecipe | null {
   let steps: string[] = []
   const rawInstructions = obj.recipeInstructions
   if (typeof rawInstructions === 'string') {
-    steps = rawInstructions.split(/\n+/).map((s) => stripHtml(s).trim()).filter(Boolean)
+    steps = splitRawSteps(rawInstructions)
   } else if (Array.isArray(rawInstructions)) {
     for (const step of rawInstructions) {
       if (typeof step === 'string') {
-        steps.push(stripHtml(step).trim())
+        steps.push(...splitRawSteps(step))
       } else if (step && typeof step === 'object') {
         const s = step as Record<string, unknown>
         if (s['@type'] === 'HowToSection' && Array.isArray(s.itemListElement)) {
