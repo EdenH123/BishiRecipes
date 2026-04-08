@@ -15,7 +15,7 @@ export default memo(function TagFilter({
   onToggleTag,
 }: TagFilterProps) {
   return (
-    <div className="flex flex-row gap-2 overflow-x-auto hide-scrollbar pb-1">
+    <div className="flex flex-wrap gap-2 pb-1">
       {tags.map((tag) => {
         const isSelected = selectedTags.includes(tag)
         return (
