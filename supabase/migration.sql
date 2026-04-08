@@ -226,6 +226,19 @@ create policy "Anyone can delete hidden filters"
   to authenticated
   using (true);
 
+-- Hidden authors (per-user visibility preferences)
+CREATE TABLE IF NOT EXISTS hidden_authors (
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+  hidden_user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at timestamptz DEFAULT now(),
+  PRIMARY KEY (user_id, hidden_user_id)
+);
+
+ALTER TABLE hidden_authors ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own hidden authors" ON hidden_authors FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own hidden authors" ON hidden_authors FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete own hidden authors" ON hidden_authors FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
 -- Soft-delete columns for recipes
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS deleted_at timestamptz DEFAULT NULL;
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES profiles(id) DEFAULT NULL;

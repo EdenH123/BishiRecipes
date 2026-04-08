@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import PageTransition from '@/components/PageTransition'
 
-const TAB_ORDER = ['recipes', 'favorites', 'achievements', 'admin'] as const
+const TAB_ORDER = ['recipes', 'favorites', 'achievements', 'settings', 'admin'] as const
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
@@ -50,10 +50,13 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [equippedFrame, setEquippedFrame] = useState<string | null>(null)
   const [equippedTitle, setEquippedTitle] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'recipes' | 'favorites' | 'achievements' | 'admin'>('recipes')
+  const [activeTab, setActiveTab] = useState<'recipes' | 'favorites' | 'achievements' | 'settings' | 'admin'>('recipes')
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [allCategories, setAllCategories] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
+  const [allUsers, setAllUsers] = useState<{ id: string; display_name: string; avatar_url: string | null }[]>([])
+  const [hiddenAuthors, setHiddenAuthors] = useState<Set<string>>(new Set())
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
   const prevTabIndexRef = useRef(0)
   const [slideDirection, setSlideDirection] = useState(1)
 
@@ -260,6 +263,58 @@ export default function ProfilePage() {
     }
   }
 
+  async function loadVisibilitySettings() {
+    if (settingsLoaded || !profile) return
+    try {
+      const [usersRes, hiddenRes] = await Promise.all([
+        supabase.from('profiles').select('id, display_name, avatar_url').order('display_name'),
+        supabase.from('hidden_authors').select('hidden_user_id').eq('user_id', profile.id),
+      ])
+      if (usersRes.data) {
+        setAllUsers(usersRes.data.filter(u => u.id !== profile.id))
+      }
+      if (hiddenRes.data) {
+        setHiddenAuthors(new Set(hiddenRes.data.map(h => h.hidden_user_id)))
+      }
+      setSettingsLoaded(true)
+    } catch {
+      toast.error('שגיאה בטעינת הגדרות')
+    }
+  }
+
+  async function toggleAuthorVisibility(authorId: string) {
+    if (!profile) return
+    const isHidden = hiddenAuthors.has(authorId)
+
+    if (isHidden) {
+      // Show author - remove from hidden
+      const { error } = await supabase
+        .from('hidden_authors')
+        .delete()
+        .eq('user_id', profile.id)
+        .eq('hidden_user_id', authorId)
+      if (error) {
+        toast.error('שגיאה בעדכון')
+        return
+      }
+      setHiddenAuthors(prev => {
+        const next = new Set(prev)
+        next.delete(authorId)
+        return next
+      })
+    } else {
+      // Hide author - add to hidden
+      const { error } = await supabase
+        .from('hidden_authors')
+        .insert({ user_id: profile.id, hidden_user_id: authorId })
+      if (error) {
+        toast.error('שגיאה בעדכון')
+        return
+      }
+      setHiddenAuthors(prev => new Set(prev).add(authorId))
+    }
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/auth/login')
@@ -417,6 +472,19 @@ export default function ProfilePage() {
           >
             הישגים 🏅
           </button>
+          <button
+            onClick={() => {
+              handleTabSwitch('settings')
+              loadVisibilitySettings()
+            }}
+            className={`pb-3 text-base font-rubik transition-colors ${
+              activeTab === 'settings'
+                ? 'border-b-2 border-primary font-bold text-primary'
+                : 'text-gray-500'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base align-middle">settings</span>
+          </button>
           {profile?.is_admin && (
             <button
               onClick={() => handleTabSwitch('admin')}
@@ -444,6 +512,53 @@ export default function ProfilePage() {
             >
               {activeTab === 'achievements' ? (
                 <Achievements userId={profile!.id} />
+              ) : activeTab === 'settings' ? (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold font-rubik">הצגת מתכונים לפי משתמש</h3>
+                  <p className="text-sm text-gray-500 font-rubik">בחר/י אילו משתמשים תרצו לראות את המתכונים שלהם</p>
+                  {!settingsLoaded ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-8 w-8 animate-spin rounded-full border-3 border-gray-200 border-t-primary" />
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {allUsers.map((user) => {
+                        const isVisible = !hiddenAuthors.has(user.id)
+                        return (
+                          <button
+                            key={user.id}
+                            onClick={() => toggleAuthorVisibility(user.id)}
+                            className="w-full flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-surface-container-low"
+                          >
+                            <div className="h-9 w-9 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden shrink-0">
+                              {user.avatar_url ? (
+                                <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="text-sm font-bold text-on-surface-variant">
+                                  {user.display_name.charAt(0)}
+                                </span>
+                              )}
+                            </div>
+                            <span className="flex-1 text-sm font-rubik text-on-surface text-right">
+                              {user.display_name}
+                            </span>
+                            <span
+                              className={`material-symbols-outlined text-xl transition-colors ${
+                                isVisible ? 'text-primary' : 'text-gray-300'
+                              }`}
+                              style={isVisible ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                            >
+                              {isVisible ? 'visibility' : 'visibility_off'}
+                            </span>
+                          </button>
+                        )
+                      })}
+                      {allUsers.length === 0 && (
+                        <p className="text-sm text-gray-400 text-center py-4 font-rubik">אין משתמשים אחרים</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               ) : activeTab === 'admin' ? (
                 <div className="space-y-8">
                   {/* Categories management */}

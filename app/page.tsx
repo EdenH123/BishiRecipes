@@ -87,6 +87,8 @@ export default function HomePage() {
   // Track hidden filters
   const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set())
   const [hiddenTags, setHiddenTags] = useState<Set<string>>(new Set())
+  const [hiddenAuthors, setHiddenAuthors] = useState<string[]>([])
+  const hiddenAuthorsRef = useRef<string[]>([])
 
   // Fetch metadata (members, tags, categories, favorites, hidden filters) once on mount
   useEffect(() => {
@@ -135,15 +137,27 @@ export default function HomePage() {
 
       const user = userRes.data?.user
       if (user) {
-        const { data: favData } = await supabase
-          .from('favorites')
-          .select('recipe_id')
-          .eq('user_id', user.id)
+        const [{ data: favData }, { data: hiddenData }] = await Promise.all([
+          supabase
+            .from('favorites')
+            .select('recipe_id')
+            .eq('user_id', user.id),
+          supabase
+            .from('hidden_authors')
+            .select('hidden_user_id')
+            .eq('user_id', user.id),
+        ])
 
         if (favData) {
           const ids = favData.map((f) => f.recipe_id)
           favoriteIdsRef.current = ids
           setFavoriteIds(ids)
+        }
+
+        if (hiddenData && hiddenData.length > 0) {
+          const ids = hiddenData.map((h) => h.hidden_user_id)
+          hiddenAuthorsRef.current = ids
+          setHiddenAuthors(ids)
         }
       }
 
@@ -208,6 +222,10 @@ export default function HomePage() {
       }
       if (selectedTags.length > 0) {
         query = query.contains('tags', selectedTags)
+      }
+      if (hiddenAuthorsRef.current.length > 0) {
+        // Supabase PostgREST: not.in filter to exclude hidden authors
+        query = query.not('created_by', 'in', `(${hiddenAuthorsRef.current.join(',')})`)
       }
       if (showFavoritesOnly && favoriteIdsRef.current.length > 0) {
         query = query.in('id', favoriteIdsRef.current)
