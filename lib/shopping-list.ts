@@ -28,6 +28,7 @@ const RECIPES_STORAGE_KEY = 'bishi_shopping_recipes'
 // --- Persistence ---
 
 export function loadShoppingList(): ShoppingItem[] {
+  if (typeof window === 'undefined') return []
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
@@ -133,12 +134,14 @@ function consolidateItems(items: ShoppingItem[]): ShoppingItem[] {
 }
 
 export function saveShoppingList(items: ShoppingItem[]): void {
+  if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
   } catch {}
 }
 
 export function loadRecipeEntries(): RecipeEntry[] {
+  if (typeof window === 'undefined') return []
   try {
     const raw = localStorage.getItem(RECIPES_STORAGE_KEY)
     if (raw) return JSON.parse(raw)
@@ -147,6 +150,7 @@ export function loadRecipeEntries(): RecipeEntry[] {
 }
 
 export function saveRecipeEntries(entries: RecipeEntry[]): void {
+  if (typeof window === 'undefined') return
   try {
     localStorage.setItem(RECIPES_STORAGE_KEY, JSON.stringify(entries))
   } catch {}

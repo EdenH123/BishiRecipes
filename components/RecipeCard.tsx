@@ -201,4 +201,6 @@ function RecipeCard({ recipe }: RecipeCardProps) {
   )
 }
 
-export default memo(RecipeCard)
+export default memo(RecipeCard, (prev, next) =>
+  prev.recipe.id === next.recipe.id && prev.recipe.updated_at === next.recipe.updated_at
+)

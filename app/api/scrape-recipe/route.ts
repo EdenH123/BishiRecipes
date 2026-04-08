@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Simple in-memory rate limiter: max 10 requests per minute per IP
+import { SCRAPE_RATE_LIMIT, SCRAPE_RATE_WINDOW_MS, SCRAPE_TIMEOUT_MS } from '@/lib/constants'
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + SCRAPE_RATE_WINDOW_MS })
+    return true
+  }
+  if (entry.count >= SCRAPE_RATE_LIMIT) return false
+  entry.count++
+  return true
+}
+
 interface ScrapedRecipe {
   title: string
   description: string
@@ -10,6 +27,11 @@ interface ScrapedRecipe {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json({ error: 'Too many requests, try again later' }, { status: 429 })
+    }
+
     const { url } = await req.json()
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 })
@@ -33,7 +55,7 @@ export async function POST(req: NextRequest) {
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'he,en;q=0.9',
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(SCRAPE_TIMEOUT_MS),
     })
 
     if (!res.ok) {
@@ -243,12 +265,17 @@ function stripHtml(html: string): string {
     .trim()
 }
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function extractMetaTag(html: string, property: string): string {
-  const regex = new RegExp(`<meta[^>]*(?:property|name)=["']${property}["'][^>]*content=["']([^"']*)["']`, 'i')
+  const escaped = escapeRegex(property)
+  const regex = new RegExp(`<meta[^>]*(?:property|name)=["']${escaped}["'][^>]*content=["']([^"']*)["']`, 'i')
   const match = html.match(regex)
   if (match) return match[1]
   // Try reversed attribute order
-  const regex2 = new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*(?:property|name)=["']${property}["']`, 'i')
+  const regex2 = new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*(?:property|name)=["']${escaped}["']`, 'i')
   const match2 = html.match(regex2)
   return match2 ? match2[1] : ''
 }

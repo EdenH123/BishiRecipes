@@ -15,8 +15,7 @@ import Onboarding from '@/components/Onboarding'
 import BackToTop from '@/components/BackToTop'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-
-const PAGE_SIZE = 12
+import { PAGE_SIZE, COUNTER_ANIMATION_DURATION, INFINITE_SCROLL_MARGIN } from '@/lib/constants'
 
 const gridContainerVariants = {
   hidden: {},
@@ -265,10 +264,10 @@ export default function HomePage() {
 
       if (isSpecialSort && isInitial) {
         // Fetch ALL filtered recipes + counts for sorting
-        const [dataRes, countRes, ratingsRes, favoritesRes, commentsRes] = await Promise.all([
+        // Single query with joined counts instead of 4 separate queries
+        const [dataRes, ratingsRes, favoritesRes, commentsRes] = await Promise.all([
           buildFilteredQuery(false),
-          buildFilteredQuery(true),
-          supabase.from('ratings').select('recipe_id, rating'),
+          supabase.from('ratings').select('recipe_id, score'),
           supabase.from('favorites').select('recipe_id'),
           supabase.from('comments').select('recipe_id'),
         ])
@@ -287,8 +286,8 @@ export default function HomePage() {
         if (ratingsRes.data) {
           for (const r of ratingsRes.data) {
             const existing = ratingMap.get(r.recipe_id)
-            if (existing) { existing.total += r.rating; existing.count++ }
-            else ratingMap.set(r.recipe_id, { total: r.rating, count: 1 })
+            if (existing) { existing.total += r.score; existing.count++ }
+            else ratingMap.set(r.recipe_id, { total: r.score, count: 1 })
           }
         }
         const favCountMap = new Map<string, number>()
@@ -414,7 +413,7 @@ export default function HomePage() {
   useEffect(() => {
     if (totalCount === 0) return
     const target = totalCount
-    const duration = 800
+    const duration = COUNTER_ANIMATION_DURATION
     const step = Math.max(1, Math.floor(target / (duration / 16)))
     let current = 0
     const timer = setInterval(() => {
@@ -440,7 +439,7 @@ export default function HomePage() {
           fetchRecipesPage(page + 1, false)
         }
       },
-      { rootMargin: '200px' }
+      { rootMargin: INFINITE_SCROLL_MARGIN }
     )
     observer.observe(el)
     return () => observer.disconnect()

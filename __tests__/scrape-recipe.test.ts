@@ -4,8 +4,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('next/server', () => {
   class MockNextRequest {
     private body: unknown
-    constructor(url: string, init?: { method?: string; body?: string }) {
+    headers: Map<string, string>
+    constructor(url: string, init?: { method?: string; body?: string; headers?: Record<string, string> }) {
       this.body = init?.body ? JSON.parse(init.body) : null
+      this.headers = new Map(Object.entries(init?.headers || { 'x-forwarded-for': 'test' }))
     }
     async json() {
       return this.body
@@ -39,16 +41,20 @@ vi.stubGlobal('AbortSignal', {
 import { POST } from '@/app/api/scrape-recipe/route'
 import { NextRequest } from 'next/server'
 
+let testIpCounter = 0
+
 function makeRequest(body: unknown): NextRequest {
   return new NextRequest('http://localhost/api/scrape-recipe', {
     method: 'POST',
     body: JSON.stringify(body),
+    headers: { 'x-forwarded-for': `10.0.0.${testIpCounter}` },
   })
 }
 
 describe('scrape-recipe POST handler', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    testIpCounter++
   })
 
   it('returns 400 if no URL provided', async () => {
