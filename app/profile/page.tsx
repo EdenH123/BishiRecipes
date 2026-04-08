@@ -19,7 +19,7 @@ import RecipeCard from '@/components/RecipeCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import PageTransition from '@/components/PageTransition'
-import { useTheme, THEME_COLOR_OPTIONS, TEXT_SIZE_OPTIONS, type DarkMode, type ThemeColor, type TextSize } from '@/lib/theme'
+import { useTheme, THEME_COLOR_OPTIONS, TEXT_SIZE_OPTIONS, FONT_OPTIONS, type DarkMode, type ThemeColor, type TextSize, type FontFamily } from '@/lib/theme'
 
 const TAB_ORDER = ['recipes', 'favorites', 'achievements', 'settings', 'admin'] as const
 
@@ -41,7 +41,7 @@ const cardVariants = {
 export default function ProfilePage() {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
-  const { darkMode, themeColor, textSize, setDarkMode, setThemeColor, setTextSize } = useTheme()
+  const { darkMode, themeColor, textSize, fontFamily, setDarkMode, setThemeColor, setTextSize, setFontFamily } = useTheme()
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [displayName, setDisplayName] = useState('')
@@ -585,6 +585,28 @@ export default function ProfilePage() {
                           style={{ fontSize: opt.key === 'small' ? '13px' : opt.key === 'large' ? '17px' : '15px' }}
                         >
                           {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Font Family ── */}
+                  <div>
+                    <h3 className="text-lg font-bold font-rubik mb-3">פונט</h3>
+                    <div className="space-y-1.5">
+                      {FONT_OPTIONS.map(opt => (
+                        <button
+                          key={opt.key}
+                          onClick={() => setFontFamily(opt.key)}
+                          className={`w-full text-right rounded-xl p-3 transition-colors ${
+                            fontFamily === opt.key
+                              ? 'bg-primary text-on-primary shadow-md'
+                              : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                          }`}
+                          style={{ fontFamily: opt.css }}
+                        >
+                          <span className="text-sm">{opt.label}</span>
+                          <span className="block text-xs mt-0.5 opacity-70">אבגדהו — מתכון טעים</span>
                         </button>
                       ))}
                     </div>

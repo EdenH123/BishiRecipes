@@ -99,16 +99,28 @@ export const TEXT_SIZE_OPTIONS: { key: TextSize; label: string }[] = [
   { key: 'large', label: 'גדול' },
 ]
 
+export type FontFamily = 'rubik' | 'heebo' | 'assistant' | 'varela' | 'secular'
+
+export const FONT_OPTIONS: { key: FontFamily; label: string; css: string }[] = [
+  { key: 'rubik', label: 'Rubik', css: "'Rubik', sans-serif" },
+  { key: 'heebo', label: 'Heebo', css: "'Heebo', sans-serif" },
+  { key: 'assistant', label: 'Assistant', css: "'Assistant', sans-serif" },
+  { key: 'varela', label: 'Varela Round', css: "'Varela Round', sans-serif" },
+  { key: 'secular', label: 'Secular One', css: "'Secular One', sans-serif" },
+]
+
 interface ThemeState {
   darkMode: DarkMode
   themeColor: ThemeColor
   textSize: TextSize
+  fontFamily: FontFamily
 }
 
 interface ThemeContextType extends ThemeState {
   setDarkMode: (mode: DarkMode) => void
   setThemeColor: (color: ThemeColor) => void
   setTextSize: (size: TextSize) => void
+  setFontFamily: (font: FontFamily) => void
   isDark: boolean
 }
 
@@ -118,6 +130,7 @@ const defaultState: ThemeState = {
   darkMode: 'light',
   themeColor: 'red',
   textSize: 'medium',
+  fontFamily: 'rubik',
 }
 
 const ThemeContext = createContext<ThemeContextType>({
@@ -126,6 +139,7 @@ const ThemeContext = createContext<ThemeContextType>({
   setDarkMode: () => {},
   setThemeColor: () => {},
   setTextSize: () => {},
+  setFontFamily: () => {},
 })
 
 export function useTheme() {
@@ -175,6 +189,12 @@ function applyTheme(state: ThemeState, systemDark: boolean) {
   }
   // Text size
   root.style.fontSize = TEXT_SIZE_MAP[state.textSize]
+
+  // Font family
+  const fontOption = FONT_OPTIONS.find(f => f.key === state.fontFamily)
+  if (fontOption) {
+    document.body.style.fontFamily = fontOption.css
+  }
 
   // Set color-scheme for browser UI
   root.style.colorScheme = isDark ? 'dark' : 'light'
@@ -228,10 +248,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const setFontFamily = useCallback((font: FontFamily) => {
+    setState(prev => {
+      const next = { ...prev, fontFamily: font }
+      saveTheme(next)
+      return next
+    })
+  }, [])
+
   const isDark = state.darkMode === 'dark' || (state.darkMode === 'system' && systemDark)
 
   return (
-    <ThemeContext.Provider value={{ ...state, isDark, setDarkMode, setThemeColor, setTextSize }}>
+    <ThemeContext.Provider value={{ ...state, isDark, setDarkMode, setThemeColor, setTextSize, setFontFamily }}>
       {children}
     </ThemeContext.Provider>
   )
