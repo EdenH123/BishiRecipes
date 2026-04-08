@@ -489,6 +489,12 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                     onChange={(e) => updateIngredient(index, 'name', `## ${e.target.value}`)}
                     className="flex-1 min-w-0 rounded-lg border border-primary/30 bg-primary/5 p-3 font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => updateIngredient(index, 'name', getHeaderTitle(ingredient.name))}
+                    title="הפוך למצרך רגיל"
+                    className="shrink-0 w-7 h-7 rounded bg-primary/10 text-primary text-xs font-bold flex items-center justify-center active:scale-90"
+                  >T</button>
                   {ingredients.length > 1 && (
                     <button type="button" onClick={() => removeIngredient(index)} className="shrink-0 w-7 text-gray-400 hover:text-primary text-lg transition-colors">✕</button>
                   )}
@@ -552,6 +558,16 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                 spellCheck
                 className="flex-1 min-w-0 rounded-lg border border-gray-200 p-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
               />
+              <button
+                type="button"
+                onClick={() => {
+                  setIngredients(prev => prev.map((ing, i) =>
+                    i === index ? { amount: '', unit: '', name: `## ${ing.name}` } : ing
+                  ))
+                }}
+                title="הפוך לכותרת"
+                className="shrink-0 w-7 h-7 rounded bg-gray-100 text-gray-400 text-xs font-bold flex items-center justify-center active:scale-90 hover:text-primary hover:bg-primary/10 transition-colors"
+              >T</button>
               {ingredients.length > 1 && (
                 <button
                   type="button"
