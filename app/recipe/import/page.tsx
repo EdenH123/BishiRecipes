@@ -50,6 +50,8 @@ export default function ImportRecipePage() {
   const [steps, setSteps] = useState<string[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [customTag, setCustomTag] = useState('')
+  const [customCategory, setCustomCategory] = useState('')
+  const [allCategories, setAllCategories] = useState<string[]>([...CATEGORIES])
   const [dbTags, setDbTags] = useState<string[]>([])
   const allTags = Array.from(new Set([...DEFAULT_TAGS, ...dbTags, ...tags]))
 
@@ -58,13 +60,16 @@ export default function ImportRecipePage() {
       if (!user) { router.push('/auth/login'); return }
       setUserId(user.id)
     })
-    // Fetch existing tags from recipes
-    supabase.from('recipes').select('tags').then(({ data }) => {
+    // Fetch existing categories & tags from recipes
+    supabase.from('recipes').select('category, tags').then(({ data }) => {
       if (data) {
+        const cats = new Set<string>([...CATEGORIES])
         const tagSet = new Set<string>()
         for (const r of data) {
+          if (r.category) cats.add(r.category)
           if (r.tags) for (const t of r.tags) tagSet.add(t)
         }
+        setAllCategories(Array.from(cats))
         setDbTags(Array.from(tagSet))
       }
     })
@@ -428,16 +433,39 @@ export default function ImportRecipePage() {
               <div className="mb-4">
                 <label className="text-sm font-bold text-on-surface-variant mb-1 block">קטגוריה</label>
                 <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  value={
+                    category === '' && !customCategory ? '' :
+                    allCategories.includes(category) && !customCategory ? category :
+                    '__custom__'
+                  }
+                  onChange={(e) => {
+                    if (e.target.value === '__custom__') {
+                      setCustomCategory('1')
+                      setCategory('')
+                    } else {
+                      setCategory(e.target.value)
+                      setCustomCategory('')
+                    }
+                  }}
                   className="w-full rounded-lg border border-outline-variant px-4 py-3 text-base outline-none focus:border-primary bg-surface-container-lowest"
                 >
                   <option value="">ללא קטגוריה</option>
-                  {CATEGORIES.map((c) => (
+                  {allCategories.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
+                  <option value="__custom__">אחר...</option>
                 </select>
-                {category && (
+                {(customCategory || (category !== '' && !allCategories.includes(category))) && (
+                  <input
+                    type="text"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="הקלידו קטגוריה..."
+                    className="w-full rounded-lg border border-outline-variant px-4 py-3 text-base outline-none focus:border-primary bg-surface-container-lowest mt-2"
+                    autoFocus
+                  />
+                )}
+                {category && allCategories.includes(category) && !customCategory && (
                   <p className="text-xs text-tertiary mt-1">זוהה אוטומטית — שנו אם צריך</p>
                 )}
               </div>
