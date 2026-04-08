@@ -230,6 +230,43 @@ function parseIngredientLine(line: string): Ingredient {
   return { amount: amount ? decimalToFraction(amount) : '', unit, name: remaining }
 }
 
+/**
+ * Parse a line that might contain a comma-separated list of ingredients.
+ * e.g. "תבלינים - 1/2 כפית פפריקה, כורכום, כמון"
+ * → [{ ½, כפית, פפריקה }, { ½, כפית, כורכום }, { ½, כפית, כמון }]
+ */
+function parseIngredientMulti(line: string): Ingredient[] {
+  const clean = cleanLine(line)
+  if (!clean) return []
+
+  // Detect "label - list" pattern: word(s) followed by dash then comma-separated items
+  const dashMatch = clean.match(/^(.+?)\s*[-–]\s*(.+)$/)
+  if (!dashMatch) return [parseIngredientLine(line)]
+
+  const afterDash = dashMatch[2]
+  // Only split if there are commas (otherwise it's just "למילוי - בשר טחון")
+  if (!afterDash.includes(',')) return [parseIngredientLine(line)]
+
+  const parts = afterDash.split(/,/).map(s => s.trim()).filter(Boolean)
+  if (parts.length < 2) return [parseIngredientLine(line)]
+
+  // Parse the first part to extract amount+unit (e.g. "1/2 כפית פפריקה")
+  const firstParsed = parseIngredientLine(parts[0])
+
+  // Build result: first item as-is, subsequent items inherit amount+unit if they have none
+  const results: Ingredient[] = [firstParsed]
+  for (let i = 1; i < parts.length; i++) {
+    const partParsed = parseIngredientLine(parts[i])
+    // If this part has no amount/unit of its own, inherit from first
+    if (!partParsed.amount && !partParsed.unit && firstParsed.unit) {
+      results.push({ amount: firstParsed.amount, unit: firstParsed.unit, name: partParsed.name })
+    } else {
+      results.push(partParsed)
+    }
+  }
+  return results
+}
+
 export function guessCategory(title: string, ingredients: string[], steps: string[]): string {
   const all = [title, ...ingredients, ...steps.slice(0, 3)].join(' ').toLowerCase()
 
@@ -301,8 +338,9 @@ export function parseRecipeText(text: string): ParsedRecipe {
       }
 
       if (score > 0) {
-        const ing = parseIngredientLine(raw)
-        if (ing.name || ing.unit) ingredients.push(ing)
+        const ings = parseIngredientMulti(raw)
+        const valid = ings.filter(ing => ing.name || ing.unit)
+        if (valid.length > 0) ingredients.push(...valid)
         else if (clean) steps.push(clean)
       } else {
         steps.push(clean)
@@ -352,8 +390,10 @@ export function parseRecipeText(text: string): ParsedRecipe {
           ingredients.push({ amount: '', unit: '', name: `## ${clean.replace(/[-–:]$/, '').trim()}` })
           continue
         }
-        const ing = parseIngredientLine(lines[i])
-        if (ing.name) ingredients.push(ing)
+        const ings = parseIngredientMulti(lines[i])
+        for (const ing of ings) {
+          if (ing.name) ingredients.push(ing)
+        }
       }
     }
 
