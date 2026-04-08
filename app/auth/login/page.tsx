@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resetMode, setResetMode] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,6 +53,27 @@ export default function LoginPage() {
     router.refresh()
   }
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) {
+      toast.error('הכנס את כתובת האימייל שלך')
+      return
+    }
+    setLoading(true)
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+
+    setLoading(false)
+    if (error) {
+      toast.error(error.message)
+    } else {
+      toast.success('נשלח מייל לאיפוס סיסמה! בדוק את תיבת הדואר')
+      setResetMode(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center px-4 font-rubik">
       <motion.div
@@ -71,61 +93,115 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1.5"
+          {resetMode ? (
+            <form onSubmit={handleResetPassword} className="space-y-5">
+              <p className="text-sm text-gray-500 text-center mb-2">
+                הכנס את כתובת האימייל שלך ונשלח לך קישור לאיפוס הסיסמה
+              </p>
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
+                  אימייל
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="w-full px-4 py-3 rounded-card border border-gray-200 bg-surface/50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-card bg-primary hover:bg-primary-container text-white font-medium text-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-md shadow-primary/20"
               >
-                אימייל
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="w-full px-4 py-3 rounded-card border border-gray-200 bg-surface/50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-              />
-            </div>
+                {loading ? 'שולח...' : 'שלח קישור לאיפוס'}
+              </button>
 
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1.5"
-              >
-                סיסמה
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="הכנס סיסמה"
-                className="w-full px-4 py-3 rounded-card border border-gray-200 bg-surface/50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-              />
-            </div>
+              <p className="text-center text-sm text-gray-500">
+                <button
+                  type="button"
+                  onClick={() => setResetMode(false)}
+                  className="text-sky hover:text-sky/80 font-medium transition-colors"
+                >
+                  חזרה להתחברות
+                </button>
+              </p>
+            </form>
+          ) : (
+            <>
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
+                  >
+                    אימייל
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full px-4 py-3 rounded-card border border-gray-200 bg-surface/50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  />
+                </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-card bg-primary hover:bg-primary-container text-white font-medium text-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-md shadow-primary/20"
-            >
-              {loading ? 'מתחבר...' : 'התחברות'}
-            </button>
-          </form>
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
+                  >
+                    סיסמה
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="הכנס סיסמה"
+                    className="w-full px-4 py-3 rounded-card border border-gray-200 bg-surface/50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  />
+                </div>
 
-          <p className="text-center text-sm text-gray-500 mt-6">
-            אין לך חשבון?{' '}
-            <Link
-              href="/auth/signup"
-              className="text-sky hover:text-sky/80 font-medium transition-colors"
-            >
-              הרשמה
-            </Link>
-          </p>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 rounded-card bg-primary hover:bg-primary-container text-white font-medium text-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-md shadow-primary/20"
+                >
+                  {loading ? 'מתחבר...' : 'התחברות'}
+                </button>
+              </form>
+
+              <div className="text-center mt-4">
+                <button
+                  onClick={() => setResetMode(true)}
+                  className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  שכחתי סיסמה
+                </button>
+              </div>
+
+              <p className="text-center text-sm text-gray-500 mt-4">
+                אין לך חשבון?{' '}
+                <Link
+                  href="/auth/signup"
+                  className="text-sky hover:text-sky/80 font-medium transition-colors"
+                >
+                  הרשמה
+                </Link>
+              </p>
+            </>
+          )}
         </div>
       </motion.div>
     </div>
