@@ -294,6 +294,7 @@ export default function ProfilePage() {
         .eq('user_id', profile.id)
         .eq('hidden_user_id', authorId)
       if (error) {
+        console.error('hidden_authors delete error:', error)
         toast.error('שגיאה בעדכון')
         return
       }
@@ -308,7 +309,8 @@ export default function ProfilePage() {
         .from('hidden_authors')
         .insert({ user_id: profile.id, hidden_user_id: authorId })
       if (error) {
-        toast.error('שגיאה בעדכון')
+        console.error('hidden_authors insert error:', error)
+        toast.error(`שגיאה בעדכון: ${error.message}`)
         return
       }
       setHiddenAuthors(prev => new Set(prev).add(authorId))
