@@ -9,7 +9,22 @@ interface CookingModeProps {
   onClose: () => void
 }
 
-export default function CookingMode({ steps, title, onClose }: CookingModeProps) {
+function splitStepsBySentence(steps: string[]): string[] {
+  const result: string[] = []
+  for (const step of steps) {
+    // Split at period followed by space and Hebrew letter
+    const sentences = step.split(/(?<=\.)\s+(?=[א-ת])/).filter(s => s.trim().length > 0)
+    if (sentences.length > 1) {
+      for (const s of sentences) result.push(s.trim())
+    } else {
+      result.push(step)
+    }
+  }
+  return result
+}
+
+export default function CookingMode({ steps: rawSteps, title, onClose }: CookingModeProps) {
+  const steps = splitStepsBySentence(rawSteps)
   const [current, setCurrent] = useState(0)
   const [timerSeconds, setTimerSeconds] = useState(0)
   const [timerRunning, setTimerRunning] = useState(false)
