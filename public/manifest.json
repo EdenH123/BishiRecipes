@@ -1,0 +1,26 @@
+{
+  "name": "BISHILicious",
+  "short_name": "BISHILicious",
+  "description": "אפליקציית מתכונים משפחתית — שתפו, בשלו ותהנו יחד!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdf9f3",
+  "theme_color": "#b41c1b",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "he",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
