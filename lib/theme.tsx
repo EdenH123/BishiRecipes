@@ -154,15 +154,24 @@ const TEXT_SIZE_MAP: Record<TextSize, string> = {
   large: '18px',
 }
 
+/** Convert hex color like '#b41c1b' to space-separated RGB: '180 28 27' */
+function hexToRgb(hex: string): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.substring(0, 2), 16)
+  const g = parseInt(h.substring(2, 4), 16)
+  const b = parseInt(h.substring(4, 6), 16)
+  return `${r} ${g} ${b}`
+}
+
 function applyTheme(state: ThemeState, systemDark: boolean) {
   const isDark = state.darkMode === 'dark' || (state.darkMode === 'system' && systemDark)
   const surfaces = isDark ? DARK_SURFACES : LIGHT_SURFACES
   const colors = THEME_COLORS[state.themeColor]
 
   const root = document.documentElement
-  // Apply all color tokens as CSS variables
+  // Apply all color tokens as CSS variables (RGB space-separated for Tailwind opacity support)
   for (const [key, value] of Object.entries({ ...surfaces, ...colors })) {
-    root.style.setProperty(`--color-${key}`, value)
+    root.style.setProperty(`--color-${key}`, hexToRgb(value))
   }
   // Text size
   root.style.fontSize = TEXT_SIZE_MAP[state.textSize]

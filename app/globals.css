@@ -5,27 +5,28 @@
 @layer base {
   :root {
     /* Default theme: red primary, light mode */
-    --color-primary: #b41c1b;
-    --color-primary-container: #d83730;
-    --color-on-primary: #ffffff;
-    --color-on-primary-container: #fffbff;
-    --color-inverse-primary: #ffb4ab;
-    --color-surface: #fdf9f3;
-    --color-surface-dim: #dddad4;
-    --color-surface-bright: #fdf9f3;
-    --color-surface-container-lowest: #ffffff;
-    --color-surface-container-low: #f7f3ed;
-    --color-surface-container: #f1ede7;
-    --color-surface-container-high: #ebe8e2;
-    --color-surface-container-highest: #e6e2dc;
-    --color-on-surface: #1c1c18;
-    --color-on-surface-variant: #5b403d;
-    --color-outline: #8f706c;
-    --color-outline-variant: #e3beb9;
-    --color-inverse-surface: #31302d;
-    --color-inverse-on-surface: #f4f0ea;
-    --color-error: #ba1a1a;
-    --color-error-container: #ffdad6;
+    /* Values are space-separated RGB for Tailwind opacity support */
+    --color-primary: 180 28 27;
+    --color-primary-container: 216 55 48;
+    --color-on-primary: 255 255 255;
+    --color-on-primary-container: 255 251 255;
+    --color-inverse-primary: 255 180 171;
+    --color-surface: 253 249 243;
+    --color-surface-dim: 221 218 212;
+    --color-surface-bright: 253 249 243;
+    --color-surface-container-lowest: 255 255 255;
+    --color-surface-container-low: 247 243 237;
+    --color-surface-container: 241 237 231;
+    --color-surface-container-high: 235 232 226;
+    --color-surface-container-highest: 230 226 220;
+    --color-on-surface: 28 28 24;
+    --color-on-surface-variant: 91 64 61;
+    --color-outline: 143 112 108;
+    --color-outline-variant: 227 190 185;
+    --color-inverse-surface: 49 48 45;
+    --color-inverse-on-surface: 244 240 234;
+    --color-error: 186 26 26;
+    --color-error-container: 255 218 214;
   }
 
   body {

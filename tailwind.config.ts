@@ -1,7 +1,8 @@
 import type { Config } from 'tailwindcss'
 
+// Helper: reference a CSS variable as an RGB color with Tailwind opacity support
 function v(name: string) {
-  return `var(--color-${name})`
+  return `rgb(var(--color-${name}) / <alpha-value>)`
 }
 
 const config: Config = {
