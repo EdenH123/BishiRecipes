@@ -137,16 +137,10 @@ export default function HomePage() {
 
       const user = userRes.data?.user
       if (user) {
-        const [{ data: favData }, { data: hiddenData }] = await Promise.all([
-          supabase
-            .from('favorites')
-            .select('recipe_id')
-            .eq('user_id', user.id),
-          supabase
-            .from('hidden_authors')
-            .select('hidden_user_id')
-            .eq('user_id', user.id),
-        ])
+        const { data: favData } = await supabase
+          .from('favorites')
+          .select('recipe_id')
+          .eq('user_id', user.id)
 
         if (favData) {
           const ids = favData.map((f) => f.recipe_id)
@@ -154,11 +148,19 @@ export default function HomePage() {
           setFavoriteIds(ids)
         }
 
-        hiddenAuthorsRef.current = hiddenData ? hiddenData.map((h) => h.hidden_user_id) : []
-        // Temporary debug
-        if (typeof window !== 'undefined') {
-          document.title = `DEBUG: ${hiddenAuthorsRef.current.length} hidden`
+        try {
+          const { data: hiddenData, error: hiddenError } = await supabase
+            .from('hidden_authors')
+            .select('hidden_user_id')
+            .eq('user_id', user.id)
+          if (!hiddenError && hiddenData) {
+            hiddenAuthorsRef.current = hiddenData.map((h) => h.hidden_user_id)
+          }
+        } catch {
+          // Table may not exist yet
         }
+        // Temporary debug
+        document.title = `DEBUG: ${hiddenAuthorsRef.current.length} hidden`
       }
 
       // Fetch recent activity
