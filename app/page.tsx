@@ -155,6 +155,8 @@ export default function HomePage() {
         }
 
         hiddenAuthorsRef.current = hiddenData ? hiddenData.map((h) => h.hidden_user_id) : []
+        console.log('[DEBUG] hiddenData raw:', hiddenData)
+        console.log('[DEBUG] hiddenAuthorsRef set to:', hiddenAuthorsRef.current)
       }
 
       // Fetch recent activity
@@ -345,9 +347,11 @@ export default function HomePage() {
 
         let newRecipes = (dataRes.data as Recipe[]) || []
         // Filter out hidden authors client-side
+        console.log('[DEBUG] Before filter:', newRecipes.length, 'recipes, hiddenAuthorsRef:', hiddenAuthorsRef.current)
         if (hiddenAuthorsRef.current.length > 0) {
           const hiddenSet = new Set(hiddenAuthorsRef.current)
           newRecipes = newRecipes.filter(r => !hiddenSet.has(r.created_by))
+          console.log('[DEBUG] After filter:', newRecipes.length, 'recipes')
         }
         const fetchedCount = newRecipes.length
 
