@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import type { Recipe } from '@/lib/types'
-import { parseIngredient, displayIngredient } from '@/lib/types'
+import { parseIngredient, displayIngredient, isIngredientHeader, getHeaderTitle } from '@/lib/types'
 
 const BLUR_PLACEHOLDER =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIklEQVQYV2N89+7dfwYGBgZGRkYGJgYKABMDhYCRkgAALCQEAf2VlGIAAAAASUVORK5CYII='
@@ -150,15 +150,35 @@ function RecipeCard({ recipe }: RecipeCardProps) {
               </p>
               <ul className="text-xs text-on-surface-variant space-y-1 overflow-y-auto flex-1 min-h-0 pr-1">
                 {recipe.ingredients?.length ? (
-                  recipe.ingredients.map((raw, idx) => {
-                    const ing = parseIngredient(raw)
+                  (() => {
+                    const MAX_ITEMS = 6
+                    const items = recipe.ingredients
+                    const visible = items.slice(0, MAX_ITEMS)
+                    const remaining = items.length - MAX_ITEMS
                     return (
-                      <li key={idx} className="flex items-start gap-1 justify-end">
-                        <span>{displayIngredient(ing)}</span>
-                        <span className="text-primary/60 mt-0.5 shrink-0">&#x2022;</span>
-                      </li>
+                      <>
+                        {visible.map((raw, idx) => {
+                          const ing = parseIngredient(raw)
+                          if (isIngredientHeader(ing.name)) {
+                            return (
+                              <li key={idx} className="text-primary font-bold text-[10px] pt-1">
+                                {getHeaderTitle(ing.name)}
+                              </li>
+                            )
+                          }
+                          return (
+                            <li key={idx} className="flex items-start gap-1 justify-end">
+                              <span>{displayIngredient(ing)}</span>
+                              <span className="text-primary/60 mt-0.5 shrink-0">&#x2022;</span>
+                            </li>
+                          )
+                        })}
+                        {remaining > 0 && (
+                          <li className="text-outline text-[10px] italic">...ועוד {remaining}</li>
+                        )}
+                      </>
                     )
-                  })
+                  })()
                 ) : (
                   <li className="text-outline italic">אין מצרכים</li>
                 )}
