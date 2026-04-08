@@ -183,6 +183,44 @@ export default function ImportRecipePage() {
     })
   }
 
+  const [dragIngredient, setDragIngredient] = useState<number | null>(null)
+  const touchDragIdx = useRef<number | null>(null)
+  const ingredientListRef = useRef<HTMLDivElement>(null)
+
+  function reorderIngredients(from: number, to: number) {
+    setIngredients((prev) => {
+      const next = [...prev]
+      const [item] = next.splice(from, 1)
+      next.splice(to, 0, item)
+      return next
+    })
+  }
+
+  function handleTouchDragStart(index: number, y: number) {
+    touchDragIdx.current = index
+    setDragIngredient(index)
+  }
+
+  function handleTouchDragMove(e: React.TouchEvent) {
+    if (touchDragIdx.current === null || !ingredientListRef.current) return
+    e.preventDefault()
+    const y = e.touches[0].clientY
+    const children = Array.from(ingredientListRef.current.children) as HTMLElement[]
+    for (let i = 0; i < children.length; i++) {
+      const rect = children[i].getBoundingClientRect()
+      if (y >= rect.top && y <= rect.bottom && i !== touchDragIdx.current) {
+        reorderIngredients(touchDragIdx.current, i)
+        touchDragIdx.current = i
+        break
+      }
+    }
+  }
+
+  function handleTouchDragEnd() {
+    touchDragIdx.current = null
+    setDragIngredient(null)
+  }
+
   function removeIngredient(index: number) {
     setIngredients((prev) => prev.filter((_, i) => i !== index))
   }
@@ -533,12 +571,26 @@ export default function ImportRecipePage() {
                     + הוסף מצרך
                   </button>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2" ref={ingredientListRef} onTouchMove={handleTouchDragMove} onTouchEnd={handleTouchDragEnd}>
                   {ingredients.map((ing, i) => {
+                    const dragProps = {
+                      draggable: true,
+                      onDragStart: () => setDragIngredient(i),
+                      onDragOver: (e: React.DragEvent) => e.preventDefault(),
+                      onDrop: () => { if (dragIngredient !== null && dragIngredient !== i) reorderIngredients(dragIngredient, i); setDragIngredient(null) },
+                      onDragEnd: () => setDragIngredient(null),
+                    }
+                    const dragHandle = (
+                      <span
+                        onTouchStart={(e) => handleTouchDragStart(i, e.touches[0].clientY)}
+                        className="shrink-0 cursor-grab text-gray-400 active:text-gray-600 material-symbols-outlined text-lg touch-none select-none"
+                      >drag_indicator</span>
+                    )
                     // Section header row
                     if (isIngredientHeader(ing.name)) {
                       return (
-                        <div key={i} className="flex items-center gap-2 pt-2">
+                        <div key={i} {...dragProps} className={`flex items-center gap-2 pt-2 transition-opacity ${dragIngredient === i ? 'opacity-40' : ''}`}>
+                          {dragHandle}
                           <span className="text-sm font-bold text-primary flex-1">{getHeaderTitle(ing.name)}</span>
                           <button
                             onClick={() => removeIngredient(i)}
@@ -550,7 +602,8 @@ export default function ImportRecipePage() {
                       )
                     }
                     return (
-                    <div key={i} className="flex items-center gap-2">
+                    <div key={i} {...dragProps} className={`flex items-center gap-2 transition-opacity ${dragIngredient === i ? 'opacity-40' : ''}`}>
+                      {dragHandle}
                       <div className="relative group">
                         <input
                           type="text"
@@ -592,7 +645,7 @@ export default function ImportRecipePage() {
                         value={ing.name}
                         onChange={(e) => updateIngredient(i, 'name', e.target.value)}
                         placeholder="שם המצרך"
-                        className="flex-1 rounded-lg border border-outline-variant px-3 py-2 text-sm outline-none focus:border-primary bg-surface-container-lowest"
+                        className="flex-1 min-w-0 rounded-lg border border-outline-variant px-3 py-2 text-sm outline-none focus:border-primary bg-surface-container-lowest"
                       />
                       <button
                         onClick={() => removeIngredient(i)}
