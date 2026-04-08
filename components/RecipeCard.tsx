@@ -124,7 +124,7 @@ function RecipeCard({ recipe }: RecipeCardProps) {
                 <button
                   type="button"
                   onClick={handleFlip}
-                  className="w-8 h-8 shrink-0 rounded-full bg-primary/80 text-white flex items-center justify-center text-sm shadow-md hover:bg-primary transition-colors active:scale-95"
+                  className="w-8 h-8 shrink-0 rounded-full bg-primary text-on-primary flex items-center justify-center text-sm font-bold shadow-lg shadow-primary/30 hover:bg-primary-container transition-colors active:scale-95"
                   aria-label="Show ingredients"
                 >
                   i
