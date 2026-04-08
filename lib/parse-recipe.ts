@@ -349,7 +349,7 @@ export function parseRecipeText(text: string): ParsedRecipe {
 
         // Ingredient sub-headers like "למילוי-" become label-only ingredients
         if (isIngredientSubHeader(lines[i])) {
-          ingredients.push({ amount: '', unit: '', name: `--- ${clean.replace(/[-–:]$/, '').trim()} ---` })
+          ingredients.push({ amount: '', unit: '', name: `## ${clean.replace(/[-–:]$/, '').trim()}` })
           continue
         }
         const ing = parseIngredientLine(lines[i])

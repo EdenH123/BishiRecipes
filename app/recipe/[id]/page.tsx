@@ -717,6 +717,14 @@ export default function RecipeDetailPage() {
           <ul className="mt-3 flex flex-col gap-2">
             {recipe.ingredients.map((raw, i) => {
               const ing = parseIngredient(raw)
+              // Section header
+              if (ing.name.startsWith('## ')) {
+                return (
+                  <motion.li key={i} variants={ingredientItemVariants} className="pt-3 pb-1 first:pt-0">
+                    <span className="text-sm font-bold text-primary">{ing.name.slice(3)}</span>
+                  </motion.li>
+                )
+              }
               return (
                 <motion.li key={i} variants={ingredientItemVariants} className="flex items-center gap-3">
                   <input

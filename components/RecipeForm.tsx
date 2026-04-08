@@ -440,7 +440,33 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
           <span className="w-7"></span>
         </div>
         <div className="space-y-2">
-          {ingredients.map((ingredient, index) => (
+          {ingredients.map((ingredient, index) => {
+            // Section header row
+            if (ingredient.name.startsWith('## ')) {
+              return (
+                <div
+                  key={index}
+                  draggable
+                  onDragStart={() => setDragIngredient(index)}
+                  onDragOver={(e) => { e.preventDefault() }}
+                  onDrop={() => { if (dragIngredient !== null && dragIngredient !== index) reorderIngredients(dragIngredient, index); setDragIngredient(null) }}
+                  onDragEnd={() => setDragIngredient(null)}
+                  className={`flex gap-2 items-center pt-2 transition-opacity ${dragIngredient === index ? 'opacity-40' : ''}`}
+                >
+                  <span className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg">drag_indicator</span>
+                  <input
+                    type="text"
+                    value={ingredient.name.slice(3)}
+                    onChange={(e) => updateIngredient(index, 'name', `## ${e.target.value}`)}
+                    className="flex-1 min-w-0 rounded-lg border border-primary/30 bg-primary/5 p-3 font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                  {ingredients.length > 1 && (
+                    <button type="button" onClick={() => removeIngredient(index)} className="shrink-0 w-7 text-gray-400 hover:text-primary text-lg transition-colors">✕</button>
+                  )}
+                </div>
+              )
+            }
+            return (
             <div
               key={index}
               draggable
@@ -507,7 +533,8 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                 </button>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
         <button
           type="button"

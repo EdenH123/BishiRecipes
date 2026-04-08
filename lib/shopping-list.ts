@@ -420,7 +420,7 @@ export function addIngredientsToList(
 
   for (const raw of ingredients) {
     const ing = parseIngredient(raw)
-    if (!ing.name.trim()) continue
+    if (!ing.name.trim() || ing.name.startsWith('## ')) continue
 
     const scaledAmount = scaleQuantity(ing.amount, multiplier)
     const normalized = normalizeIngredientName(ing.name)

@@ -534,7 +534,22 @@ export default function ImportRecipePage() {
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {ingredients.map((ing, i) => (
+                  {ingredients.map((ing, i) => {
+                    // Section header row
+                    if (ing.name.startsWith('## ')) {
+                      return (
+                        <div key={i} className="flex items-center gap-2 pt-2">
+                          <span className="text-sm font-bold text-primary flex-1">{ing.name.slice(3)}</span>
+                          <button
+                            onClick={() => removeIngredient(i)}
+                            className="p-2 text-gray-400 hover:text-error active:scale-95"
+                          >
+                            <span className="material-symbols-outlined text-lg">close</span>
+                          </button>
+                        </div>
+                      )
+                    }
+                    return (
                     <div key={i} className="flex items-center gap-2">
                       <div className="relative group">
                         <input
@@ -586,7 +601,8 @@ export default function ImportRecipePage() {
                         <span className="material-symbols-outlined text-lg">close</span>
                       </button>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
