@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase'
-import { type Recipe, type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, parseIngredient, serializeIngredient } from '@/lib/types'
+import { type Recipe, type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, parseIngredient, serializeIngredient, isIngredientHeader, getHeaderTitle } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -442,7 +442,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         <div className="space-y-2">
           {ingredients.map((ingredient, index) => {
             // Section header row
-            if (ingredient.name.startsWith('## ')) {
+            if (isIngredientHeader(ingredient.name)) {
               return (
                 <div
                   key={index}
@@ -456,7 +456,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                   <span className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg">drag_indicator</span>
                   <input
                     type="text"
-                    value={ingredient.name.slice(3)}
+                    value={getHeaderTitle(ingredient.name)}
                     onChange={(e) => updateIngredient(index, 'name', `## ${e.target.value}`)}
                     className="flex-1 min-w-0 rounded-lg border border-primary/30 bg-primary/5 p-3 font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                   />

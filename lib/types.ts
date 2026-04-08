@@ -73,6 +73,19 @@ export const MEASUREMENT_UNITS = [
   'לפי הטעם',
 ] as const
 
+/** Check if an ingredient name is a section header */
+export function isIngredientHeader(name: string): boolean {
+  return name.startsWith('## ') || /^---\s*.+\s*---$/.test(name)
+}
+
+/** Extract the display title from a section header ingredient */
+export function getHeaderTitle(name: string): string {
+  if (name.startsWith('## ')) return name.slice(3)
+  const m = name.match(/^---\s*(.+?)\s*---$/)
+  if (m) return m[1]
+  return name
+}
+
 export function parseIngredient(raw: string): Ingredient {
   try {
     const parsed = JSON.parse(raw)

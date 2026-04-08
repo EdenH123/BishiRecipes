@@ -7,7 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { type Recipe, type Collaborator, type Profile, parseIngredient, displayIngredient } from '@/lib/types'
+import { type Recipe, type Collaborator, type Profile, parseIngredient, displayIngredient, isIngredientHeader, getHeaderTitle } from '@/lib/types'
 import { exportRecipeAsImage } from '@/lib/export-recipe'
 import { loadShoppingList, saveShoppingList, addIngredientsToList, loadRecipeEntries, saveRecipeEntries, addRecipeEntry } from '@/lib/shopping-list'
 import RecipeCard from '@/components/RecipeCard'
@@ -718,10 +718,10 @@ export default function RecipeDetailPage() {
             {recipe.ingredients.map((raw, i) => {
               const ing = parseIngredient(raw)
               // Section header
-              if (ing.name.startsWith('## ')) {
+              if (isIngredientHeader(ing.name)) {
                 return (
                   <motion.li key={i} variants={ingredientItemVariants} className="pt-3 pb-1 first:pt-0">
-                    <span className="text-sm font-bold text-primary">{ing.name.slice(3)}</span>
+                    <span className="text-sm font-bold text-primary">{getHeaderTitle(ing.name)}</span>
                   </motion.li>
                 )
               }

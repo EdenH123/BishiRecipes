@@ -1,4 +1,4 @@
-import { parseIngredient, type Ingredient } from './types'
+import { parseIngredient, isIngredientHeader, type Ingredient } from './types'
 
 // --- Data model ---
 
@@ -420,7 +420,7 @@ export function addIngredientsToList(
 
   for (const raw of ingredients) {
     const ing = parseIngredient(raw)
-    if (!ing.name.trim() || ing.name.startsWith('## ')) continue
+    if (!ing.name.trim() || isIngredientHeader(ing.name)) continue
 
     const scaledAmount = scaleQuantity(ing.amount, multiplier)
     const normalized = normalizeIngredientName(ing.name)

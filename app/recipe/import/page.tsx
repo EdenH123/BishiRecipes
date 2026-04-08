@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { parseRecipeText, guessCategory, type ParsedRecipe } from '@/lib/parse-recipe'
-import { type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, serializeIngredient } from '@/lib/types'
+import { type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, serializeIngredient, isIngredientHeader, getHeaderTitle } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import BottomNav from '@/components/BottomNav'
 
@@ -536,10 +536,10 @@ export default function ImportRecipePage() {
                 <div className="space-y-2">
                   {ingredients.map((ing, i) => {
                     // Section header row
-                    if (ing.name.startsWith('## ')) {
+                    if (isIngredientHeader(ing.name)) {
                       return (
                         <div key={i} className="flex items-center gap-2 pt-2">
-                          <span className="text-sm font-bold text-primary flex-1">{ing.name.slice(3)}</span>
+                          <span className="text-sm font-bold text-primary flex-1">{getHeaderTitle(ing.name)}</span>
                           <button
                             onClick={() => removeIngredient(i)}
                             className="p-2 text-gray-400 hover:text-error active:scale-95"
