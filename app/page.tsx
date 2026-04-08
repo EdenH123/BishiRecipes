@@ -87,8 +87,8 @@ export default function HomePage() {
   // Track hidden filters
   const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set())
   const [hiddenTags, setHiddenTags] = useState<Set<string>>(new Set())
-  const [hiddenAuthors, setHiddenAuthors] = useState<string[] | null>(null)
   const hiddenAuthorsRef = useRef<string[]>([])
+  const [metadataReady, setMetadataReady] = useState(false)
 
   // Fetch metadata (members, tags, categories, favorites, hidden filters) once on mount
   useEffect(() => {
@@ -154,9 +154,7 @@ export default function HomePage() {
           setFavoriteIds(ids)
         }
 
-        const ids = hiddenData ? hiddenData.map((h) => h.hidden_user_id) : []
-        hiddenAuthorsRef.current = ids
-        setHiddenAuthors(ids)
+        hiddenAuthorsRef.current = hiddenData ? hiddenData.map((h) => h.hidden_user_id) : []
       }
 
       // Fetch recent activity
@@ -199,29 +197,8 @@ export default function HomePage() {
       setRecentActivity(activity.slice(0, 5))
     }
 
-    fetchMetadata()
+    fetchMetadata().then(() => setMetadataReady(true))
   }, [supabase])
-
-  // Re-fetch hidden authors when page regains focus (e.g., after changing settings in profile)
-  useEffect(() => {
-    async function refreshHiddenAuthors() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data } = await supabase
-        .from('hidden_authors')
-        .select('hidden_user_id')
-        .eq('user_id', user.id)
-      const ids = data ? data.map(h => h.hidden_user_id) : []
-      // Only update if changed
-      if (JSON.stringify(ids) !== JSON.stringify(hiddenAuthors)) {
-        hiddenAuthorsRef.current = ids
-        setHiddenAuthors(ids)
-      }
-    }
-    function onFocus() { refreshHiddenAuthors() }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [supabase, hiddenAuthors])
 
   // Build a Supabase query with current filters applied
   const buildFilteredQuery = useCallback(
@@ -261,7 +238,7 @@ export default function HomePage() {
       return query
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy, hiddenAuthors]
+    [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy]
   )
 
   const isFirstLoad = useRef(true)
@@ -298,8 +275,8 @@ export default function HomePage() {
 
         let allRecipes = (dataRes.data as Recipe[]) || []
         // Filter out hidden authors client-side
-        if (hiddenAuthors && hiddenAuthors.length > 0) {
-          const hiddenSet = new Set(hiddenAuthors)
+        if (hiddenAuthorsRef.current.length > 0) {
+          const hiddenSet = new Set(hiddenAuthorsRef.current)
           allRecipes = allRecipes.filter(r => !hiddenSet.has(r.created_by))
         }
 
@@ -368,8 +345,8 @@ export default function HomePage() {
 
         let newRecipes = (dataRes.data as Recipe[]) || []
         // Filter out hidden authors client-side
-        if (hiddenAuthors && hiddenAuthors.length > 0) {
-          const hiddenSet = new Set(hiddenAuthors)
+        if (hiddenAuthorsRef.current.length > 0) {
+          const hiddenSet = new Set(hiddenAuthorsRef.current)
           newRecipes = newRecipes.filter(r => !hiddenSet.has(r.created_by))
         }
         const fetchedCount = newRecipes.length
@@ -393,18 +370,39 @@ export default function HomePage() {
         setLoadingMore(false)
       }
     },
-    [buildFilteredQuery, sortBy, supabase, hiddenAuthors]
+    [buildFilteredQuery, sortBy, supabase]
   )
 
-  // Initial fetch + refetch when filters/sort change
+  // Initial fetch + refetch when filters/sort change (waits for metadata to load first)
   useEffect(() => {
-    // Wait until hiddenAuthors is loaded (null = not yet loaded)
-    if (hiddenAuthors === null) return
+    if (!metadataReady) return
     setPage(0)
     setHasMore(true)
     fetchRecipesPage(0, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy, hiddenAuthors])
+  }, [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy, metadataReady])
+
+  // Re-fetch hidden authors when page regains focus (e.g., after changing settings in profile)
+  useEffect(() => {
+    async function refreshHiddenAuthors() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('hidden_authors')
+        .select('hidden_user_id')
+        .eq('user_id', user.id)
+      const ids = data ? data.map(h => h.hidden_user_id) : []
+      if (JSON.stringify(ids) !== JSON.stringify(hiddenAuthorsRef.current)) {
+        hiddenAuthorsRef.current = ids
+        setPage(0)
+        setHasMore(true)
+        fetchRecipesPage(0, true)
+      }
+    }
+    function onFocus() { refreshHiddenAuthors() }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [supabase, fetchRecipesPage])
 
   // Animated counter — animate towards totalCount
   useEffect(() => {
