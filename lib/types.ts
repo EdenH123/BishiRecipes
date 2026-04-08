@@ -68,6 +68,7 @@ export const MEASUREMENT_UNITS = [
   'יחידה',
   'יחידות',
   'חבילה',
+  'חופן',
   'קורט',
   'לפי הטעם',
 ] as const
