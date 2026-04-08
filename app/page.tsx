@@ -87,7 +87,7 @@ export default function HomePage() {
   // Track hidden filters
   const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set())
   const [hiddenTags, setHiddenTags] = useState<Set<string>>(new Set())
-  const [hiddenAuthors, setHiddenAuthors] = useState<string[]>([])
+  const [hiddenAuthors, setHiddenAuthors] = useState<string[] | null>(null)
   const hiddenAuthorsRef = useRef<string[]>([])
 
   // Fetch metadata (members, tags, categories, favorites, hidden filters) once on mount
@@ -154,11 +154,9 @@ export default function HomePage() {
           setFavoriteIds(ids)
         }
 
-        if (hiddenData && hiddenData.length > 0) {
-          const ids = hiddenData.map((h) => h.hidden_user_id)
-          hiddenAuthorsRef.current = ids
-          setHiddenAuthors(ids)
-        }
+        const ids = hiddenData ? hiddenData.map((h) => h.hidden_user_id) : []
+        hiddenAuthorsRef.current = ids
+        setHiddenAuthors(ids)
       }
 
       // Fetch recent activity
@@ -244,10 +242,6 @@ export default function HomePage() {
       if (selectedTags.length > 0) {
         query = query.contains('tags', selectedTags)
       }
-      if (hiddenAuthors.length > 0) {
-        // Supabase PostgREST: not.in filter to exclude hidden authors
-        query = query.not('created_by', 'in', `(${hiddenAuthors.join(',')})`)
-      }
       if (showFavoritesOnly && favoriteIdsRef.current.length > 0) {
         query = query.in('id', favoriteIdsRef.current)
       } else if (showFavoritesOnly && favoriteIdsRef.current.length === 0) {
@@ -302,7 +296,12 @@ export default function HomePage() {
           setTotalCount(countRes.count)
         }
 
-        const allRecipes = (dataRes.data as Recipe[]) || []
+        let allRecipes = (dataRes.data as Recipe[]) || []
+        // Filter out hidden authors client-side
+        if (hiddenAuthors && hiddenAuthors.length > 0) {
+          const hiddenSet = new Set(hiddenAuthors)
+          allRecipes = allRecipes.filter(r => !hiddenSet.has(r.created_by))
+        }
 
         // Build count maps
         const ratingMap = new Map<string, { total: number; count: number }>()
@@ -367,7 +366,12 @@ export default function HomePage() {
           setTotalCount(countRes.count)
         }
 
-        const newRecipes = (dataRes.data as Recipe[]) || []
+        let newRecipes = (dataRes.data as Recipe[]) || []
+        // Filter out hidden authors client-side
+        if (hiddenAuthors && hiddenAuthors.length > 0) {
+          const hiddenSet = new Set(hiddenAuthors)
+          newRecipes = newRecipes.filter(r => !hiddenSet.has(r.created_by))
+        }
         const fetchedCount = newRecipes.length
 
         if (isInitial) {
@@ -389,11 +393,13 @@ export default function HomePage() {
         setLoadingMore(false)
       }
     },
-    [buildFilteredQuery, sortBy, supabase]
+    [buildFilteredQuery, sortBy, supabase, hiddenAuthors]
   )
 
   // Initial fetch + refetch when filters/sort change
   useEffect(() => {
+    // Wait until hiddenAuthors is loaded (null = not yet loaded)
+    if (hiddenAuthors === null) return
     setPage(0)
     setHasMore(true)
     fetchRecipesPage(0, true)
