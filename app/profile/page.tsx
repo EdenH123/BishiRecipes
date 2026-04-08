@@ -593,20 +593,19 @@ export default function ProfilePage() {
                   {/* ── Font Family ── */}
                   <div>
                     <h3 className="text-lg font-bold font-rubik mb-3">פונט</h3>
-                    <div className="space-y-1.5">
+                    <div className="flex flex-wrap gap-2">
                       {FONT_OPTIONS.map(opt => (
                         <button
                           key={opt.key}
                           onClick={() => setFontFamily(opt.key)}
-                          className={`w-full text-right rounded-xl p-3 transition-colors ${
+                          className={`rounded-full px-3.5 py-1.5 text-xs transition-colors ${
                             fontFamily === opt.key
                               ? 'bg-primary text-on-primary shadow-md'
                               : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                           }`}
                           style={{ fontFamily: opt.css }}
                         >
-                          <span className="text-sm">{opt.label}</span>
-                          <span className="block text-xs mt-0.5 opacity-70">אבגדהו — מתכון טעים</span>
+                          {opt.label}
                         </button>
                       ))}
                     </div>
