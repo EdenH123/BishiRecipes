@@ -3,6 +3,31 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Default theme: red primary, light mode */
+    --color-primary: #b41c1b;
+    --color-primary-container: #d83730;
+    --color-on-primary: #ffffff;
+    --color-on-primary-container: #fffbff;
+    --color-inverse-primary: #ffb4ab;
+    --color-surface: #fdf9f3;
+    --color-surface-dim: #dddad4;
+    --color-surface-bright: #fdf9f3;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #f7f3ed;
+    --color-surface-container: #f1ede7;
+    --color-surface-container-high: #ebe8e2;
+    --color-surface-container-highest: #e6e2dc;
+    --color-on-surface: #1c1c18;
+    --color-on-surface-variant: #5b403d;
+    --color-outline: #8f706c;
+    --color-outline-variant: #e3beb9;
+    --color-inverse-surface: #31302d;
+    --color-inverse-on-surface: #f4f0ea;
+    --color-error: #ba1a1a;
+    --color-error-container: #ffdad6;
+  }
+
   body {
     @apply bg-surface text-on-surface font-rubik;
     -webkit-tap-highlight-color: transparent;

@@ -19,6 +19,7 @@ import RecipeCard from '@/components/RecipeCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import PageTransition from '@/components/PageTransition'
+import { useTheme, THEME_COLOR_OPTIONS, TEXT_SIZE_OPTIONS, type DarkMode, type ThemeColor, type TextSize } from '@/lib/theme'
 
 const TAB_ORDER = ['recipes', 'favorites', 'achievements', 'settings', 'admin'] as const
 
@@ -40,6 +41,7 @@ const cardVariants = {
 export default function ProfilePage() {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
+  const { darkMode, themeColor, textSize, setDarkMode, setThemeColor, setTextSize } = useTheme()
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [displayName, setDisplayName] = useState('')
@@ -517,51 +519,127 @@ export default function ProfilePage() {
               {activeTab === 'achievements' ? (
                 <Achievements userId={profile!.id} />
               ) : activeTab === 'settings' ? (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold font-rubik">הצגת מתכונים לפי משתמש</h3>
-                  <p className="text-sm text-gray-500 font-rubik">בחר/י אילו משתמשים תרצו לראות את המתכונים שלהם</p>
-                  {!settingsLoaded ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="h-8 w-8 animate-spin rounded-full border-3 border-gray-200 border-t-primary" />
+                <div className="space-y-8">
+                  {/* ── Dark Mode ── */}
+                  <div>
+                    <h3 className="text-lg font-bold font-rubik mb-3">מצב תצוגה</h3>
+                    <div className="flex gap-2">
+                      {([
+                        { key: 'light' as DarkMode, label: 'בהיר', icon: 'light_mode' },
+                        { key: 'dark' as DarkMode, label: 'כהה', icon: 'dark_mode' },
+                        { key: 'system' as DarkMode, label: 'מערכת', icon: 'smartphone' },
+                      ]).map(opt => (
+                        <button
+                          key={opt.key}
+                          onClick={() => setDarkMode(opt.key)}
+                          className={`flex-1 flex flex-col items-center gap-1.5 rounded-xl p-3 text-sm font-rubik transition-colors ${
+                            darkMode === opt.key
+                              ? 'bg-primary text-on-primary shadow-md'
+                              : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-xl">{opt.icon}</span>
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {allUsers.map((user) => {
-                        const isVisible = !hiddenAuthors.has(user.id)
-                        return (
-                          <button
-                            key={user.id}
-                            onClick={() => toggleAuthorVisibility(user.id)}
-                            className="w-full flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-surface-container-low"
-                          >
-                            <div className="h-9 w-9 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden shrink-0">
-                              {user.avatar_url ? (
-                                <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <span className="text-sm font-bold text-on-surface-variant">
-                                  {user.display_name.charAt(0)}
-                                </span>
-                              )}
-                            </div>
-                            <span className="flex-1 text-sm font-rubik text-on-surface text-right">
-                              {user.display_name}
-                            </span>
-                            <span
-                              className={`material-symbols-outlined text-xl transition-colors ${
-                                isVisible ? 'text-primary' : 'text-gray-300'
-                              }`}
-                              style={isVisible ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                  </div>
+
+                  {/* ── Theme Color ── */}
+                  <div>
+                    <h3 className="text-lg font-bold font-rubik mb-3">צבע נושא</h3>
+                    <div className="flex gap-3 justify-center">
+                      {THEME_COLOR_OPTIONS.map(opt => (
+                        <button
+                          key={opt.key}
+                          onClick={() => setThemeColor(opt.key)}
+                          className="flex flex-col items-center gap-1.5"
+                        >
+                          <div
+                            className={`h-10 w-10 rounded-full transition-all ${
+                              themeColor === opt.key
+                                ? 'ring-2 ring-offset-2 ring-on-surface scale-110'
+                                : 'hover:scale-105'
+                            }`}
+                            style={{ backgroundColor: opt.hex }}
+                          />
+                          <span className="text-xs font-rubik text-on-surface-variant">{opt.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Text Size ── */}
+                  <div>
+                    <h3 className="text-lg font-bold font-rubik mb-3">גודל טקסט</h3>
+                    <div className="flex gap-2">
+                      {TEXT_SIZE_OPTIONS.map(opt => (
+                        <button
+                          key={opt.key}
+                          onClick={() => setTextSize(opt.key)}
+                          className={`flex-1 rounded-xl p-3 font-rubik transition-colors ${
+                            textSize === opt.key
+                              ? 'bg-primary text-on-primary shadow-md'
+                              : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                          }`}
+                          style={{ fontSize: opt.key === 'small' ? '13px' : opt.key === 'large' ? '17px' : '15px' }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Divider ── */}
+                  <div className="border-t border-outline-variant/30" />
+
+                  {/* ── User Visibility ── */}
+                  <div>
+                    <h3 className="text-lg font-bold font-rubik">הצגת מתכונים לפי משתמש</h3>
+                    <p className="text-sm text-on-surface-variant font-rubik mt-1 mb-3">בחר/י אילו משתמשים תרצו לראות את המתכונים שלהם</p>
+                    {!settingsLoaded ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="h-8 w-8 animate-spin rounded-full border-3 border-gray-200 border-t-primary" />
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {allUsers.map((user) => {
+                          const isVisible = !hiddenAuthors.has(user.id)
+                          return (
+                            <button
+                              key={user.id}
+                              onClick={() => toggleAuthorVisibility(user.id)}
+                              className="w-full flex items-center gap-3 rounded-xl p-3 transition-colors hover:bg-surface-container-low"
                             >
-                              {isVisible ? 'visibility' : 'visibility_off'}
-                            </span>
-                          </button>
-                        )
-                      })}
-                      {allUsers.length === 0 && (
-                        <p className="text-sm text-gray-400 text-center py-4 font-rubik">אין משתמשים אחרים</p>
-                      )}
-                    </div>
-                  )}
+                              <div className="h-9 w-9 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden shrink-0">
+                                {user.avatar_url ? (
+                                  <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  <span className="text-sm font-bold text-on-surface-variant">
+                                    {user.display_name.charAt(0)}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="flex-1 text-sm font-rubik text-on-surface text-right">
+                                {user.display_name}
+                              </span>
+                              <span
+                                className={`material-symbols-outlined text-xl transition-colors ${
+                                  isVisible ? 'text-primary' : 'text-gray-300'
+                                }`}
+                                style={isVisible ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                              >
+                                {isVisible ? 'visibility' : 'visibility_off'}
+                              </span>
+                            </button>
+                          )
+                        })}
+                        {allUsers.length === 0 && (
+                          <p className="text-sm text-gray-400 text-center py-4 font-rubik">אין משתמשים אחרים</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : activeTab === 'admin' ? (
                 <div className="space-y-8">
