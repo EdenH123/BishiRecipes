@@ -141,6 +141,9 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
 
   // Drag-to-reorder state
   const [dragIngredient, setDragIngredient] = useState<number | null>(null)
+  const touchDragIdx = useRef<number | null>(null)
+  const touchStartY = useRef(0)
+  const ingredientListRef = useRef<HTMLDivElement>(null)
 
   function reorderIngredients(from: number, to: number) {
     setIngredients((prev) => {
@@ -149,6 +152,32 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
       next.splice(to, 0, item)
       return next
     })
+  }
+
+  function handleTouchDragStart(index: number, y: number) {
+    touchDragIdx.current = index
+    touchStartY.current = y
+    setDragIngredient(index)
+  }
+
+  function handleTouchDragMove(e: React.TouchEvent) {
+    if (touchDragIdx.current === null || !ingredientListRef.current) return
+    e.preventDefault()
+    const y = e.touches[0].clientY
+    const children = Array.from(ingredientListRef.current.children) as HTMLElement[]
+    for (let i = 0; i < children.length; i++) {
+      const rect = children[i].getBoundingClientRect()
+      if (y >= rect.top && y <= rect.bottom && i !== touchDragIdx.current) {
+        reorderIngredients(touchDragIdx.current, i)
+        touchDragIdx.current = i
+        break
+      }
+    }
+  }
+
+  function handleTouchDragEnd() {
+    touchDragIdx.current = null
+    setDragIngredient(null)
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -439,7 +468,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
           <span className="flex-1">שם המצרך</span>
           <span className="w-7"></span>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2" ref={ingredientListRef} onTouchMove={handleTouchDragMove} onTouchEnd={handleTouchDragEnd}>
           {ingredients.map((ingredient, index) => {
             // Section header row
             if (isIngredientHeader(ingredient.name)) {
@@ -453,7 +482,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
                   onDragEnd={() => setDragIngredient(null)}
                   className={`flex gap-2 items-center pt-2 transition-opacity ${dragIngredient === index ? 'opacity-40' : ''}`}
                 >
-                  <span className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg">drag_indicator</span>
+                  <span onTouchStart={(e) => handleTouchDragStart(index, e.touches[0].clientY)} className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg touch-none select-none">drag_indicator</span>
                   <input
                     type="text"
                     value={getHeaderTitle(ingredient.name)}
@@ -476,7 +505,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
               onDragEnd={() => setDragIngredient(null)}
               className={`flex gap-2 items-center transition-opacity min-w-0 ${dragIngredient === index ? 'opacity-40' : ''}`}
             >
-              <span className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg">drag_indicator</span>
+              <span onTouchStart={(e) => handleTouchDragStart(index, e.touches[0].clientY)} className="shrink-0 cursor-grab text-gray-400 hover:text-gray-600 material-symbols-outlined text-lg touch-none select-none">drag_indicator</span>
               <div className="relative group">
                 <input
                   type="text"

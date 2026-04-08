@@ -376,7 +376,7 @@ export function parseRecipeText(text: string): ParsedRecipe {
         // If we already hit step-like content, or this line scores as a step, route to steps
         if (hitStepContent || (clean.length > 60 && STEP_VERBS.test(clean))) {
           hitStepContent = true
-          const sentences = clean.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0)
+          const sentences = clean.split(/(?<=\.)\s+(?=[א-ת])/).filter(s => s.trim().length > 0)
           if (sentences.length > 1 && clean.length > 80) {
             for (const s of sentences) steps.push(s.trim())
           } else {
@@ -405,7 +405,7 @@ export function parseRecipeText(text: string): ParsedRecipe {
         const clean = cleanLine(lines[i])
         if (!clean) continue
         // Split long paragraphs into separate steps by sentence boundaries
-        const sentences = clean.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0)
+        const sentences = clean.split(/(?<=\.)\s+(?=[א-ת])/).filter(s => s.trim().length > 0)
         if (sentences.length > 1 && clean.length > 80) {
           for (const s of sentences) steps.push(s.trim())
         } else {
@@ -422,7 +422,7 @@ export function parseRecipeText(text: string): ParsedRecipe {
       const full = [ing.amount, ing.unit, ing.name].filter(Boolean).join(' ')
       if (scoreIngredient(full) < 0 || (full.length > 60 && STEP_VERBS.test(full))) {
         // This looks like a step, not an ingredient
-        const sentences = full.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0)
+        const sentences = full.split(/(?<=\.)\s+(?=[א-ת])/).filter(s => s.trim().length > 0)
         if (sentences.length > 1 && full.length > 80) {
           for (const s of sentences) steps.push(s.trim())
         } else {
