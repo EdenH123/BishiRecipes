@@ -84,12 +84,14 @@ export default function TimelinePage() {
 
   const grouped = useMemo(() => groupByMonth(recipes), [recipes])
 
-  // Auto-expand first month
+  // Auto-expand first month on initial load only
+  const hasAutoExpanded = useMemo(() => ({ current: false }), [])
   useEffect(() => {
-    if (grouped.length > 0 && expandedMonth === null) {
+    if (grouped.length > 0 && !hasAutoExpanded.current) {
+      hasAutoExpanded.current = true
       setExpandedMonth(grouped[0].key)
     }
-  }, [grouped, expandedMonth])
+  }, [grouped, hasAutoExpanded])
 
   return (
     <div dir="rtl" className="min-h-screen bg-surface pt-20 pb-28">
