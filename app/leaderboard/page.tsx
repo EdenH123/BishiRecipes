@@ -260,6 +260,13 @@ export default function LeaderboardPage() {
           >
             טעם המשפחה 🗺️
           </Link>
+          <Link
+            href="/timeline"
+            className="inline-flex items-center gap-1.5 mt-3 mr-2 rounded-full bg-sky-50 border border-sky-200 px-4 py-1.5 text-sm font-medium text-sky-700 hover:bg-sky-100 transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">timeline</span>
+            ציר זמן
+          </Link>
         </div>
 
         {/* Tab switcher */}
