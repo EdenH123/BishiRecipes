@@ -159,8 +159,6 @@ export default function HomePage() {
         } catch {
           // Table may not exist yet
         }
-        // Temporary debug
-        document.title = `DEBUG: ${hiddenAuthorsRef.current.length} hidden`
       }
 
       // Fetch recent activity
@@ -275,16 +273,14 @@ export default function HomePage() {
           supabase.from('comments').select('recipe_id'),
         ])
 
-        if (countRes.count !== null && countRes.count !== undefined) {
-          setTotalCount(countRes.count)
-        }
-
         let allRecipes = (dataRes.data as Recipe[]) || []
         // Filter out hidden authors client-side
         if (hiddenAuthorsRef.current.length > 0) {
           const hiddenSet = new Set(hiddenAuthorsRef.current)
           allRecipes = allRecipes.filter(r => !hiddenSet.has(r.created_by))
         }
+
+        setTotalCount(allRecipes.length)
 
         // Build count maps
         const ratingMap = new Map<string, { total: number; count: number }>()
@@ -345,17 +341,19 @@ export default function HomePage() {
             : Promise.resolve({ count: null }),
         ])
 
-        if (countRes.count !== null && countRes.count !== undefined) {
-          setTotalCount(countRes.count)
-        }
-
         let newRecipes = (dataRes.data as Recipe[]) || []
         // Filter out hidden authors client-side
-        console.log('[DEBUG] Before filter:', newRecipes.length, 'recipes, hiddenAuthorsRef:', hiddenAuthorsRef.current)
         if (hiddenAuthorsRef.current.length > 0) {
           const hiddenSet = new Set(hiddenAuthorsRef.current)
           newRecipes = newRecipes.filter(r => !hiddenSet.has(r.created_by))
-          console.log('[DEBUG] After filter:', newRecipes.length, 'recipes')
+        }
+
+        if (isInitial && countRes.count !== null && countRes.count !== undefined) {
+          // Adjust count for hidden authors
+          const adjusted = hiddenAuthorsRef.current.length > 0
+            ? Math.max(0, countRes.count - ((dataRes.data as Recipe[]) || []).length + newRecipes.length)
+            : countRes.count
+          setTotalCount(adjusted)
         }
         const fetchedCount = newRecipes.length
 
