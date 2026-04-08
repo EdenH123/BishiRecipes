@@ -112,6 +112,13 @@ export default function EditRecipePage() {
         dir="rtl"
       >
         <h1 className="mb-6 text-3xl font-bold text-primary">עריכת מתכון</h1>
+        <Link
+          href={`/recipe/${id}`}
+          className="mb-6 inline-flex items-center gap-1.5 rounded-xl border border-outline-variant/30 px-3.5 py-2 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low font-rubik"
+        >
+          <span className="material-symbols-outlined text-lg">arrow_forward</span>
+          חזרה למתכון
+        </Link>
         <RecipeForm recipe={recipe} />
       </motion.div>
       <BottomNav />
