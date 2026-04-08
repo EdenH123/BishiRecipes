@@ -250,11 +250,13 @@ export default function ProfilePage() {
       await supabase.from('hidden_filters').upsert({ type: 'tag', value: tag }, { onConflict: 'type,value' })
       // Remove from all recipes - fetch recipes with this tag, then update each
       const { data: recipes } = await supabase.from('recipes').select('id, tags').is('deleted_at', null).contains('tags', [tag])
-      if (recipes) {
-        for (const r of recipes) {
-          const newTags = (r.tags || []).filter((t: string) => t !== tag)
-          await supabase.from('recipes').update({ tags: newTags }).eq('id', r.id)
-        }
+      if (recipes && recipes.length > 0) {
+        await Promise.all(
+          recipes.map(r => {
+            const newTags = (r.tags || []).filter((t: string) => t !== tag)
+            return supabase.from('recipes').update({ tags: newTags }).eq('id', r.id)
+          })
+        )
       }
       setAllTags((prev) => prev.filter((t) => t !== tag))
       toast.success(`התווית "${tag}" הוסרה`)

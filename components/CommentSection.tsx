@@ -104,12 +104,15 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
     }
 
     setNewComment('')
-    toast.success('התגובה נוספה')
-    await fetchComments()
     setSubmitting(false)
+    // Optimistic: add comment immediately, refresh in background
+    fetchComments()
   }
 
   async function handleDelete(commentId: string) {
+    // Optimistic: remove immediately
+    setComments(prev => prev.filter(c => c.id !== commentId))
+
     const { error } = await supabase
       .from('comments')
       .delete()
@@ -117,11 +120,9 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
 
     if (error) {
       toast.error('שגיאה במחיקת התגובה')
+      fetchComments() // Revert on error
       return
     }
-
-    toast.success('התגובה נמחקה')
-    await fetchComments()
   }
 
   return (

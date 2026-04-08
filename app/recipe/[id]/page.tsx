@@ -248,20 +248,21 @@ export default function RecipeDetailPage() {
           } catch { return raw.trim().toLowerCase() }
         }).filter(Boolean)
 
-        const [candidatesRes, ratingsRes, favoritesRes] = await Promise.all([
-          supabase
-            .from('recipes')
-            .select('*, profiles!created_by(id, display_name, avatar_url)')
-            .neq('id', id)
-            .is('deleted_at', null)
-            .limit(50),
-          supabase
-            .from('ratings')
-            .select('recipe_id, score'),
-          supabase
-            .from('favorites')
-            .select('recipe_id'),
-        ])
+        // First fetch candidates, then only fetch ratings/favorites for those IDs
+        const candidatesRes = await supabase
+          .from('recipes')
+          .select('*, profiles!created_by(id, display_name, avatar_url)')
+          .neq('id', id)
+          .is('deleted_at', null)
+          .limit(50)
+
+        const candidateIds = (candidatesRes.data || []).map(c => c.id)
+        const [ratingsRes, favoritesRes] = candidateIds.length > 0
+          ? await Promise.all([
+              supabase.from('ratings').select('recipe_id, score').in('recipe_id', candidateIds),
+              supabase.from('favorites').select('recipe_id').in('recipe_id', candidateIds),
+            ])
+          : [{ data: [] }, { data: [] }]
 
         if (candidatesRes.data) {
           // Build popularity maps

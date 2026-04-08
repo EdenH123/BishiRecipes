@@ -239,6 +239,18 @@ CREATE POLICY "Users can view own hidden authors" ON hidden_authors FOR SELECT T
 CREATE POLICY "Users can insert own hidden authors" ON hidden_authors FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete own hidden authors" ON hidden_authors FOR DELETE TO authenticated USING (auth.uid() = user_id);
 
+-- Performance indexes
+CREATE INDEX IF NOT EXISTS idx_recipes_deleted_at ON recipes(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_recipes_created_by ON recipes(created_by);
+CREATE INDEX IF NOT EXISTS idx_recipes_category ON recipes(category);
+CREATE INDEX IF NOT EXISTS idx_recipes_deleted_created ON recipes(deleted_at, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_recipes_tags ON recipes USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_comments_recipe_id ON comments(recipe_id);
+CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_ratings_recipe_id ON ratings(recipe_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_recipe_id ON favorites(recipe_id);
+
 -- Soft-delete columns for recipes
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS deleted_at timestamptz DEFAULT NULL;
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES profiles(id) DEFAULT NULL;
