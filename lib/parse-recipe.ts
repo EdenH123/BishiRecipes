@@ -9,7 +9,7 @@ export interface ParsedRecipe {
 }
 
 const INGREDIENT_HEADERS = ['מרכיבים', 'מצרכים', 'חומרים', 'רכיבים', 'מה צריך']
-const STEP_HEADERS = ['הכנה', 'אופן הכנה', 'הוראות הכנה', 'הוראות', 'שלבי הכנה', 'דרך הכנה', 'אופן ההכנה']
+const STEP_HEADERS = ['הכנה', 'אופן הכנה', 'הוראות הכנה', 'הוראות', 'שלבי הכנה', 'דרך הכנה', 'אופן ההכנה', 'מה עושים', 'איך מכינים', 'אופן העבודה']
 
 // Hebrew number words
 const HEBREW_NUMBERS: Record<string, string> = {
@@ -22,10 +22,10 @@ const HEBREW_NUMBERS: Record<string, string> = {
 const UNITS_LIST = MEASUREMENT_UNITS.filter(Boolean)
 
 // Action verbs that indicate a step (not an ingredient)
-const STEP_VERBS = /לערבב|להוסיף|לחמם|לשים|לאפות|להכניס|לבשל|לטגן|לחתוך|להניח|למזוג|לקפל|להרתיח|לקרר|ללוש|לגלגל|להשאיר|לחלק|לסגור|להעביר|לרדד|למרוח|לשפוך|לסנן|לכסות|לפזר|לערום|ליצור|לטרוף|להמתין|לצנן|למלא|לקשט|לזלף|להגיש|לדלל|לכבות|להפוך|לנקז|לגרד|להקציף|לקמח|מחממים|מרתיחים|מערבבים|מוסיפים|שמים|אופים|מכניסים|מבשלים|מטגנים|חותכים|מניחים|מוזגים|מקפלים|מקררים|מגלגלים|יוצרים|מעבירים|מורחים|טורפים|יוצקים|מפזרים|ממלאים|מקשטים|מגישים|מנקזים|מקציפים|מכסים|משאירים|מחלקים|יש לסגור|יש להוסיף|יש לערבב|יש להניח|יש להכניס|כשהמים|כשהתנור|כשהשמן|אחרי ש|לפני ש|בינתיים|בזהירות|היטב|בעדינות|עד שמקבלים|עד ש/
+const STEP_VERBS = /לערבב|להוסיף|לחמם|לשים|לאפות|להכניס|לבשל|לטגן|לחתוך|להניח|למזוג|לקפל|להרתיח|לקרר|ללוש|לגלגל|להשאיר|לחלק|לסגור|להעביר|לרדד|למרוח|לשפוך|לסנן|לכסות|לפזר|לערום|ליצור|לטרוף|להמתין|לצנן|למלא|לקשט|לזלף|להגיש|לדלל|לכבות|להפוך|לנקז|לגרד|להקציף|לקמח|מחממים|מרתיחים|מערבבים|מוסיפים|שמים|אופים|מכניסים|מבשלים|מטגנים|חותכים|מניחים|מוזגים|מקפלים|מקררים|מגלגלים|יוצרים|מעבירים|מורחים|טורפים|יוצקים|מפזרים|ממלאים|מקשטים|מגישים|מנקזים|מקציפים|מכסים|משאירים|מחלקים|יש לסגור|יש להוסיף|יש לערבב|יש להניח|יש להכניס|כשהמים|כשהתנור|כשהשמן|אחרי ש|לפני ש|בינתיים|בזהירות|היטב|בעדינות|עד שמקבלים|עד ש|טובלים|מסדרים|מרססים|גוזרים|חוזרים על/
 
 // Common food/ingredient words that indicate a line is an ingredient
-const FOOD_WORDS = /קמח|סוכר|מלח|שמן|חמאה|ביצ|שמנת|חלב|שוקולד|קקאו|שמרים|אבקת|וניל|קינמון|גבינה|שקדים|אגוזים|צימוקים|דבש|סילן|תמצית|מיץ|לימון|תפוז|בצל|שום|עגבני|פלפל|גזר|תפוח|קישוא|חציל|פטרוזיל|כוסברה|נענע|כרוב|חסה|אורז|פסטה|בורגול|קוסקוס|עוף|בקר|הודו|דג|טחינה|סויה|חומוס|שעועית|עדשים|תירס|פטריות|זית|אפונה|ברוקולי|כרובית|סלרי|דלעת|בטטה|תפוחי אדמה|מרגרינה|שקית|אבקה|קורנפלור/
+const FOOD_WORDS = /קמח|סוכר|מלח|שמן|חמאה|ביצ|שמנת|חלב|שוקולד|קקאו|שמרים|אבקת|וניל|קינמון|גבינה|שקדים|אגוזים|צימוקים|דבש|סילן|תמצית|מיץ|לימון|תפוז|בצל|שום|עגבני|פלפל|גזר|תפוח|קישוא|חציל|פטרוזיל|כוסברה|נענע|כרוב|חסה|אורז|פסטה|בורגול|קוסקוס|עוף|בקר|הודו|דג|טחינה|סויה|חומוס|שעועית|עדשים|תירס|פטריות|זית|אפונה|ברוקולי|כרובית|סלרי|דלעת|בטטה|תפוחי אדמה|מרגרינה|שקית|אבקה|קורנפלור|שומשום|כמון|כורכום|פפריקה|תבלין|בשר|דפי אורז|רוטב|מים/
 
 // Temporal/structural words that strongly indicate a step
 const STEP_STRUCTURE = /דקות|שעה|שעות|מעלות|תנור|מיקסר|קערה|תבנית|סיר|מחבת|אש /
@@ -66,8 +66,15 @@ function isSubHeader(line: string): boolean {
   const clean = cleanLine(line)
   // Patterns like "*לבצק (במיקסר)-", "*כשהמים רותחים,"
   if (/^\*/.test(line.trim()) && clean.length < 40 && /[-–:,]$/.test(clean)) return true
-  // Also catch "לציפוי:", "לבצק:" style sub-headers
-  if (/^ל\S+[:\-–]$/.test(clean) && clean.length < 30) return true
+  // Catch "לציפוי:", "לבצק:", "למילוי-", "לבלילה לטבילה-" style sub-headers
+  if (/^ל\S+/.test(clean) && clean.length < 40 && /[-–:]$/.test(clean)) return true
+  return false
+}
+
+function isIngredientSubHeader(line: string): boolean {
+  const clean = cleanLine(line)
+  // "למילוי-", "לבלילה לטבילה-", "לציפוי:", "לרוטב-"
+  if (/^ל\S+/.test(clean) && clean.length < 40 && /[-–:]$/.test(clean)) return true
   return false
 }
 
@@ -84,7 +91,7 @@ function cleanLine(line: string): string {
 }
 
 function isHeader(line: string, headers: string[]): boolean {
-  const clean = line.replace(/[:\-–—]/g, '').trim().toLowerCase()
+  const clean = line.replace(/[:\-–—?!]/g, '').trim().toLowerCase()
   return headers.some((h) => clean === h || clean.startsWith(h))
 }
 
@@ -320,6 +327,13 @@ export function parseRecipeText(text: string): ParsedRecipe {
       const endIdx = stepStart > ingredientStart ? stepStart : lines.length
       for (let i = ingredientStart + 1; i < endIdx; i++) {
         if (isHeader(lines[i], STEP_HEADERS)) break
+        const clean = cleanLine(lines[i])
+        if (!clean) continue
+        // Ingredient sub-headers like "למילוי-" become label-only ingredients
+        if (isIngredientSubHeader(lines[i])) {
+          ingredients.push({ amount: '', unit: '', name: `--- ${clean.replace(/[-–:]$/, '').trim()} ---` })
+          continue
+        }
         const ing = parseIngredientLine(lines[i])
         if (ing.name) ingredients.push(ing)
       }
@@ -331,7 +345,14 @@ export function parseRecipeText(text: string): ParsedRecipe {
       for (let i = stepStart + 1; i < endIdx; i++) {
         if (isHeader(lines[i], INGREDIENT_HEADERS)) break
         const clean = cleanLine(lines[i])
-        if (clean) steps.push(clean)
+        if (!clean) continue
+        // Split long paragraphs into separate steps by sentence boundaries
+        const sentences = clean.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0)
+        if (sentences.length > 1 && clean.length > 80) {
+          for (const s of sentences) steps.push(s.trim())
+        } else {
+          steps.push(clean)
+        }
       }
     }
   }
