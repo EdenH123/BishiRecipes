@@ -39,7 +39,7 @@ export default function ShopPage() {
 
       const [profileRes, recipesRes, commentsRes, ratingsRes, favoritesRes, reactionsRes, collabsRes, purchasedRes] = await Promise.all([
         supabase.from('profiles').select('display_name, avatar_url, is_admin').eq('id', user.id).single(),
-        supabase.from('recipes').select('id').eq('created_by', user.id),
+        supabase.from('recipes').select('id').eq('created_by', user.id).is('deleted_at', null),
         supabase.from('comments').select('id').eq('user_id', user.id),
         supabase.from('ratings').select('id').eq('user_id', user.id),
         supabase.from('favorites').select('recipe_id').eq('user_id', user.id),

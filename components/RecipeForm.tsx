@@ -51,7 +51,7 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
   // Fetch existing custom categories & tags from recipes, filter out hidden ones
   useEffect(() => {
     async function fetchFilters() {
-      const recipesRes = await supabase.from('recipes').select('category, tags')
+      const recipesRes = await supabase.from('recipes').select('category, tags').is('deleted_at', null)
       // hidden_filters table may not exist yet — ignore errors
       const hiddenRes = await supabase.from('hidden_filters').select('type, value')
 

@@ -192,6 +192,7 @@ export default function RecipeDetailPage() {
           .from('recipes')
           .select('*, profiles!created_by(id, display_name, avatar_url)')
           .eq('id', id)
+          .is('deleted_at', null)
           .single(),
         supabase.auth.getUser(),
       ])
@@ -252,6 +253,7 @@ export default function RecipeDetailPage() {
             .from('recipes')
             .select('*, profiles!created_by(id, display_name, avatar_url)')
             .neq('id', id)
+            .is('deleted_at', null)
             .limit(50),
           supabase
             .from('ratings')
@@ -576,7 +578,7 @@ export default function RecipeDetailPage() {
                   deleteTimeoutRef.current = null
                   const { error } = await supabase
                     .from('recipes')
-                    .delete()
+                    .update({ deleted_at: new Date().toISOString(), deleted_by: userId })
                     .eq('id', recipeId)
                   if (error) {
                     toast.error('שגיאה במחיקת המתכון')

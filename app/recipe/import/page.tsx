@@ -61,7 +61,7 @@ export default function ImportRecipePage() {
       setUserId(user.id)
     })
     // Fetch existing categories & tags from recipes
-    supabase.from('recipes').select('category, tags').then(({ data }) => {
+    supabase.from('recipes').select('category, tags').is('deleted_at', null).then(({ data }) => {
       if (data) {
         const cats = new Set<string>([...CATEGORIES])
         const tagSet = new Set<string>()

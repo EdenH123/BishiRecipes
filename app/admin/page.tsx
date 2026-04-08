@@ -104,6 +104,14 @@ interface ManagedUser {
   comment_count: number
 }
 
+interface DeletedRecipe {
+  id: string
+  title: string
+  deleted_at: string
+  deleted_by: string | null
+  deleter_name: string
+}
+
 export default function AdminDashboard() {
   const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
@@ -124,6 +132,11 @@ export default function AdminDashboard() {
   const [categories, setCategories] = useState<CategoryCount[]>([])
   const [topUsers, setTopUsers] = useState<ActiveUser[]>([])
   const [frameMap, setFrameMap] = useState<Map<string, string>>(new Map())
+
+  // Deleted recipes state
+  const [showDeletedRecipes, setShowDeletedRecipes] = useState(false)
+  const [deletedRecipes, setDeletedRecipes] = useState<DeletedRecipe[]>([])
+  const [deletedLoading, setDeletedLoading] = useState(false)
 
   // Interactive chart state (tap-based for mobile)
   const [selectedBar, setSelectedBar] = useState<number | null>(null)
@@ -171,22 +184,22 @@ export default function AdminDashboard() {
           topRatersRes,
         ] = await Promise.all([
           // Overview counts
-          supabase.from('recipes').select('*', { count: 'exact', head: true }),
+          supabase.from('recipes').select('*', { count: 'exact', head: true }).is('deleted_at', null),
           supabase.from('profiles').select('*', { count: 'exact', head: true }),
           supabase.from('comments').select('*', { count: 'exact', head: true }),
           supabase.from('ratings').select('*', { count: 'exact', head: true }),
           // Weekly activity
-          supabase.from('recipes').select('*', { count: 'exact', head: true }).gte('created_at', weekAgoISO),
-          supabase.from('recipes').select('*', { count: 'exact', head: true }).gte('created_at', twoWeeksAgoISO).lt('created_at', weekAgoISO),
+          supabase.from('recipes').select('*', { count: 'exact', head: true }).is('deleted_at', null).gte('created_at', weekAgoISO),
+          supabase.from('recipes').select('*', { count: 'exact', head: true }).is('deleted_at', null).gte('created_at', twoWeeksAgoISO).lt('created_at', weekAgoISO),
           supabase.from('comments').select('*', { count: 'exact', head: true }).gte('created_at', weekAgoISO),
           supabase.from('comments').select('*', { count: 'exact', head: true }).gte('created_at', twoWeeksAgoISO).lt('created_at', weekAgoISO),
           supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', weekAgoISO),
           // Daily chart – last 7 days recipes
-          supabase.from('recipes').select('created_at').gte('created_at', weekAgoISO),
+          supabase.from('recipes').select('created_at').is('deleted_at', null).gte('created_at', weekAgoISO),
           // Categories
-          supabase.from('recipes').select('category'),
+          supabase.from('recipes').select('category').is('deleted_at', null),
           // Top users - recipe creators
-          supabase.from('recipes').select('created_by'),
+          supabase.from('recipes').select('created_by').is('deleted_at', null),
           // Top commenters
           supabase.from('comments').select('user_id'),
           // Top raters
@@ -307,7 +320,7 @@ export default function AdminDashboard() {
     try {
       const [profilesRes, recipeCounts, commentCounts] = await Promise.all([
         supabase.from('profiles').select('id, display_name, avatar_url, is_admin, created_at').order('created_at', { ascending: false }),
-        supabase.from('recipes').select('created_by'),
+        supabase.from('recipes').select('created_by').is('deleted_at', null),
         supabase.from('comments').select('user_id'),
       ])
 
@@ -396,6 +409,84 @@ export default function AdminDashboard() {
   function handleOpenUserManagement() {
     setShowUserManagement(true)
     if (managedUsers.length === 0) loadUsers()
+  }
+
+  // ── Deleted Recipes Management ──
+  const loadDeletedRecipes = useCallback(async () => {
+    setDeletedLoading(true)
+    try {
+      const { data: recipes } = await supabase
+        .from('recipes')
+        .select('id, title, deleted_at, deleted_by')
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false })
+
+      if (!recipes || recipes.length === 0) {
+        setDeletedRecipes([])
+        return
+      }
+
+      // Fetch deleter profile names
+      const deleterIds = Array.from(new Set(recipes.map(r => r.deleted_by).filter(Boolean)))
+      const profileMap = new Map<string, string>()
+      if (deleterIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', deleterIds)
+        if (profiles) {
+          for (const p of profiles) profileMap.set(p.id, p.display_name)
+        }
+      }
+
+      setDeletedRecipes(recipes.map(r => ({
+        id: r.id,
+        title: r.title,
+        deleted_at: r.deleted_at,
+        deleted_by: r.deleted_by,
+        deleter_name: r.deleted_by ? (profileMap.get(r.deleted_by) || 'לא ידוע') : 'לא ידוע',
+      })))
+    } catch {
+      toast.error('שגיאה בטעינת מתכונים שנמחקו')
+    } finally {
+      setDeletedLoading(false)
+    }
+  }, [supabase])
+
+  async function restoreRecipe(recipeId: string, title: string) {
+    const { error } = await supabase
+      .from('recipes')
+      .update({ deleted_at: null, deleted_by: null })
+      .eq('id', recipeId)
+
+    if (error) {
+      toast.error('שגיאה בשחזור המתכון')
+    } else {
+      setDeletedRecipes(prev => prev.filter(r => r.id !== recipeId))
+      setOverview(prev => ({ ...prev, totalRecipes: prev.totalRecipes + 1 }))
+      toast.success(`המתכון "${title}" שוחזר בהצלחה`)
+    }
+  }
+
+  async function permanentlyDeleteRecipe(recipeId: string, title: string) {
+    if (!confirm(`למחוק לצמיתות את "${title}"? פעולה זו בלתי הפיכה.`)) return
+
+    const { error } = await supabase
+      .from('recipes')
+      .delete()
+      .eq('id', recipeId)
+
+    if (error) {
+      toast.error('שגיאה במחיקת המתכון')
+    } else {
+      setDeletedRecipes(prev => prev.filter(r => r.id !== recipeId))
+      toast.success(`המתכון "${title}" נמחק לצמיתות`)
+    }
+  }
+
+  function handleOpenDeletedRecipes() {
+    setShowDeletedRecipes(true)
+    if (deletedRecipes.length === 0) loadDeletedRecipes()
   }
 
   const filteredUsers = userSearch.trim()
@@ -945,6 +1036,100 @@ export default function AdminDashboard() {
                       <span>{managedUsers.length} משתמשים</span>
                       <span>·</span>
                       <span>{managedUsers.filter((u) => u.is_admin).length} אדמינים</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* ── Deleted Recipes ── */}
+        <motion.div
+          variants={sectionVariants}
+          initial="hidden"
+          animate="visible"
+          className="rounded-2xl bg-surface-container-lowest border border-outline-variant/20 p-5 shadow-sm"
+        >
+          <button
+            onClick={handleOpenDeletedRecipes}
+            className="w-full flex items-center justify-between"
+          >
+            <h2 className="text-lg font-bold text-on-surface font-rubik flex items-center gap-2">
+              <span className="material-symbols-outlined text-error">delete_sweep</span>
+              מתכונים שנמחקו
+            </h2>
+            <motion.span
+              animate={{ rotate: showDeletedRecipes ? 180 : 0 }}
+              className="material-symbols-outlined text-on-surface-variant"
+            >
+              expand_more
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {showDeletedRecipes && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-4">
+                  {deletedLoading && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-8 w-8 animate-spin rounded-full border-3 border-gray-200 border-t-primary" />
+                    </div>
+                  )}
+
+                  {!deletedLoading && deletedRecipes.length === 0 && (
+                    <p className="text-sm text-on-surface-variant text-center py-6 font-rubik">
+                      אין מתכונים שנמחקו
+                    </p>
+                  )}
+
+                  {!deletedLoading && deletedRecipes.length > 0 && (
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {deletedRecipes.map((recipe) => (
+                        <div
+                          key={recipe.id}
+                          className="flex items-center gap-3 rounded-xl bg-surface-container-low p-3"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-on-surface font-rubik truncate">
+                              {recipe.title}
+                            </p>
+                            <p className="text-xs text-on-surface-variant font-rubik">
+                              נמחק ע״י {recipe.deleter_name}
+                              {' · '}
+                              {new Date(recipe.deleted_at).toLocaleDateString('he-IL')}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => restoreRecipe(recipe.id, recipe.title)}
+                              className="rounded-lg px-3 py-2 text-sm text-primary transition-colors hover:bg-primary/10 font-rubik"
+                              title="שחזור"
+                            >
+                              <span className="material-symbols-outlined text-lg">restore</span>
+                            </button>
+                            <button
+                              onClick={() => permanentlyDeleteRecipe(recipe.id, recipe.title)}
+                              className="rounded-lg px-3 py-2 text-sm text-error/70 transition-colors hover:bg-error/10 hover:text-error"
+                              title="מחיקה לצמיתות"
+                            >
+                              <span className="material-symbols-outlined text-lg">delete_forever</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Summary */}
+                      <div className="mt-3 flex items-center gap-3 text-xs text-on-surface-variant font-rubik border-t border-outline-variant/30 pt-3">
+                        <span>{deletedRecipes.length} מתכונים נמחקו</span>
+                      </div>
                     </div>
                   )}
                 </div>

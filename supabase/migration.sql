@@ -226,6 +226,10 @@ create policy "Anyone can delete hidden filters"
   to authenticated
   using (true);
 
+-- Soft-delete columns for recipes
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS deleted_at timestamptz DEFAULT NULL;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS deleted_by uuid REFERENCES profiles(id) DEFAULT NULL;
+
 -- ===========================================
 -- Auto-update updated_at trigger
 -- ===========================================

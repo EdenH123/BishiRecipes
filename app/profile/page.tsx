@@ -201,7 +201,7 @@ export default function ProfilePage() {
     if (!profile?.is_admin) return
     async function loadFilters() {
       const [recipesRes, hiddenRes] = await Promise.all([
-        supabase.from('recipes').select('category, tags'),
+        supabase.from('recipes').select('category, tags').is('deleted_at', null),
         supabase.from('hidden_filters').select('type, value'),
       ])
       const hiddenCats = new Set<string>()
@@ -246,7 +246,7 @@ export default function ProfilePage() {
       // Add to hidden list
       await supabase.from('hidden_filters').upsert({ type: 'tag', value: tag }, { onConflict: 'type,value' })
       // Remove from all recipes - fetch recipes with this tag, then update each
-      const { data: recipes } = await supabase.from('recipes').select('id, tags').contains('tags', [tag])
+      const { data: recipes } = await supabase.from('recipes').select('id, tags').is('deleted_at', null).contains('tags', [tag])
       if (recipes) {
         for (const r of recipes) {
           const newTags = (r.tags || []).filter((t: string) => t !== tag)

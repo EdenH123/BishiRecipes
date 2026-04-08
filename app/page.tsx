@@ -96,7 +96,7 @@ export default function HomePage() {
         supabase.auth.getUser(),
         supabase.from('hidden_filters').select('type, value'),
         // Fetch all recipes: tags + category for building filter options, id for surprise button
-        supabase.from('recipes').select('id, tags, category'),
+        supabase.from('recipes').select('id, tags, category').is('deleted_at', null),
       ])
 
       const hCats = new Set<string>()
@@ -157,6 +157,7 @@ export default function HomePage() {
         supabase
           .from('recipes')
           .select('title, created_at, profiles!created_by(display_name)')
+          .is('deleted_at', null)
           .order('created_at', { ascending: false })
           .limit(3),
       ])
@@ -193,8 +194,8 @@ export default function HomePage() {
   const buildFilteredQuery = useCallback(
     (forCount = false) => {
       let query = forCount
-        ? supabase.from('recipes').select('*', { count: 'exact', head: true })
-        : supabase.from('recipes').select('*, profiles!created_by(id, display_name, avatar_url)')
+        ? supabase.from('recipes').select('*', { count: 'exact', head: true }).is('deleted_at', null)
+        : supabase.from('recipes').select('*, profiles!created_by(id, display_name, avatar_url)').is('deleted_at', null)
 
       if (selectedCategory) {
         query = query.eq('category', selectedCategory)

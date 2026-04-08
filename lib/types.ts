@@ -20,6 +20,8 @@ export interface Recipe {
   created_by: string
   created_at: string
   updated_at: string
+  deleted_at: string | null
+  deleted_by: string | null
   // joined
   profiles?: Profile
 }
