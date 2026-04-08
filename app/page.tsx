@@ -155,8 +155,10 @@ export default function HomePage() {
         }
 
         hiddenAuthorsRef.current = hiddenData ? hiddenData.map((h) => h.hidden_user_id) : []
-        console.log('[DEBUG] hiddenData raw:', hiddenData)
-        console.log('[DEBUG] hiddenAuthorsRef set to:', hiddenAuthorsRef.current)
+        // Temporary debug
+        if (typeof window !== 'undefined') {
+          document.title = `DEBUG: ${hiddenAuthorsRef.current.length} hidden`
+        }
       }
 
       // Fetch recent activity
