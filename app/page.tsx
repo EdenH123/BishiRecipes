@@ -593,13 +593,17 @@ export default function HomePage() {
             </div>
           ) : recipes.length === 0 && !hasMore && !filterChanging ? (
             totalCount === 0 && !selectedCategory && !selectedMember && !search && selectedTags.length === 0 && !showFavoritesOnly ? (
-              <p className="mt-16 text-center text-lg text-on-surface-variant">
-                עדיין אין מתכונים — הוסיפו את הראשון! 🍽️
-              </p>
+              <div className="mt-16 flex flex-col items-center gap-3 text-center">
+                <span className="material-symbols-outlined text-6xl text-outline/30">restaurant_menu</span>
+                <p className="text-lg text-on-surface-variant">עדיין אין מתכונים</p>
+                <p className="text-sm text-outline">הוסיפו את המתכון הראשון!</p>
+              </div>
             ) : (
-              <p className="mt-16 text-center text-lg text-on-surface-variant">
-                לא נמצאו מתכונים לפי הסינון הזה 🤷
-              </p>
+              <div className="mt-16 flex flex-col items-center gap-3 text-center">
+                <span className="material-symbols-outlined text-6xl text-outline/30">search_off</span>
+                <p className="text-lg text-on-surface-variant">לא נמצאו מתכונים</p>
+                <p className="text-sm text-outline">נסו לשנות את הסינון</p>
+              </div>
             )
           ) : (
             <>
@@ -646,7 +650,7 @@ export default function HomePage() {
                         <Link href={`/recipe/${recipe.id}`} className="flex gap-4 rounded-xl bg-surface-container-lowest p-3 shadow-sm hover:shadow-md transition-shadow">
                           <div className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden bg-secondary-container/30">
                             {recipe.image_url ? (
-                              <Image src={recipe.image_url} alt={recipe.title} fill className="object-cover" sizes="80px" />
+                              <Image src={recipe.image_url} alt={recipe.title} fill loading="lazy" className="object-cover" sizes="80px" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center text-3xl">🍽️</div>
                             )}

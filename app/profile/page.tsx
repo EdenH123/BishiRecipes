@@ -378,6 +378,7 @@ export default function ProfilePage() {
                       src={profile.avatar_url}
                       alt={profile.display_name}
                       fill
+                      loading="lazy"
                       className="object-cover"
                       sizes="88px"
                     />
@@ -736,11 +737,16 @@ export default function ProfilePage() {
                   </div>
                 </div>
               ) : activeRecipes.length === 0 ? (
-                <p className="py-12 text-center text-gray-400 font-rubik">
-                  {activeTab === 'recipes'
-                    ? 'עדיין לא הוספת מתכונים'
-                    : 'עדיין לא סימנת מועדפים ⭐'}
-                </p>
+                <div className="py-12 flex flex-col items-center gap-2 text-center">
+                  <span className="material-symbols-outlined text-5xl text-outline/30">
+                    {activeTab === 'recipes' ? 'menu_book' : 'bookmark'}
+                  </span>
+                  <p className="text-sm text-on-surface-variant font-rubik">
+                    {activeTab === 'recipes'
+                      ? 'עדיין לא הוספת מתכונים'
+                      : 'עדיין לא סימנת מועדפים'}
+                  </p>
+                </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                   {activeRecipes.map((recipe, i) => (

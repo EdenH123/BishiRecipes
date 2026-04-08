@@ -355,8 +355,20 @@ export default function RecipeDetailPage() {
     return (
       <div className="min-h-screen bg-surface pt-20 pb-28">
         <Navbar />
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-primary" />
+        <div className="mx-auto max-w-3xl px-4 py-6">
+          {/* Hero skeleton */}
+          <div className="aspect-video w-full rounded-2xl animate-shimmer bg-gradient-to-r from-surface-container-high via-surface-container-low to-surface-container-high bg-[length:200%_100%]" />
+          {/* Title skeleton */}
+          <div className="mt-6 space-y-3">
+            <div className="h-7 w-2/3 rounded-lg animate-shimmer bg-gradient-to-r from-surface-container-high via-surface-container-low to-surface-container-high bg-[length:200%_100%] mr-auto" />
+            <div className="h-4 w-1/3 rounded animate-shimmer bg-gradient-to-r from-surface-container-high via-surface-container-low to-surface-container-high bg-[length:200%_100%] mr-auto" />
+          </div>
+          {/* Ingredients skeleton */}
+          <div className="mt-8 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-4 rounded animate-shimmer bg-gradient-to-r from-surface-container-high via-surface-container-low to-surface-container-high bg-[length:200%_100%]" style={{ width: `${70 + Math.random() * 30}%` }} />
+            ))}
+          </div>
         </div>
         <BottomNav />
       </div>
@@ -368,8 +380,9 @@ export default function RecipeDetailPage() {
     return (
       <div className="min-h-screen bg-surface pt-20 pb-28">
         <Navbar />
-        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 font-rubik" dir="rtl">
-          <p className="text-xl text-gray-600">המתכון לא נמצא 😕</p>
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 font-rubik" dir="rtl">
+          <span className="material-symbols-outlined text-6xl text-outline/30">no_food</span>
+          <p className="text-lg text-on-surface-variant">המתכון לא נמצא</p>
           <Link
             href="/"
             className="rounded-lg bg-primary px-6 py-2 text-white transition-opacity hover:opacity-90"

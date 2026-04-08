@@ -62,6 +62,7 @@ function RecipeCard({ recipe }: RecipeCardProps) {
                   src={recipe.image_url}
                   alt={recipe.title}
                   fill
+                  loading="lazy"
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                   placeholder="blur"
                   blurDataURL={BLUR_PLACEHOLDER}

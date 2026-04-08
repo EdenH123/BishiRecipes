@@ -110,6 +110,7 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
   }
 
   async function handleDelete(commentId: string) {
+    if (!confirm('למחוק את התגובה?')) return
     // Optimistic: remove immediately
     setComments(prev => prev.filter(c => c.id !== commentId))
 
@@ -130,15 +131,17 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
       {/* Comments list */}
       <AnimatePresence mode="popLayout">
         {comments.length === 0 ? (
-          <motion.p
+          <motion.div
             key="empty"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="text-center text-gray-400 py-6"
+            className="flex flex-col items-center gap-2 py-8"
           >
-            אין תגובות עדיין — היו הראשונים! 💬
-          </motion.p>
+            <span className="material-symbols-outlined text-5xl text-outline/30">chat_bubble_outline</span>
+            <p className="text-sm text-on-surface-variant">אין תגובות עדיין</p>
+            <p className="text-xs text-outline">היו הראשונים להגיב!</p>
+          </motion.div>
         ) : (
           comments.map((comment, i) => (
             <motion.div
