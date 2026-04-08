@@ -4,6 +4,8 @@
 
 @layer base {
   :root {
+    --app-font: 'Rubik', sans-serif;
+
     /* Default theme: red primary, light mode */
     /* Values are space-separated RGB for Tailwind opacity support */
     --color-primary: 180 28 27;
@@ -45,6 +47,11 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+/* Global font override - applies chosen font everywhere */
+*:not(.material-symbols-outlined) {
+  font-family: var(--app-font) !important;
 }
 
 .material-symbols-outlined {

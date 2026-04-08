@@ -190,10 +190,10 @@ function applyTheme(state: ThemeState, systemDark: boolean) {
   // Text size
   root.style.fontSize = TEXT_SIZE_MAP[state.textSize]
 
-  // Font family
+  // Font family - apply with !important to override all font-rubik classes
   const fontOption = FONT_OPTIONS.find(f => f.key === state.fontFamily)
   if (fontOption) {
-    document.body.style.fontFamily = fontOption.css
+    root.style.setProperty('--app-font', fontOption.css)
   }
 
   // Set color-scheme for browser UI
