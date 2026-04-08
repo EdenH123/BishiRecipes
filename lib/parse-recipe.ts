@@ -91,8 +91,12 @@ function cleanLine(line: string): string {
 }
 
 function isHeader(line: string, headers: string[]): boolean {
-  const clean = line.replace(/[:\-–—?!]/g, '').trim().toLowerCase()
-  return headers.some((h) => clean === h || clean.startsWith(h))
+  // Aggressively normalize: strip punctuation, extra spaces, unicode marks
+  const clean = line
+    .replace(/[\u200E\u200F\u200B\u200C\u200D\u2066\u2067\u2068\u2069\uFEFF]/g, '')
+    .replace(/[:\-–—?!.*#\s]+/g, ' ')
+    .trim()
+  return headers.some((h) => clean === h || clean.startsWith(h) || clean.includes(h))
 }
 
 // Hebrew fraction modifiers that come AFTER a unit: "כוס וחצי" = 1.5 cups
@@ -325,10 +329,24 @@ export function parseRecipeText(text: string): ParsedRecipe {
     // Parse ingredients
     if (ingredientStart >= 0) {
       const endIdx = stepStart > ingredientStart ? stepStart : lines.length
+      let hitStepContent = false
       for (let i = ingredientStart + 1; i < endIdx; i++) {
-        if (isHeader(lines[i], STEP_HEADERS)) break
+        if (isHeader(lines[i], STEP_HEADERS)) { hitStepContent = true; continue }
         const clean = cleanLine(lines[i])
         if (!clean) continue
+
+        // If we already hit step-like content, or this line scores as a step, route to steps
+        if (hitStepContent || (clean.length > 60 && STEP_VERBS.test(clean))) {
+          hitStepContent = true
+          const sentences = clean.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0)
+          if (sentences.length > 1 && clean.length > 80) {
+            for (const s of sentences) steps.push(s.trim())
+          } else {
+            steps.push(clean)
+          }
+          continue
+        }
+
         // Ingredient sub-headers like "למילוי-" become label-only ingredients
         if (isIngredientSubHeader(lines[i])) {
           ingredients.push({ amount: '', unit: '', name: `--- ${clean.replace(/[-–:]$/, '').trim()} ---` })
@@ -354,6 +372,29 @@ export function parseRecipeText(text: string): ParsedRecipe {
           steps.push(clean)
         }
       }
+    }
+  }
+
+  // Fallback: if no steps were found, scan ingredients for lines that are clearly steps
+  if (steps.length === 0 && ingredients.length > 0) {
+    const realIngredients: Ingredient[] = []
+    for (const ing of ingredients) {
+      const full = [ing.amount, ing.unit, ing.name].filter(Boolean).join(' ')
+      if (scoreIngredient(full) < 0 || (full.length > 60 && STEP_VERBS.test(full))) {
+        // This looks like a step, not an ingredient
+        const sentences = full.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0)
+        if (sentences.length > 1 && full.length > 80) {
+          for (const s of sentences) steps.push(s.trim())
+        } else {
+          steps.push(full)
+        }
+      } else {
+        realIngredients.push(ing)
+      }
+    }
+    if (steps.length > 0) {
+      ingredients.length = 0
+      ingredients.push(...realIngredients)
     }
   }
 
