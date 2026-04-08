@@ -223,9 +223,9 @@ export default function HomePage() {
       if (selectedTags.length > 0) {
         query = query.contains('tags', selectedTags)
       }
-      if (hiddenAuthorsRef.current.length > 0) {
+      if (hiddenAuthors.length > 0) {
         // Supabase PostgREST: not.in filter to exclude hidden authors
-        query = query.not('created_by', 'in', `(${hiddenAuthorsRef.current.join(',')})`)
+        query = query.not('created_by', 'in', `(${hiddenAuthors.join(',')})`)
       }
       if (showFavoritesOnly && favoriteIdsRef.current.length > 0) {
         query = query.in('id', favoriteIdsRef.current)
@@ -246,7 +246,7 @@ export default function HomePage() {
       return query
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy]
+    [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy, hiddenAuthors]
   )
 
   const isFirstLoad = useRef(true)
