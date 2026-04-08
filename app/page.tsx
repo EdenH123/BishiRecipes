@@ -204,6 +204,27 @@ export default function HomePage() {
     fetchMetadata()
   }, [supabase])
 
+  // Re-fetch hidden authors when page regains focus (e.g., after changing settings in profile)
+  useEffect(() => {
+    async function refreshHiddenAuthors() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('hidden_authors')
+        .select('hidden_user_id')
+        .eq('user_id', user.id)
+      const ids = data ? data.map(h => h.hidden_user_id) : []
+      // Only update if changed
+      if (JSON.stringify(ids) !== JSON.stringify(hiddenAuthors)) {
+        hiddenAuthorsRef.current = ids
+        setHiddenAuthors(ids)
+      }
+    }
+    function onFocus() { refreshHiddenAuthors() }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [supabase, hiddenAuthors])
+
   // Build a Supabase query with current filters applied
   const buildFilteredQuery = useCallback(
     (forCount = false) => {
@@ -377,7 +398,7 @@ export default function HomePage() {
     setHasMore(true)
     fetchRecipesPage(0, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy])
+  }, [selectedCategory, selectedMember, search, selectedTags, showFavoritesOnly, sortBy, hiddenAuthors])
 
   // Animated counter — animate towards totalCount
   useEffect(() => {
