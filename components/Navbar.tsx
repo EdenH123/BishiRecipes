@@ -78,8 +78,8 @@ export default function Navbar() {
   }, [])
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm overflow-visible">
-      <div className="flex flex-row-reverse justify-between items-center px-4 h-20 max-w-5xl mx-auto overflow-visible">
+    <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm overflow-visible" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <div className="flex flex-row-reverse justify-between items-center px-4 h-16 max-w-5xl mx-auto overflow-visible">
         <div className="flex items-center gap-3">
           {profile && (
             <button
