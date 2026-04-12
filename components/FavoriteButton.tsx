@@ -3,11 +3,14 @@
 import { memo, useEffect, useMemo, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
+import { sendNotification } from '@/lib/notifications'
 import { toast } from 'sonner'
 
 interface FavoriteButtonProps {
   recipeId: string
   userId: string
+  recipeOwnerId?: string
+  recipeTitle?: string
 }
 
 const PARTICLE_COUNT = 8
@@ -63,7 +66,7 @@ function BurstParticles() {
   return <>{particles}</>
 }
 
-function FavoriteButton({ recipeId, userId }: FavoriteButtonProps) {
+function FavoriteButton({ recipeId, userId, recipeOwnerId, recipeTitle }: FavoriteButtonProps) {
   const supabase = useMemo(() => createClient(), [])
   const [favorited, setFavorited] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -120,8 +123,18 @@ function FavoriteButton({ recipeId, userId }: FavoriteButtonProps) {
         setShowBurst(false)
         return
       }
+
+      if (recipeOwnerId) {
+        sendNotification({
+          recipientId: recipeOwnerId,
+          type: 'favorite',
+          title: `"${recipeTitle || 'המתכון שלך'}" נוסף למועדפים`,
+          recipeId,
+          actorId: userId,
+        })
+      }
     }
-  }, [loading, favorited, recipeId, userId, supabase])
+  }, [loading, favorited, recipeId, userId, supabase, recipeOwnerId, recipeTitle])
 
   return (
     <motion.button

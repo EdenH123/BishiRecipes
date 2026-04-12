@@ -16,6 +16,7 @@ export default function Navbar() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [equippedFrame, setEquippedFrame] = useState<string | null>(null)
   const [logoSpin, setLogoSpin] = useState(0)
+  const [unreadCount, setUnreadCount] = useState(0)
   const tapCountRef = useRef(0)
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -44,6 +45,14 @@ export default function Navbar() {
 
       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (profileData) setProfile(profileData)
+
+      // Fetch unread notification count
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('read', false)
+      if (count !== null) setUnreadCount(count)
 
       await loadFrame(user.id)
     }
@@ -81,6 +90,19 @@ export default function Navbar() {
     <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm overflow-visible" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex flex-row-reverse justify-between items-center px-4 h-16 max-w-5xl mx-auto overflow-visible">
         <div className="flex items-center gap-3">
+          {profile && (
+            <button
+              onClick={() => router.push('/notifications')}
+              className="relative transition-transform active:scale-90"
+            >
+              <span className="material-symbols-outlined text-on-surface-variant text-2xl">notifications</span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
           {profile && (
             <button
               onClick={() => router.push('/profile')}

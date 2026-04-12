@@ -1,15 +1,18 @@
 'use client'
 
 import { memo, useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { sendNotification } from '@/lib/notifications'
 import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 
 interface RatingStarsProps {
   recipeId: string
   userId: string
+  recipeOwnerId?: string
+  recipeTitle?: string
 }
 
-function RatingStars({ recipeId, userId }: RatingStarsProps) {
+function RatingStars({ recipeId, userId, recipeOwnerId, recipeTitle }: RatingStarsProps) {
   const supabase = useMemo(() => createClient(), [])
   const [myRating, setMyRating] = useState<number>(0)
   const [average, setAverage] = useState<number>(0)
@@ -60,6 +63,17 @@ function RatingStars({ recipeId, userId }: RatingStarsProps) {
       setMyRating(prev)
       toast.error('שגיאה בשמירת הדירוג')
       return
+    }
+
+    if (recipeOwnerId && prev === 0) {
+      sendNotification({
+        recipientId: recipeOwnerId,
+        type: 'rating',
+        title: `דירוג חדש על "${recipeTitle || 'המתכון שלך'}"`,
+        body: `${'⭐'.repeat(score)}`,
+        recipeId,
+        actorId: userId,
+      })
     }
 
     await fetchRatings()

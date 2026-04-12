@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import { toast } from 'sonner'
 import AvatarWithFrame from '@/components/AvatarWithFrame'
 import { fetchEquippedFrames } from '@/lib/fetch-frames'
+import { sendNotification } from '@/lib/notifications'
 
 interface Comment {
   id: string
@@ -23,6 +24,8 @@ interface CommentSectionProps {
   recipeId: string
   userId: string
   isAdmin?: boolean
+  recipeOwnerId?: string
+  recipeTitle?: string
 }
 
 function formatDateTime(dateStr: string): string {
@@ -54,7 +57,7 @@ const commentVariants = {
   },
 }
 
-export default function CommentSection({ recipeId, userId, isAdmin }: CommentSectionProps) {
+export default function CommentSection({ recipeId, userId, isAdmin, recipeOwnerId, recipeTitle }: CommentSectionProps) {
   const supabase = useMemo(() => createClient(), [])
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
@@ -105,6 +108,17 @@ export default function CommentSection({ recipeId, userId, isAdmin }: CommentSec
 
     setNewComment('')
     setSubmitting(false)
+    // Notify recipe owner
+    if (recipeOwnerId) {
+      sendNotification({
+        recipientId: recipeOwnerId,
+        type: 'comment',
+        title: `תגובה חדשה על "${recipeTitle || 'המתכון שלך'}"`,
+        body: trimmed.slice(0, 100),
+        recipeId,
+        actorId: userId,
+      })
+    }
     // Optimistic: add comment immediately, refresh in background
     fetchComments()
   }

@@ -509,7 +509,7 @@ export default function RecipeDetailPage() {
             animate="visible"
             className="mt-4"
           >
-            <RatingStars recipeId={recipe.id} userId={userId} />
+            <RatingStars recipeId={recipe.id} userId={userId} recipeOwnerId={recipe.created_by} recipeTitle={recipe.title} />
           </motion.div>
         )}
 
@@ -529,7 +529,7 @@ export default function RecipeDetailPage() {
         >
           {userId && (
             <motion.div variants={actionButtonItemVariants}>
-              <FavoriteButton recipeId={recipe.id} userId={userId} />
+              <FavoriteButton recipeId={recipe.id} userId={userId} recipeOwnerId={recipe.created_by} recipeTitle={recipe.title} />
             </motion.div>
           )}
           <motion.button
@@ -847,7 +847,7 @@ export default function RecipeDetailPage() {
             className="mt-8 border-t border-outline-variant pt-6"
           >
             <h2 className="mb-4 text-xl font-bold">תגובות</h2>
-            <CommentSection recipeId={recipe.id} userId={userId} isAdmin={isAdmin} />
+            <CommentSection recipeId={recipe.id} userId={userId} isAdmin={isAdmin} recipeOwnerId={recipe.created_by} recipeTitle={recipe.title} />
           </motion.div>
         )}
       </div>

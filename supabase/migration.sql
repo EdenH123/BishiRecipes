@@ -239,6 +239,27 @@ CREATE POLICY "Users can view own hidden authors" ON hidden_authors FOR SELECT T
 CREATE POLICY "Users can insert own hidden authors" ON hidden_authors FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can delete own hidden authors" ON hidden_authors FOR DELETE TO authenticated USING (auth.uid() = user_id);
 
+-- Notifications table
+CREATE TABLE IF NOT EXISTS notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  type text NOT NULL CHECK (type IN ('comment', 'rating', 'favorite', 'reaction', 'new_recipe', 'recipe_edited', 'new_user')),
+  title text NOT NULL,
+  body text NOT NULL DEFAULT '',
+  recipe_id uuid REFERENCES recipes(id) ON DELETE CASCADE,
+  actor_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+  read boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Anyone can insert notifications" ON notifications FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own notifications" ON notifications FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id, read, created_at DESC);
+
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_recipes_deleted_at ON recipes(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_recipes_created_by ON recipes(created_by);

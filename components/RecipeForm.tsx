@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase'
 import { type Recipe, type Ingredient, CATEGORIES, DEFAULT_TAGS, MEASUREMENT_UNITS, parseIngredient, serializeIngredient, isIngredientHeader, getHeaderTitle } from '@/lib/types'
 import { compressImage } from '@/lib/compress-image'
+import { sendNotificationToAll } from '@/lib/notifications'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -270,6 +271,13 @@ export default function RecipeForm({ recipe }: RecipeFormProps) {
         if (error) throw error
 
         toast('המתכון נשמר בהצלחה! 🎉')
+        sendNotificationToAll({
+          type: 'new_recipe',
+          title: `מתכון חדש: "${title}"`,
+          body: description || '',
+          recipeId: data.id,
+          actorId: user.id,
+        })
         const confetti = (await import('canvas-confetti')).default
         confetti({
           particleCount: 120,
