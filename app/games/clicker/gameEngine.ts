@@ -141,7 +141,7 @@ function collectMultiplier(state: GameState, targetType: string, generatorId?: s
   let mult = 1
 
   // Upgrades
-  for (const uid of state.upgrades) {
+  for (const uid of Array.from(state.upgrades)) {
     const def = UPGRADES.find(u => u.id === uid)
     if (!def) continue
     const e = def.effect
@@ -152,7 +152,7 @@ function collectMultiplier(state: GameState, targetType: string, generatorId?: s
   }
 
   // Research (persists through prestige)
-  for (const rid of state.research) {
+  for (const rid of Array.from(state.research)) {
     const def = RESEARCH.find(r => r.id === rid)
     if (!def) continue
     const e = def.effect
@@ -167,12 +167,12 @@ function collectMultiplier(state: GameState, targetType: string, generatorId?: s
 
 function collectAdditive(state: GameState, targetType: string): number {
   let total = 0
-  for (const uid of state.upgrades) {
+  for (const uid of Array.from(state.upgrades)) {
     const def = UPGRADES.find(u => u.id === uid)
     if (!def) continue
     if (def.effect.type === targetType) total += def.effect.value
   }
-  for (const rid of state.research) {
+  for (const rid of Array.from(state.research)) {
     const def = RESEARCH.find(r => r.id === rid)
     if (!def) continue
     if (def.effect.type === targetType) total += def.effect.value
@@ -183,7 +183,7 @@ function collectAdditive(state: GameState, targetType: string): number {
 /** Get achievement multiplier */
 function getAchievementMultiplier(state: GameState, type: 'multiply_all' | 'multiply_click'): number {
   let mult = 1
-  for (const aid of state.achievements) {
+  for (const aid of Array.from(state.achievements)) {
     const def = ACHIEVEMENTS.find(a => a.id === aid)
     if (!def) continue
     if (def.reward.type === type) mult *= def.reward.value

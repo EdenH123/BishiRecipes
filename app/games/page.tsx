@@ -98,6 +98,16 @@ const GAMES: GameCard[] = [
     glowColor: 'rgba(251, 191, 36, 0.4)',
     available: true,
   },
+  {
+    id: 'clicker',
+    title: 'אימפריית הבישול',
+    description: 'בנו אימפריית מסעדות מאפס! לחצו, שדרגו, והתעשרו',
+    emoji: '🍳',
+    href: '/games/clicker',
+    gradient: 'linear-gradient(135deg, #b45309 0%, #78350f 50%, #451a03 100%)',
+    glowColor: 'rgba(245, 158, 11, 0.5)',
+    available: true,
+  },
 ]
 
 // Floating background emojis

@@ -133,9 +133,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'cps_1b',     name: 'אוקיינוס מטבעות', emoji: '🌏', description: '1B מטבעות לשנייה',             condition: { type: 'cps', amount: 1000000000 },               reward: { type: 'multiply_all', value: 1.2 } },
 
   // Prestige
-  { id: 'prestige_1', name: 'לידה מחדש',      emoji: '🔄', description: 'ביצעת פרסטיז' ראשון',          condition: { type: 'prestige_count', amount: 1 },             reward: { type: 'multiply_all', value: 1.1 } },
-  { id: 'prestige_5', name: 'פניקס',           emoji: '🔥', description: '5 פרסטיז\'ים',                 condition: { type: 'prestige_count', amount: 5 },             reward: { type: 'multiply_all', value: 1.2 } },
-  { id: 'prestige_10', name: 'נצחי',           emoji: '♾️', description: '10 פרסטיז\'ים',                condition: { type: 'prestige_count', amount: 10 },            reward: { type: 'multiply_all', value: 1.3 } },
+  { id: 'prestige_1', name: 'לידה מחדש',      emoji: '🔄', description: 'ביצעת פרסטיג ראשון',             condition: { type: 'prestige_count', amount: 1 },             reward: { type: 'multiply_all', value: 1.1 } },
+  { id: 'prestige_5', name: 'פניקס',           emoji: '🔥', description: '5 פרסטיגים',                    condition: { type: 'prestige_count', amount: 5 },             reward: { type: 'multiply_all', value: 1.2 } },
+  { id: 'prestige_10', name: 'נצחי',           emoji: '♾️', description: '10 פרסטיגים',                   condition: { type: 'prestige_count', amount: 10 },            reward: { type: 'multiply_all', value: 1.3 } },
 ]
 
 // ── Research Tree (purchased with prestige points) ──
