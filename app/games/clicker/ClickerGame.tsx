@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGameLoop, GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, PRESTIGE_UNLOCK_EARNED } from './useGameLoop'
+import { SYNERGY_THRESHOLD } from './gameConfig'
 import { fmt, fmtInt, fmtTime } from './formatNumber'
 
 type Tab = 'generators' | 'upgrades' | 'achievements' | 'prestige' | 'stats'
@@ -241,31 +242,60 @@ export default function ClickerGame() {
               </div>
 
               {visGens.length === 0 ? (
-                <p className="text-center text-amber-400/30 py-8 text-sm">לחצו כדי להרוויח ולפתוח עסקים!</p>
+                <div className="flex flex-col items-center gap-2 py-10">
+                  <span className="text-4xl">🍳</span>
+                  <p className="text-amber-400/30 text-sm">לחצו כדי להרוויח ולפתוח עסקים!</p>
+                </div>
               ) : visGens.map(gen => {
                 const owned = g.generators[gen.id] || 0
                 const count = buyAmt === 'max' ? g.getGenMaxAffordable(gen.id) : (buyAmt as number)
                 const cost = buyAmt === 'max' ? (count > 0 ? g.getGenBulkCost(gen.id, count) : g.getGenCost(gen.id)) : g.getGenBulkCost(gen.id, count)
                 const canAfford = g.coins >= cost && count > 0
                 const income = g.getGenIncome(gen.id)
+                const synergyTiers = Math.floor(owned / SYNERGY_THRESHOLD)
+                const nextSynergy = SYNERGY_THRESHOLD - (owned % SYNERGY_THRESHOLD)
                 return (
-                  <button key={gen.id} disabled={!canAfford}
+                  <motion.button key={gen.id} disabled={!canAfford}
+                    whileTap={canAfford ? { scale: 0.97 } : {}}
                     onClick={() => buyAmt === 'max' ? g.handleBuyMaxGenerator(gen.id) : g.handleBuyGenerator(gen.id, buyAmt as number)}
-                    className={`w-full flex items-center gap-3 rounded-xl p-3 text-right transition-all ${canAfford ? 'bg-amber-900/30 border border-amber-700/30 active:scale-[0.98]' : 'bg-amber-950/20 border border-amber-900/10 opacity-40'}`}>
-                    <span className="text-2xl">{gen.emoji}</span>
+                    className={`w-full flex items-center gap-3 rounded-2xl p-3.5 text-right transition-all ${canAfford ? 'bg-amber-900/25 border border-amber-700/25 hover:bg-amber-900/35' : 'bg-amber-950/15 border border-amber-900/10 opacity-40'}`}>
+                    <div className="relative">
+                      <span className="text-3xl">{gen.emoji}</span>
+                      {synergyTiers > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-amber-500 text-[8px] text-white font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                          {synergyTiers}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-bold text-amber-100 truncate">{gen.name}</p>
-                        {owned > 0 && <span className="bg-amber-700/40 text-amber-200 text-[10px] px-1.5 py-0.5 rounded font-bold">{owned}</span>}
+                        {owned > 0 && (
+                          <span className="bg-amber-700/40 text-amber-200 text-[10px] px-1.5 py-0.5 rounded-md font-bold tabular-nums">{owned}</span>
+                        )}
                       </div>
-                      <p className="text-[10px] text-amber-400/40">{gen.description}</p>
-                      {owned > 0 && <p className="text-[10px] text-green-400/50">{fmt(income)}/שנייה</p>}
+                      {owned > 0 ? (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-green-400/60">{fmt(income)}/שנייה</span>
+                          {owned < 200 && (
+                            <span className="text-[9px] text-amber-600/40">סינרג׳י עוד {nextSynergy}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-amber-400/35 mt-0.5">{gen.description}</p>
+                      )}
+                      {/* Synergy progress mini-bar */}
+                      {owned > 0 && owned < 200 && (
+                        <div className="h-0.5 mt-1 rounded-full bg-amber-900/20 overflow-hidden w-full">
+                          <div className="h-full bg-amber-600/40 rounded-full" style={{ width: `${(owned % SYNERGY_THRESHOLD) / SYNERGY_THRESHOLD * 100}%` }} />
+                        </div>
+                      )}
                     </div>
                     <div className="text-left shrink-0">
-                      <p className={`text-sm font-bold ${canAfford ? 'text-amber-300' : 'text-amber-600'}`}>{fmt(cost)} 🪙</p>
-                      {buyAmt !== 1 && <p className="text-[9px] text-amber-500/40">{buyAmt === 'max' ? `x${count}` : `x${buyAmt}`}</p>}
+                      <p className={`text-sm font-bold tabular-nums ${canAfford ? 'text-amber-300' : 'text-amber-600'}`}>{fmt(cost)}</p>
+                      <p className="text-[9px] text-amber-500/30">{buyAmt === 'max' ? (count > 0 ? `x${count}` : '') : buyAmt !== 1 ? `x${buyAmt}` : ''}</p>
                     </div>
-                  </button>
+                  </motion.button>
                 )
               })}
             </motion.div>
