@@ -18,6 +18,9 @@ export {
 } from './prestige.config'
 export type { ResearchDef } from './prestige.config'
 
+export { CHALLENGES } from './challenges.config'
+export type { ChallengeDef, ChallengeRestriction, ChallengeReward } from './challenges.config'
+
 // ── Global Constants ──
 
 // Offline
