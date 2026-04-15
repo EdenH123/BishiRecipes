@@ -303,29 +303,50 @@ export default function ClickerGame() {
 
           {/* UPGRADES */}
           {tab === 'upgrades' && (
-            <motion.div key="upg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
+            <motion.div key="upg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
               {visUpgrades.length === 0 && boughtUpgrades.length === 0 ? (
-                <p className="text-center text-amber-400/30 py-8 text-sm">שדרוגים יפתחו בהמשך</p>
+                <div className="flex flex-col items-center gap-2 py-10">
+                  <span className="text-4xl">⬆️</span>
+                  <p className="text-amber-400/30 text-sm">שדרוגים יפתחו בהמשך</p>
+                </div>
               ) : (
                 <>
-                  {visUpgrades.map(u => {
-                    const canAfford = g.coins >= u.cost
+                  {/* Group by category */}
+                  {(['click', 'generator', 'global', 'crit', 'combo', 'offline'] as const).map(cat => {
+                    const catUpgrades = visUpgrades.filter(u => u.category === cat)
+                    if (catUpgrades.length === 0) return null
+                    const catLabels: Record<string, string> = { click: '👆 לחיצה', generator: '🏪 עסקים', global: '🌍 כלכלה', crit: '⚡ קריטי', combo: '🔥 קומבו', offline: '🌙 אופליין' }
                     return (
-                      <button key={u.id} onClick={() => g.handleBuyUpgrade(u.id)} disabled={!canAfford}
-                        className={`w-full flex items-center gap-3 rounded-xl p-3 text-right transition-all ${canAfford ? 'bg-blue-900/20 border border-blue-700/30 active:scale-[0.98]' : 'bg-blue-950/10 border border-blue-900/10 opacity-40'}`}>
-                        <span className="text-2xl">{u.emoji}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-blue-100 truncate">{u.name}</p>
-                          <p className="text-[10px] text-blue-300/40">{u.description}</p>
+                      <div key={cat}>
+                        <p className="text-[10px] text-amber-500/30 font-bold mb-1.5 px-1">{catLabels[cat]}</p>
+                        <div className="space-y-1.5">
+                          {catUpgrades.map(u => {
+                            const canAfford = g.coins >= u.cost
+                            return (
+                              <motion.button key={u.id} onClick={() => g.handleBuyUpgrade(u.id)} disabled={!canAfford}
+                                whileTap={canAfford ? { scale: 0.97 } : {}}
+                                className={`w-full flex items-center gap-3 rounded-2xl p-3 text-right transition-all ${canAfford ? 'bg-blue-900/15 border border-blue-700/25 hover:bg-blue-900/25' : 'bg-blue-950/10 border border-blue-900/8 opacity-40'}`}>
+                                <span className="text-2xl">{u.emoji}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-bold text-blue-100 truncate">{u.name}</p>
+                                  <p className="text-[10px] text-blue-300/35">{u.description}</p>
+                                </div>
+                                <p className={`text-sm font-bold shrink-0 tabular-nums ${canAfford ? 'text-blue-300' : 'text-blue-700'}`}>{fmt(u.cost)}</p>
+                              </motion.button>
+                            )
+                          })}
                         </div>
-                        <p className={`text-sm font-bold shrink-0 ${canAfford ? 'text-blue-300' : 'text-blue-600'}`}>{fmt(u.cost)} 🪙</p>
-                      </button>
+                      </div>
                     )
                   })}
                   {boughtUpgrades.length > 0 && (
-                    <div className="pt-3 border-t border-amber-900/20">
-                      <p className="text-[10px] text-amber-400/25 mb-2">נרכשו ({boughtUpgrades.length}):</p>
-                      <div className="flex flex-wrap gap-1.5">{boughtUpgrades.map(u => <span key={u.id} className="text-lg" title={u.name}>{u.emoji}</span>)}</div>
+                    <div className="pt-3 border-t border-amber-900/15">
+                      <p className="text-[10px] text-amber-400/25 mb-2">נרכשו ({boughtUpgrades.length}/{UPGRADES.length}):</p>
+                      <div className="flex flex-wrap gap-2">
+                        {boughtUpgrades.map(u => (
+                          <span key={u.id} className="text-lg opacity-80 hover:opacity-100 transition-opacity" title={`${u.name}: ${u.description}`}>{u.emoji}</span>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </>
