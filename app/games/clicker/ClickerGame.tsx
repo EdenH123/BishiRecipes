@@ -100,32 +100,89 @@ export default function ClickerGame() {
 
       <div className="max-w-lg mx-auto px-4 pb-32">
         {/* ── Click Area ── */}
-        <div className="flex flex-col items-center py-6">
-          <motion.button whileTap={{ scale: 0.88 }}
-            onTap={(e) => {
-              const pe = e as unknown as PointerEvent
-              g.handleClick(pe.clientX ?? window.innerWidth / 2, pe.clientY ?? window.innerHeight / 3)
-            }}
-            className="relative w-28 h-28 rounded-full bg-gradient-to-br from-amber-500 to-orange-700 shadow-[0_0_40px_rgba(255,160,0,0.3)] flex items-center justify-center active:shadow-[0_0_60px_rgba(255,160,0,0.5)] transition-shadow">
-            <span className="text-5xl">🍳</span>
-          </motion.button>
+        <div className="flex flex-col items-center py-6 relative">
+          {/* Outer glow ring - pulses with combo */}
+          <div className="relative">
+            {g.combo > 5 && (
+              <motion.div
+                animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.4, 0.2] }}
+                transition={{ duration: 0.8, repeat: Infinity }}
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: `radial-gradient(circle, rgba(255,180,0,${Math.min(g.combo / 50, 0.4)}) 0%, transparent 70%)`,
+                  transform: 'scale(1.8)',
+                }}
+              />
+            )}
+
+            <motion.button
+              whileTap={{ scale: 0.85, rotate: -5 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+              onTap={(e) => {
+                const pe = e as unknown as PointerEvent
+                g.handleClick(pe.clientX ?? window.innerWidth / 2, pe.clientY ?? window.innerHeight / 3)
+              }}
+              className="relative w-36 h-36 rounded-full flex items-center justify-center"
+              style={{
+                background: `radial-gradient(circle at 35% 35%, #fbbf24, #d97706, #92400e)`,
+                boxShadow: `0 0 ${30 + g.combo}px rgba(255,160,0,${0.3 + Math.min(g.combo * 0.01, 0.3)}), inset 0 -4px 12px rgba(0,0,0,0.3), inset 0 4px 8px rgba(255,255,255,0.15)`,
+              }}
+            >
+              <motion.span
+                className="text-6xl drop-shadow-lg"
+                animate={g.combo > 20 ? { rotate: [0, -3, 3, 0] } : {}}
+                transition={{ duration: 0.3, repeat: Infinity }}
+              >
+                🍳
+              </motion.span>
+
+              {/* Inner shine */}
+              <div className="absolute top-3 left-5 w-8 h-4 rounded-full bg-white/20 blur-sm rotate-[-20deg]" />
+            </motion.button>
+          </div>
+
+          {/* Click power label */}
+          <p className="text-amber-400/30 text-xs mt-3">
+            {g.combo > 0 ? `🔥 x${g.comboMultiplier.toFixed(1)}` : 'לחצו לבשל!'}
+          </p>
 
           {/* Combo bar */}
-          {g.combo > 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-2 w-48">
-              <div className="flex items-center justify-between text-[10px] mb-0.5">
-                <span className="text-amber-400 font-bold">קומבו x{g.combo}</span>
-                <span className="text-amber-500/50">x{g.comboMultiplier.toFixed(2)}</span>
-              </div>
-              <div className="h-1.5 rounded-full bg-amber-900/30 overflow-hidden">
-                <motion.div className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full"
-                  animate={{ width: `${Math.min(g.combo / 50 * 100, 100)}%` }} transition={{ duration: 0.1 }} />
-              </div>
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {g.combo > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scaleX: 0.5 }}
+                animate={{ opacity: 1, y: 0, scaleX: 1 }}
+                exit={{ opacity: 0, y: 5 }}
+                className="mt-2 w-56"
+              >
+                <div className="flex items-center justify-between text-[10px] mb-0.5 px-1">
+                  <span className={`font-bold ${g.combo >= 25 ? 'text-orange-300' : 'text-amber-400'}`}>
+                    קומבו {g.combo}
+                  </span>
+                  <span className="text-amber-500/50">
+                    {g.combo >= 50 ? 'MAX!' : `x${g.comboMultiplier.toFixed(2)}`}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-amber-900/30 overflow-hidden">
+                  <motion.div
+                    className={`h-full rounded-full ${
+                      g.combo >= 40 ? 'bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300' :
+                      g.combo >= 20 ? 'bg-gradient-to-r from-orange-500 to-amber-400' :
+                      'bg-gradient-to-r from-amber-600 to-amber-400'
+                    }`}
+                    animate={{ width: `${Math.min(g.combo / 50 * 100, 100)}%` }}
+                    transition={{ duration: 0.1 }}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
+          {/* Crit info */}
           {g.critChance > 0 && (
-            <p className="text-amber-500/30 text-[9px] mt-1">קריטי: {Math.round(g.critChance * 100)}% · x{g.critMultiplier}</p>
+            <p className="text-amber-500/25 text-[9px] mt-2">
+              ⚡ קריטי: {Math.round(g.critChance * 100)}% · x{g.critMultiplier}
+            </p>
           )}
         </div>
 
