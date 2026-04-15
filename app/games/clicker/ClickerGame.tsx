@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useGameLoop, GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, PRESTIGE_UNLOCK_EARNED } from './useGameLoop'
+import { useGameLoop, GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES, PRESTIGE_UNLOCK_EARNED } from './useGameLoop'
 import { SYNERGY_THRESHOLD } from './gameConfig'
 import { fmt, fmtInt, fmtTime } from './formatNumber'
 
-type Tab = 'generators' | 'upgrades' | 'achievements' | 'prestige' | 'stats'
+type Tab = 'generators' | 'upgrades' | 'achievements' | 'challenges' | 'prestige' | 'stats'
 type BuyAmount = 1 | 10 | 100 | 'max'
 
 export default function ClickerGame() {
@@ -106,6 +106,46 @@ export default function ClickerGame() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#1a0f00] via-[#2a1500] to-[#1a0a00] font-rubik select-none" dir="rtl">
       {floats}{offlineModal}<AnimatePresence>{achPopup}</AnimatePresence>{golden}
+
+      {/* Challenge complete popup */}
+      <AnimatePresence>
+        {g.challengeCompleted && (() => {
+          const ch = CHALLENGES.find(c => c.id === g.challengeCompleted)
+          if (!ch) return null
+          return (
+            <motion.div key="ch-complete" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="bg-[#2a1a0a] rounded-3xl p-6 text-center max-w-sm w-full border border-green-500/30">
+                <span className="text-5xl block mb-3">🎯</span>
+                <h2 className="text-xl font-bold text-green-300 mb-2">אתגר הושלם!</h2>
+                <p className="text-amber-200/70 text-sm mb-1">{ch.name}</p>
+                <p className="text-green-400/60 text-xs mb-4">{ch.reward.type === 'bonus_stars' ? `+${ch.reward.value} ⭐` : `x${ch.reward.value} קבוע`}</p>
+                <button onClick={g.dismissChallengeComplete} className="w-full py-3 rounded-xl bg-green-600 text-white font-bold active:scale-95 transition-transform">מעולה!</button>
+              </motion.div>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
+
+      {/* Active challenge banner */}
+      {g.activeChallenge && (() => {
+        const ch = CHALLENGES.find(c => c.id === g.activeChallenge)
+        if (!ch) return null
+        const progress = Math.min(g.totalEarned / ch.targetEarned * 100, 100)
+        return (
+          <div className="sticky top-[52px] z-20 bg-red-900/30 border-b border-red-700/30 px-4 py-1.5">
+            <div className="max-w-lg mx-auto flex items-center gap-2 text-xs">
+              <span>🎯</span>
+              <span className="text-red-200 font-bold flex-1 truncate">{ch.name}</span>
+              <span className="text-red-300/60 tabular-nums">{Math.floor(progress)}%</span>
+              <button onClick={() => { if (confirm('לוותר על האתגר?')) g.handleAbandonChallenge() }} className="text-red-400/40 text-[10px] hover:text-red-300">ויתור</button>
+            </div>
+            <div className="max-w-lg mx-auto h-0.5 mt-1 rounded-full bg-red-900/30 overflow-hidden">
+              <div className="h-full bg-red-500/60 rounded-full transition-all" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Sticky Header ── */}
       <div className="sticky top-0 z-30 bg-gradient-to-b from-[#1a0f00] to-[#1a0f00]/90 backdrop-blur-md border-b border-amber-800/20 px-4 py-3">
@@ -249,6 +289,7 @@ export default function ClickerGame() {
             { key: 'generators' as Tab, label: 'עסקים', icon: '🏪' },
             { key: 'upgrades' as Tab, label: 'שדרוגים', icon: '⬆️' },
             { key: 'achievements' as Tab, label: 'הישגים', icon: '🏆' },
+            ...(g.prestigeCount > 0 ? [{ key: 'challenges' as Tab, label: 'אתגרים', icon: '🎯' }] : []),
             ...(showPrestige ? [{ key: 'prestige' as Tab, label: 'מישלן', icon: '⭐' }] : []),
             { key: 'stats' as Tab, label: 'סטטיסטיקות', icon: '📊' },
           ]).map(t => (
@@ -283,7 +324,7 @@ export default function ClickerGame() {
                 const owned = g.generators[gen.id] || 0
                 const count = buyAmt === 'max' ? g.getGenMaxAffordable(gen.id) : (buyAmt as number)
                 const cost = buyAmt === 'max' ? (count > 0 ? g.getGenBulkCost(gen.id, count) : g.getGenCost(gen.id)) : g.getGenBulkCost(gen.id, count)
-                const canAfford = g.coins >= cost && count > 0
+                const canAfford = g.coins >= cost && count > 0 && g.canBuyGen(gen.id)
                 const income = g.getGenIncome(gen.id)
                 const synergyTiers = Math.floor(owned / SYNERGY_THRESHOLD)
                 const nextSynergy = SYNERGY_THRESHOLD - (owned % SYNERGY_THRESHOLD)
@@ -404,6 +445,54 @@ export default function ClickerGame() {
                 )
               })}
               <p className="text-center text-[10px] text-amber-500/25 pt-2">{g.achievements.size}/{ACHIEVEMENTS.length} הישגים</p>
+            </motion.div>
+          )}
+
+          {/* CHALLENGES */}
+          {tab === 'challenges' && (
+            <motion.div key="chal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
+              {g.activeChallenge && (
+                <div className="bg-red-900/20 border border-red-700/20 rounded-2xl p-3 text-center mb-3">
+                  <p className="text-red-300/60 text-xs">אתגר פעיל - {CHALLENGES.find(c => c.id === g.activeChallenge)?.name}</p>
+                  <p className="text-red-200 text-sm font-bold mt-1">{fmt(g.totalEarned)} / {fmt(CHALLENGES.find(c => c.id === g.activeChallenge)?.targetEarned || 0)}</p>
+                </div>
+              )}
+              {CHALLENGES.filter(ch => g.prestigeCount >= ch.unlockAtPrestige || g.completedChallenges.has(ch.id)).map(ch => {
+                const completed = g.completedChallenges.has(ch.id)
+                const isActive = g.activeChallenge === ch.id
+                const canStart = !g.activeChallenge && !completed
+                return (
+                  <div key={ch.id} className={`rounded-2xl p-3.5 border transition-all ${completed ? 'bg-green-900/15 border-green-700/20' : isActive ? 'bg-red-900/15 border-red-700/20' : 'bg-amber-900/15 border-amber-800/15'}`}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{ch.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold truncate ${completed ? 'text-green-200' : 'text-amber-100'}`}>{ch.name}</p>
+                        <p className="text-[10px] text-amber-400/40">{ch.description}</p>
+                        <p className="text-[9px] text-amber-500/30 mt-0.5">
+                          תגמול: {ch.reward.type === 'bonus_stars' ? `+${ch.reward.value} ⭐` : ch.reward.type === 'permanent_multiply_all' ? `x${ch.reward.value} הכנסה קבועה` : ch.reward.type === 'permanent_multiply_click' ? `x${ch.reward.value} לחיצה קבועה` : `x${ch.reward.value} פרסטיג קבוע`}
+                        </p>
+                      </div>
+                      {completed ? (
+                        <span className="text-green-400 text-sm">✓</span>
+                      ) : canStart ? (
+                        <button
+                          onClick={() => { if (confirm(`להתחיל את "${ch.name}"? ההתקדמות הנוכחית תאופס.`)) g.handleStartChallenge(ch.id) }}
+                          className="shrink-0 bg-amber-700/40 text-amber-200 text-xs px-3 py-1.5 rounded-lg font-bold active:scale-95">
+                          התחל
+                        </button>
+                      ) : isActive ? (
+                        <span className="text-red-400/60 text-xs font-bold">פעיל</span>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })}
+              {CHALLENGES.filter(ch => g.prestigeCount >= ch.unlockAtPrestige || g.completedChallenges.has(ch.id)).length === 0 && (
+                <div className="flex flex-col items-center gap-2 py-10">
+                  <span className="text-4xl">🎯</span>
+                  <p className="text-amber-400/30 text-sm">אתגרים נפתחים אחרי פרסטיג ראשון</p>
+                </div>
+              )}
             </motion.div>
           )}
 

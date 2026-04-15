@@ -8,9 +8,10 @@ import {
   tick, checkAchievements, getTotalCPS, getClickValue,
   getCritInfo, getComboMultiplier, getGeneratorCost, getGeneratorIncome,
   getTotalGenerators, calcOfflineEarnings, getMaxAffordable, getGeneratorBulkCost,
+  startChallenge, abandonChallenge, checkChallengeComplete, canBuyGeneratorInChallenge,
 } from './gameEngine'
 import {
-  GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH,
+  GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES,
   AUTO_SAVE_INTERVAL, COMBO_DECAY_MS,
   GOLDEN_MIN_INTERVAL, GOLDEN_MAX_INTERVAL, GOLDEN_DURATION, GOLDEN_REWARD_CPS_SECONDS,
   PRESTIGE_UNLOCK_EARNED, EVENT_RESEARCH_FREQUENCY,
@@ -39,6 +40,13 @@ export interface GameUI {
   handleBuyResearch: (id: string) => void
   handlePrestige: () => void
   handleGoldenClick: () => void
+  handleStartChallenge: (id: string) => void
+  handleAbandonChallenge: () => void
+  completedChallenges: Set<string>
+  activeChallenge: string | null
+  challengeCompleted: string | null  // just-completed challenge id for popup
+  dismissChallengeComplete: () => void
+  canBuyGen: (id: string) => boolean
   dismissOffline: () => void; dismissAchievement: () => void; resetGame: () => void
   // Helpers
   getGenCost: (id: string) => number
@@ -57,6 +65,7 @@ export function useGameLoop(): GameUI {
   const [offlineEarnings, setOfflineEarnings] = useState<number | null>(null)
   const [goldenActive, setGoldenActive] = useState(false)
   const [goldenTimer, setGoldenTimer] = useState(0)
+  const [challengeCompleted, setChallengeCompleted] = useState<string | null>(null)
   const goldenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nextFloatId = useRef(0)
 
@@ -86,6 +95,8 @@ export function useGameLoop(): GameUI {
       }
       const newAch = checkAchievements(s)
       if (newAch.length > 0) setNewAchievements(prev => [...prev, ...newAch])
+      const chComplete = checkChallengeComplete(s)
+      if (chComplete) setChallengeCompleted(chComplete)
       rerender()
     }, 100)
     return () => clearInterval(interval)
@@ -165,6 +176,18 @@ export function useGameLoop(): GameUI {
     rerender()
   }, [goldenActive, rerender])
 
+  const handleStartChallenge = useCallback((id: string) => {
+    if (startChallenge(stateRef.current, id)) { saveGame(stateRef.current); rerender() }
+  }, [rerender])
+
+  const handleAbandonChallenge = useCallback(() => {
+    abandonChallenge(stateRef.current); saveGame(stateRef.current); rerender()
+  }, [rerender])
+
+  const dismissChallengeComplete = useCallback(() => setChallengeCompleted(null), [])
+
+  const canBuyGen = useCallback((id: string) => canBuyGeneratorInChallenge(stateRef.current, id), [])
+
   const dismissOffline = useCallback(() => setOfflineEarnings(null), [])
   const dismissAchievement = useCallback(() => setNewAchievements(prev => prev.slice(1)), [])
   const resetGame = useCallback(() => {
@@ -190,9 +213,12 @@ export function useGameLoop(): GameUI {
     totalGenerators: getTotalGenerators(s), stats: s.stats,
     floatingTexts, newAchievements, offlineEarnings, goldenActive, goldenTimer,
     handleClick, handleBuyGenerator, handleBuyMaxGenerator, handleBuyUpgrade, handleBuyResearch,
-    handlePrestige, handleGoldenClick, dismissOffline, dismissAchievement, resetGame,
+    handlePrestige, handleGoldenClick,
+    handleStartChallenge, handleAbandonChallenge, completedChallenges: s.completedChallenges,
+    activeChallenge: s.activeChallenge, challengeCompleted, dismissChallengeComplete, canBuyGen,
+    dismissOffline, dismissAchievement, resetGame,
     getGenCost, getGenBulkCost, getGenIncome, getGenMaxAffordable,
   }
 }
 
-export { GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, PRESTIGE_UNLOCK_EARNED }
+export { GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES, PRESTIGE_UNLOCK_EARNED }
