@@ -85,16 +85,39 @@ export default function ClickerGame() {
       {floats}{offlineModal}<AnimatePresence>{achPopup}</AnimatePresence>{golden}
 
       {/* ── Sticky Header ── */}
-      <div className="sticky top-0 z-30 bg-[#1a0f00]/90 backdrop-blur-md border-b border-amber-900/30 px-4 py-2.5">
+      <div className="sticky top-0 z-30 bg-gradient-to-b from-[#1a0f00] to-[#1a0f00]/90 backdrop-blur-md border-b border-amber-800/20 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          <button onClick={() => { router.push('/games') }} className="text-amber-400/60 active:scale-95">
-            <span className="material-symbols-outlined text-lg">arrow_forward</span>
+          <button onClick={() => { router.push('/games') }} className="text-amber-400/50 active:scale-90 p-1">
+            <span className="material-symbols-outlined text-xl">arrow_forward</span>
           </button>
-          <div className="text-center">
-            <p className="text-xl font-bold text-amber-100">{fmt(g.coins)} 🪙</p>
-            <p className="text-[10px] text-amber-400/50">{fmt(g.cps)}/שנייה · לחיצה: {fmt(g.clickValue)}</p>
+          <div className="text-center flex-1">
+            <div className="flex items-center justify-center gap-1.5">
+              <span className="text-lg">🪙</span>
+              <motion.p
+                key={Math.floor(g.coins)}
+                initial={{ y: -4, opacity: 0.7 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="text-2xl font-bold text-amber-100 tabular-nums"
+              >
+                {fmt(g.coins)}
+              </motion.p>
+            </div>
+            <div className="flex items-center justify-center gap-3 text-[10px] text-amber-500/50 mt-0.5">
+              <span className="flex items-center gap-0.5">
+                <span className="material-symbols-outlined text-[10px] text-green-500/50">trending_up</span>
+                {fmt(g.cps)}/שנייה
+              </span>
+              <span className="text-amber-800">·</span>
+              <span>לחיצה: {fmt(g.clickValue)}</span>
+              {g.prestigeCount > 0 && (
+                <>
+                  <span className="text-amber-800">·</span>
+                  <span className="text-purple-400/50">⭐{g.prestigePoints}</span>
+                </>
+              )}
+            </div>
           </div>
-          <div className="w-6" />
+          <div className="w-8" />
         </div>
       </div>
 
