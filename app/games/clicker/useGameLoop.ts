@@ -6,56 +6,45 @@ import {
   processClick, buyGenerator, buyUpgrade, buyResearch,
   doPrestige, canPrestige, calcPrestigeReward,
   tick, checkAchievements, getTotalCPS, getClickValue,
-  getCritInfo, getGeneratorCost, getGeneratorIncome,
-  getTotalGenerators, calcOfflineEarnings,
+  getCritInfo, getComboMultiplier, getGeneratorCost, getGeneratorIncome,
+  getTotalGenerators, calcOfflineEarnings, getMaxAffordable, getGeneratorBulkCost,
 } from './gameEngine'
-import { GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, AUTO_SAVE_INTERVAL, GOLDEN_MIN_INTERVAL, GOLDEN_MAX_INTERVAL, GOLDEN_DURATION, GOLDEN_REWARD_CPS_SECONDS } from './gameConfig'
+import {
+  GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH,
+  AUTO_SAVE_INTERVAL, COMBO_DECAY_MS,
+  GOLDEN_MIN_INTERVAL, GOLDEN_MAX_INTERVAL, GOLDEN_DURATION, GOLDEN_REWARD_CPS_SECONDS,
+  PRESTIGE_UNLOCK_EARNED, EVENT_RESEARCH_FREQUENCY,
+} from './gameConfig'
 
 export interface FloatingText {
-  id: number
-  x: number
-  y: number
-  text: string
-  isCrit: boolean
+  id: number; x: number; y: number; text: string; isCrit: boolean
 }
 
 export interface GameUI {
-  // State
-  coins: number
-  totalEarned: number
-  totalClicks: number
-  cps: number
-  clickValue: number
-  critChance: number
-  critMultiplier: number
+  coins: number; totalEarned: number; totalClicks: number
+  cps: number; clickValue: number; comboMultiplier: number; combo: number
+  critChance: number; critMultiplier: number
   generators: Record<string, number>
-  upgrades: Set<string>
-  achievements: Set<string>
-  research: Set<string>
-  prestigePoints: number
-  totalPrestigeEarned: number
-  prestigeCount: number
-  prestigeReward: number
-  canPrestige: boolean
-  totalGenerators: number
-
-  // UI
-  floatingTexts: FloatingText[]
-  newAchievements: string[]
-  offlineEarnings: number | null
-  goldenActive: boolean
-  goldenTimer: number
-
+  upgrades: Set<string>; achievements: Set<string>; research: Set<string>
+  prestigePoints: number; totalPrestigeEarned: number; prestigeCount: number
+  prestigeReward: number; canPrestige: boolean; totalGenerators: number
+  stats: GameState['stats']
+  floatingTexts: FloatingText[]; newAchievements: string[]
+  offlineEarnings: number | null; goldenActive: boolean; goldenTimer: number
   // Actions
-  handleClick: (clientX: number, clientY: number) => void
+  handleClick: (cx: number, cy: number) => void
   handleBuyGenerator: (id: string, count?: number) => void
+  handleBuyMaxGenerator: (id: string) => void
   handleBuyUpgrade: (id: string) => void
   handleBuyResearch: (id: string) => void
   handlePrestige: () => void
   handleGoldenClick: () => void
-  dismissOffline: () => void
-  dismissAchievement: () => void
-  resetGame: () => void
+  dismissOffline: () => void; dismissAchievement: () => void; resetGame: () => void
+  // Helpers
+  getGenCost: (id: string) => number
+  getGenBulkCost: (id: string, count: number) => number
+  getGenIncome: (id: string) => number
+  getGenMaxAffordable: (id: string) => number
 }
 
 export function useGameLoop(): GameUI {
@@ -71,98 +60,86 @@ export function useGameLoop(): GameUI {
   const goldenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nextFloatId = useRef(0)
 
-  // ── Load game on mount ──
+  // Load on mount
   useEffect(() => {
     const { state, offlineSeconds } = loadGame()
     stateRef.current = state
-
     if (offlineSeconds > 5) {
       const earned = calcOfflineEarnings(state, offlineSeconds)
       if (earned > 0) {
-        state.coins += earned
-        state.totalEarned += earned
+        state.coins += earned; state.totalEarned += earned
+        state.stats.totalOfflineEarned += earned
         setOfflineEarnings(earned)
       }
     }
     rerender()
   }, [rerender])
 
-  // ── Game tick (10 times/sec) ──
+  // Game tick (10/sec) + combo decay
   useEffect(() => {
     const interval = setInterval(() => {
       const s = stateRef.current
       tick(s, 100)
-      const newAch = checkAchievements(s)
-      if (newAch.length > 0) {
-        setNewAchievements(prev => [...prev, ...newAch])
+      // Combo decay
+      if (s.combo > 0 && Date.now() - s.lastClickTime > COMBO_DECAY_MS) {
+        s.combo = 0
       }
+      const newAch = checkAchievements(s)
+      if (newAch.length > 0) setNewAchievements(prev => [...prev, ...newAch])
       rerender()
     }, 100)
     return () => clearInterval(interval)
   }, [rerender])
 
-  // ── Auto-save ──
+  // Auto-save + save on unmount
   useEffect(() => {
     const interval = setInterval(() => saveGame(stateRef.current), AUTO_SAVE_INTERVAL)
-    return () => clearInterval(interval)
+    return () => { clearInterval(interval); saveGame(stateRef.current) }
   }, [])
 
-  // ── Save on unmount ──
-  useEffect(() => {
-    return () => saveGame(stateRef.current)
-  }, [])
-
-  // ── Golden falafel timer ──
+  // Golden dish event
   useEffect(() => {
     function scheduleGolden() {
-      const delay = (GOLDEN_MIN_INTERVAL + Math.random() * (GOLDEN_MAX_INTERVAL - GOLDEN_MIN_INTERVAL)) * 1000
+      const freqMult = Array.from(Object.entries(EVENT_RESEARCH_FREQUENCY))
+        .reduce((m, [rid, f]) => stateRef.current.research.has(rid) ? m * f : m, 1)
+      const delay = (GOLDEN_MIN_INTERVAL + Math.random() * (GOLDEN_MAX_INTERVAL - GOLDEN_MIN_INTERVAL)) * 1000 * freqMult
       goldenTimeoutRef.current = setTimeout(() => {
         if (getTotalCPS(stateRef.current) > 0) {
-          setGoldenActive(true)
-          setGoldenTimer(GOLDEN_DURATION)
-          // Auto-expire
-          const expire = setTimeout(() => setGoldenActive(false), GOLDEN_DURATION * 1000)
-          // Countdown
+          setGoldenActive(true); setGoldenTimer(GOLDEN_DURATION)
           const countdown = setInterval(() => {
-            setGoldenTimer(t => {
-              if (t <= 1) { clearInterval(countdown); return 0 }
-              return t - 1
-            })
+            setGoldenTimer(t => { if (t <= 1) { clearInterval(countdown); setGoldenActive(false); return 0 }; return t - 1 })
           }, 1000)
-          goldenTimeoutRef.current = setTimeout(() => {
-            clearInterval(countdown)
-            clearTimeout(expire)
-            scheduleGolden()
-          }, GOLDEN_DURATION * 1000)
-        } else {
-          scheduleGolden()
-        }
+          goldenTimeoutRef.current = setTimeout(() => { clearInterval(countdown); scheduleGolden() }, GOLDEN_DURATION * 1000)
+        } else { scheduleGolden() }
       }, delay)
     }
     scheduleGolden()
     return () => { if (goldenTimeoutRef.current) clearTimeout(goldenTimeoutRef.current) }
   }, [])
 
-  // ── Clean up floating texts ──
+  // Floating text cleanup
   useEffect(() => {
     if (floatingTexts.length === 0) return
-    const timer = setTimeout(() => {
-      setFloatingTexts(prev => prev.slice(1))
-    }, 800)
+    const timer = setTimeout(() => setFloatingTexts(prev => prev.slice(1)), 800)
     return () => clearTimeout(timer)
   }, [floatingTexts])
 
   // ── Actions ──
-  const handleClick = useCallback((clientX: number, clientY: number) => {
-    const s = stateRef.current
-    const { gained, isCrit } = processClick(s)
-    const id = nextFloatId.current++
-    setFloatingTexts(prev => [...prev.slice(-8), { id, x: clientX, y: clientY, text: `+${gained < 100 ? gained.toFixed(1) : Math.floor(gained)}`, isCrit }])
+  const handleClick = useCallback((cx: number, cy: number) => {
+    const { gained, isCrit } = processClick(stateRef.current)
+    const text = gained < 100 ? `+${gained.toFixed(1)}` : `+${Math.floor(gained)}`
+    setFloatingTexts(prev => [...prev.slice(-8), { id: nextFloatId.current++, x: cx, y: cy, text, isCrit }])
     rerender()
   }, [rerender])
 
-  const handleBuyGenerator = useCallback((genId: string, count = 1) => {
-    if (buyGenerator(stateRef.current, genId, count)) rerender()
+  const handleBuyGenerator = useCallback((id: string, count = 1) => {
+    if (buyGenerator(stateRef.current, id, count)) rerender()
+  }, [rerender])
+
+  const handleBuyMaxGenerator = useCallback((id: string) => {
+    const s = stateRef.current
+    const max = getMaxAffordable(id, s.generators[id] || 0, s.coins, s)
+    if (max > 0 && buyGenerator(s, id, max)) rerender()
   }, [rerender])
 
   const handleBuyUpgrade = useCallback((id: string) => {
@@ -175,78 +152,47 @@ export function useGameLoop(): GameUI {
 
   const handlePrestige = useCallback(() => {
     const reward = doPrestige(stateRef.current)
-    if (reward > 0) {
-      saveGame(stateRef.current)
-      rerender()
-    }
+    if (reward > 0) { saveGame(stateRef.current); rerender() }
   }, [rerender])
 
   const handleGoldenClick = useCallback(() => {
     if (!goldenActive) return
     const s = stateRef.current
     const reward = getTotalCPS(s) * GOLDEN_REWARD_CPS_SECONDS
-    s.coins += reward
-    s.totalEarned += reward
+    s.coins += reward; s.totalEarned += reward; s.stats.totalEventsClicked++
     setGoldenActive(false)
-    setFloatingTexts(prev => [...prev.slice(-8), {
-      id: nextFloatId.current++,
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-      text: `GOLDEN +${Math.floor(reward)}`,
-      isCrit: true,
-    }])
+    setFloatingTexts(prev => [...prev.slice(-8), { id: nextFloatId.current++, x: window.innerWidth / 2, y: window.innerHeight / 3, text: `+${Math.floor(reward)}`, isCrit: true }])
     rerender()
   }, [goldenActive, rerender])
 
   const dismissOffline = useCallback(() => setOfflineEarnings(null), [])
   const dismissAchievement = useCallback(() => setNewAchievements(prev => prev.slice(1)), [])
-
   const resetGame = useCallback(() => {
-    stateRef.current = newGameState()
-    saveGame(stateRef.current)
-    setFloatingTexts([])
-    setNewAchievements([])
-    setOfflineEarnings(null)
-    rerender()
+    stateRef.current = newGameState(); saveGame(stateRef.current)
+    setFloatingTexts([]); setNewAchievements([]); setOfflineEarnings(null); rerender()
   }, [rerender])
 
+  // ── Derived helpers ──
   const s = stateRef.current
+  const getGenCost = useCallback((id: string) => getGeneratorCost(id, s.generators[id] || 0, s), [s])
+  const getGenBulkCost = useCallback((id: string, count: number) => getGeneratorBulkCost(id, s.generators[id] || 0, count, s), [s])
+  const getGenIncome = useCallback((id: string) => getGeneratorIncome(s, id), [s])
+  const getGenMaxAffordable = useCallback((id: string) => getMaxAffordable(id, s.generators[id] || 0, s.coins, s), [s])
+
   return {
-    coins: s.coins,
-    totalEarned: s.totalEarned,
-    totalClicks: s.totalClicks,
-    cps: getTotalCPS(s),
-    clickValue: getClickValue(s),
-    critChance: getCritInfo(s).chance,
-    critMultiplier: getCritInfo(s).multiplier,
-    generators: s.generators,
-    upgrades: s.upgrades,
-    achievements: s.achievements,
-    research: s.research,
-    prestigePoints: s.prestigePoints,
-    totalPrestigeEarned: s.totalPrestigeEarned,
-    prestigeCount: s.prestigeCount,
-    prestigeReward: calcPrestigeReward(s),
-    canPrestige: canPrestige(s),
-    totalGenerators: getTotalGenerators(s),
-    floatingTexts,
-    newAchievements,
-    offlineEarnings,
-    goldenActive,
-    goldenTimer,
-    handleClick,
-    handleBuyGenerator,
-    handleBuyUpgrade,
-    handleBuyResearch,
-    handlePrestige,
-    handleGoldenClick,
-    dismissOffline,
-    dismissAchievement,
-    resetGame,
+    coins: s.coins, totalEarned: s.totalEarned, totalClicks: s.totalClicks,
+    cps: getTotalCPS(s), clickValue: getClickValue(s),
+    comboMultiplier: getComboMultiplier(s), combo: s.combo,
+    critChance: getCritInfo(s).chance, critMultiplier: getCritInfo(s).multiplier,
+    generators: s.generators, upgrades: s.upgrades, achievements: s.achievements, research: s.research,
+    prestigePoints: s.prestigePoints, totalPrestigeEarned: s.totalPrestigeEarned, prestigeCount: s.prestigeCount,
+    prestigeReward: calcPrestigeReward(s), canPrestige: canPrestige(s),
+    totalGenerators: getTotalGenerators(s), stats: s.stats,
+    floatingTexts, newAchievements, offlineEarnings, goldenActive, goldenTimer,
+    handleClick, handleBuyGenerator, handleBuyMaxGenerator, handleBuyUpgrade, handleBuyResearch,
+    handlePrestige, handleGoldenClick, dismissOffline, dismissAchievement, resetGame,
+    getGenCost, getGenBulkCost, getGenIncome, getGenMaxAffordable,
   }
 }
 
-// Re-export config for UI usage
-export { GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH }
-export { getGeneratorCost, getGeneratorIncome, getGeneratorBulkCost } from './gameEngine'
-export { PRESTIGE_UNLOCK_EARNED } from './gameConfig'
+export { GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, PRESTIGE_UNLOCK_EARNED }
