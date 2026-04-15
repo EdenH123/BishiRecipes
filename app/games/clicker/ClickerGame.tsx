@@ -67,13 +67,35 @@ export default function ClickerGame() {
 
   // ── Golden dish ──
   const golden = g.goldenActive && (
-    <motion.button initial={{ scale: 0, rotate: -180 }} animate={{ scale: [1, 1.1, 1], rotate: 0 }}
-      transition={{ scale: { repeat: Infinity, duration: 0.6 }, rotate: { duration: 0.5 } }}
-      onClick={g.handleGoldenClick}
-      className="fixed bottom-32 left-1/2 -translate-x-1/2 z-40 text-6xl drop-shadow-[0_0_20px_rgba(255,200,0,0.8)]">
-      🍽️<span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs text-amber-300 font-bold">{g.goldenTimer}s</span>
-    </motion.button>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-40 pointer-events-none"
+    >
+      {/* Subtle background shimmer */}
+      <motion.div
+        animate={{ opacity: [0, 0.15, 0] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+        className="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent"
+      />
+      <motion.button
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: [1, 1.15, 1], rotate: [0, 5, -5, 0] }}
+        transition={{ scale: { repeat: Infinity, duration: 0.7 }, rotate: { repeat: Infinity, duration: 1.2 } }}
+        onClick={g.handleGoldenClick}
+        className="pointer-events-auto absolute bottom-36 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1"
+      >
+        <span className="text-7xl drop-shadow-[0_0_30px_rgba(255,200,0,0.9)]">🍽️</span>
+        <div className="bg-amber-900/80 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1.5">
+          <span className="text-amber-300 text-xs font-bold">מנה מוזהבת!</span>
+          <span className="text-amber-400/60 text-[10px]">{g.goldenTimer}s</span>
+        </div>
+      </motion.button>
+    </motion.div>
   )
+
+  // ── Tutorial hint ──
+  const showTutorial = g.totalClicks < 5 && g.totalEarned === 0
 
   // ── Visibility filters ──
   const visGens = GENERATORS.filter(gen => g.totalEarned >= gen.unlockAt || (g.generators[gen.id] || 0) > 0)
@@ -165,10 +187,21 @@ export default function ClickerGame() {
             </motion.button>
           </div>
 
-          {/* Click power label */}
-          <p className="text-amber-400/30 text-xs mt-3">
-            {g.combo > 0 ? `🔥 x${g.comboMultiplier.toFixed(1)}` : 'לחצו לבשל!'}
-          </p>
+          {/* Click power label / tutorial */}
+          {showTutorial ? (
+            <motion.div
+              animate={{ y: [0, -5, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="mt-3 text-center"
+            >
+              <p className="text-amber-300/60 text-sm font-bold">👆 לחצו על המחבת!</p>
+              <p className="text-amber-500/30 text-[10px] mt-0.5">כל לחיצה מרוויחה מטבעות שף</p>
+            </motion.div>
+          ) : (
+            <p className="text-amber-400/30 text-xs mt-3">
+              {g.combo > 0 ? `🔥 x${g.comboMultiplier.toFixed(1)}` : g.cps > 0 ? `${fmt(g.cps)}/שנייה` : 'לחצו לבשל!'}
+            </p>
+          )}
 
           {/* Combo bar */}
           <AnimatePresence>
