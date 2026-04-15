@@ -3,13 +3,13 @@
 // ══════════════════════════════════════════════════
 
 import {
-  GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH,
+  GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES,
   SYNERGY_THRESHOLD, SYNERGY_MULTIPLIER,
   PRESTIGE_DIVISOR, PRESTIGE_EXPONENT, PRESTIGE_RESEARCH_BONUS,
   MAX_OFFLINE_SECONDS, BASE_OFFLINE_RATE,
   SAVE_KEY, COMBO_BASE_POWER, COMBO_MAX,
   PRESTIGE_STAR_BONUS,
-  type UpgradeEffect,
+  type UpgradeEffect, type ChallengeRestriction,
 } from './gameConfig'
 
 // ── Game State ──
@@ -40,6 +40,9 @@ export interface GameState {
   lastTick: number
   startedAt: number
   stats: GameStats
+  // Challenges
+  completedChallenges: Set<string>
+  activeChallenge: string | null   // challenge id or null
 }
 
 export function newGameState(): GameState {
@@ -50,6 +53,7 @@ export function newGameState(): GameState {
     prestigePoints: 0, totalPrestigeEarned: 0, prestigeCount: 0,
     combo: 0, lastClickTime: 0, lastTick: now, startedAt: now,
     stats: { bestCps: 0, totalCritClicks: 0, bestCombo: 0, totalOfflineEarned: 0, totalEventsClicked: 0, totalPlaytimeMs: 0, sessionStartedAt: now },
+    completedChallenges: new Set(), activeChallenge: null,
   }
 }
 
@@ -62,17 +66,20 @@ interface SaveData {
   upgrades: string[]; achievements: string[]; research: string[]
   prestigePoints: number; totalPrestigeEarned: number; prestigeCount: number
   lastTick: number; startedAt: number; stats: GameStats
+  completedChallenges?: string[]; activeChallenge?: string | null
 }
 
 export function saveGame(state: GameState): void {
   if (typeof window === 'undefined') return
   const data: SaveData = {
-    v: 2, coins: state.coins, totalEarned: state.totalEarned, totalClicks: state.totalClicks,
+    v: 3, coins: state.coins, totalEarned: state.totalEarned, totalClicks: state.totalClicks,
     generators: state.generators,
     upgrades: Array.from(state.upgrades), achievements: Array.from(state.achievements), research: Array.from(state.research),
     prestigePoints: state.prestigePoints, totalPrestigeEarned: state.totalPrestigeEarned, prestigeCount: state.prestigeCount,
     lastTick: Date.now(), startedAt: state.startedAt,
     stats: { ...state.stats, totalPlaytimeMs: state.stats.totalPlaytimeMs + (Date.now() - state.stats.sessionStartedAt) },
+    completedChallenges: Array.from(state.completedChallenges),
+    activeChallenge: state.activeChallenge,
   }
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)) } catch {}
 }
@@ -91,6 +98,8 @@ export function loadGame(): { state: GameState; offlineSeconds: number } {
       prestigePoints: d.prestigePoints || 0, totalPrestigeEarned: d.totalPrestigeEarned || 0, prestigeCount: d.prestigeCount || 0,
       combo: 0, lastClickTime: 0, lastTick: d.lastTick || Date.now(), startedAt: d.startedAt || Date.now(),
       stats: d.stats || fresh.stats,
+      completedChallenges: new Set(d.completedChallenges || []),
+      activeChallenge: d.activeChallenge || null,
     }
     state.stats.sessionStartedAt = Date.now()
     const offlineSeconds = Math.min(Math.max(0, (Date.now() - state.lastTick) / 1000), MAX_OFFLINE_SECONDS)
@@ -187,7 +196,8 @@ export function getGeneratorCost(genId: string, owned: number, state?: GameState
   if (!def) return Infinity
   const raw = def.baseCost * Math.pow(def.growthRate, owned)
   const reduction = state ? getCostReduction(state) : 1
-  return Math.floor(raw * reduction)
+  const challengeMult = state ? getChallengeCostMult(state) : 1
+  return Math.floor(raw * reduction * challengeMult)
 }
 
 export function getGeneratorBulkCost(genId: string, owned: number, count: number, state?: GameState): number {
@@ -196,7 +206,8 @@ export function getGeneratorBulkCost(genId: string, owned: number, count: number
   if (!def) return Infinity
   const r = def.growthRate
   const reduction = state ? getCostReduction(state) : 1
-  const base = def.baseCost * Math.pow(r, owned) * reduction
+  const challengeMult = state ? getChallengeCostMult(state) : 1
+  const base = def.baseCost * Math.pow(r, owned) * reduction * challengeMult
   if (Math.abs(r - 1) < 0.001) return Math.floor(base * count)
   return Math.floor(base * (Math.pow(r, count) - 1) / (r - 1))
 }
@@ -216,7 +227,9 @@ export function getClickValue(state: GameState): number {
   const baseAdd = 1 + collectAdditive(state, 'click_add')
   const clickMult = collectMultiplier(state, 'click_multiply')
   const achMult = getAchievementMult(state, 'multiply_click')
-  return baseAdd * clickMult * achMult * prestigeStarBonus(state)
+  const r = getActiveRestriction(state)
+  if (r && r.type === 'no_click') return 0
+  return baseAdd * clickMult * achMult * prestigeStarBonus(state) * getChallengeRewardMult(state, 'click')
 }
 
 export function getComboMultiplier(state: GameState): number {
@@ -240,7 +253,7 @@ export function getGeneratorIncome(state: GameState, genId: string): number {
   const allMult = collectMultiplier(state, 'all_multiply')
   const achMult = getAchievementMult(state, 'multiply_all')
   const synergy = getSynergyMult(state, genId)
-  return count * def.baseIncome * genMult * allMult * achMult * synergy * prestigeStarBonus(state)
+  return count * def.baseIncome * genMult * allMult * achMult * synergy * prestigeStarBonus(state) * getChallengeIncomeMult(state) * getChallengeRewardMult(state, 'all')
 }
 
 export function getTotalCPS(state: GameState): number {
@@ -270,6 +283,7 @@ export function calcPrestigeReward(state: GameState): number {
   for (const [rid, bonus] of Object.entries(PRESTIGE_RESEARCH_BONUS)) {
     if (state.research.has(rid)) reward = Math.floor(reward * bonus)
   }
+  reward = Math.floor(reward * getChallengeRewardMult(state, 'prestige'))
   return reward
 }
 
@@ -304,6 +318,7 @@ export function processClick(state: GameState): { gained: number; isCrit: boolea
 }
 
 export function buyGenerator(state: GameState, genId: string, count = 1): boolean {
+  if (!canBuyGeneratorInChallenge(state, genId)) return false
   const owned = state.generators[genId] || 0
   const cost = getGeneratorBulkCost(genId, owned, count, state)
   if (state.coins < cost) return false
@@ -312,6 +327,8 @@ export function buyGenerator(state: GameState, genId: string, count = 1): boolea
 }
 
 export function buyUpgrade(state: GameState, upgradeId: string): boolean {
+  const r = getActiveRestriction(state)
+  if (r && r.type === 'no_upgrades') return false
   if (state.upgrades.has(upgradeId)) return false
   const def = UPGRADES.find(u => u.id === upgradeId)
   if (!def || state.coins < def.cost) return false
@@ -362,4 +379,99 @@ export function checkAchievements(state: GameState): string[] {
     }
   }
   return newlyUnlocked
+}
+
+// ── Challenges ──
+
+export function getActiveRestriction(state: GameState): ChallengeRestriction | null {
+  if (!state.activeChallenge) return null
+  const ch = CHALLENGES.find(c => c.id === state.activeChallenge)
+  return ch?.restriction || null
+}
+
+export function startChallenge(state: GameState, challengeId: string): boolean {
+  if (state.activeChallenge) return false
+  if (state.completedChallenges.has(challengeId)) return false
+  const ch = CHALLENGES.find(c => c.id === challengeId)
+  if (!ch || state.prestigeCount < ch.unlockAtPrestige) return false
+  // Reset run progress for challenge
+  state.coins = 0; state.totalEarned = 0; state.totalClicks = 0
+  state.generators = {}; state.upgrades = new Set()
+  state.combo = 0; state.lastClickTime = 0
+  state.activeChallenge = challengeId
+  return true
+}
+
+export function abandonChallenge(state: GameState): void {
+  if (!state.activeChallenge) return
+  // Reset run, lose progress
+  state.coins = 0; state.totalEarned = 0; state.totalClicks = 0
+  state.generators = {}; state.upgrades = new Set()
+  state.combo = 0; state.lastClickTime = 0
+  state.activeChallenge = null
+}
+
+export function checkChallengeComplete(state: GameState): string | null {
+  if (!state.activeChallenge) return null
+  const ch = CHALLENGES.find(c => c.id === state.activeChallenge)
+  if (!ch) return null
+  if (state.totalEarned >= ch.targetEarned) {
+    state.completedChallenges.add(ch.id)
+    // Apply reward
+    const r = ch.reward
+    if (r.type === 'bonus_stars') {
+      state.prestigePoints += r.value
+      state.totalPrestigeEarned += r.value
+    }
+    state.activeChallenge = null
+    // Reset run after challenge
+    state.coins = 0; state.totalEarned = 0; state.totalClicks = 0
+    state.generators = {}; state.upgrades = new Set()
+    state.combo = 0; state.lastClickTime = 0
+    return ch.id
+  }
+  return null
+}
+
+/** Check if a generator buy is allowed under current challenge restriction */
+export function canBuyGeneratorInChallenge(state: GameState, genId: string): boolean {
+  const r = getActiveRestriction(state)
+  if (!r) return true
+  if (r.type === 'generator_only') return genId === r.generatorId
+  if (r.type === 'max_generator_types') {
+    const ownedTypes = Object.keys(state.generators).filter(k => state.generators[k] > 0)
+    if (ownedTypes.includes(genId)) return true // already own this type
+    return ownedTypes.length < r.value
+  }
+  return true
+}
+
+/** Get challenge cost multiplier */
+export function getChallengeCostMult(state: GameState): number {
+  const r = getActiveRestriction(state)
+  if (!r) return 1
+  if (r.type === 'expensive') return r.value
+  return 1
+}
+
+/** Get challenge income multiplier */
+export function getChallengeIncomeMult(state: GameState): number {
+  const r = getActiveRestriction(state)
+  if (!r) return 1
+  if (r.type === 'half_income') return 0.5
+  return 1
+}
+
+/** Get permanent challenge reward multipliers */
+export function getChallengeRewardMult(state: GameState, type: 'all' | 'click' | 'prestige'): number {
+  let mult = 1
+  for (const chId of Array.from(state.completedChallenges)) {
+    const ch = CHALLENGES.find(c => c.id === chId)
+    if (!ch) continue
+    const r = ch.reward
+    if (type === 'all' && r.type === 'permanent_multiply_all') mult *= r.value
+    if (type === 'click' && r.type === 'permanent_multiply_click') mult *= r.value
+    if (type === 'prestige' && r.type === 'permanent_prestige_bonus') mult *= r.value
+  }
+  return mult
 }
