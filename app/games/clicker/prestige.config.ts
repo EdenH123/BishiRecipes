@@ -23,42 +23,43 @@ export interface ResearchDef {
 
 export const RESEARCH: ResearchDef[] = [
   // ── Click Branch ──
-  { id: 'rc1', name: 'זיכרון שרירי',    emoji: '💪', description: 'x2 כוח לחיצה לצמיתות',     cost: 1,  effect: { type: 'click_multiply', value: 2 },    branch: 'click',      unlockAtPrestige: 0 },
-  { id: 'rc2', name: 'ידיים מנוסות',    emoji: '👐', description: 'x3 כוח לחיצה לצמיתות',     cost: 3,  effect: { type: 'click_multiply', value: 3 },    branch: 'click',      unlockAtPrestige: 3,  requires: 'rc1' },
-  { id: 'rc3', name: 'אומנות בישול',    emoji: '🎨', description: 'x5 כוח לחיצה לצמיתות',     cost: 8,  effect: { type: 'click_multiply', value: 5 },    branch: 'click',      unlockAtPrestige: 10, requires: 'rc2' },
-  { id: 'rc4', name: 'מגע קסום',        emoji: '✨', description: '+15% סיכוי קריטי לצמיתות',  cost: 5,  effect: { type: 'crit_chance', value: 0.15 },    branch: 'click',      unlockAtPrestige: 5,  requires: 'rc1' },
-  { id: 'rc5', name: 'מכת בישול',       emoji: '⚡', description: 'x10 נזק קריטי לצמיתות',    cost: 12, effect: { type: 'crit_multiply', value: 10 },    branch: 'click',      unlockAtPrestige: 15, requires: 'rc4' },
+  { id: 'rc1', name: 'זיכרון שרירי',    emoji: '💪', description: 'x1.5 כוח לחיצה לצמיתות',    cost: 3,   effect: { type: 'click_multiply', value: 1.5 },   branch: 'click',      unlockAtPrestige: 0 },
+  { id: 'rc2', name: 'ידיים מנוסות',    emoji: '👐', description: 'x1.8 כוח לחיצה לצמיתות',    cost: 8,   effect: { type: 'click_multiply', value: 1.8 },   branch: 'click',      unlockAtPrestige: 10,  requires: 'rc1' },
+  { id: 'rc3', name: 'אומנות בישול',    emoji: '🎨', description: 'x2 כוח לחיצה לצמיתות',      cost: 20,  effect: { type: 'click_multiply', value: 2 },     branch: 'click',      unlockAtPrestige: 30, requires: 'rc2' },
+  { id: 'rc4', name: 'מגע קסום',        emoji: '✨', description: '+10% סיכוי קריטי לצמיתות',   cost: 10,  effect: { type: 'crit_chance', value: 0.10 },     branch: 'click',      unlockAtPrestige: 15,  requires: 'rc1' },
+  { id: 'rc5', name: 'מכת בישול',       emoji: '⚡', description: 'x5 נזק קריטי לצמיתות',      cost: 25,  effect: { type: 'crit_multiply', value: 5 },      branch: 'click',      unlockAtPrestige: 40, requires: 'rc4' },
 
   // ── Automation Branch ──
-  { id: 'ra1', name: 'יעילות מטבח',     emoji: '📈', description: 'x2 הכנסה פסיבית לצמיתות',   cost: 1,  effect: { type: 'all_multiply', value: 2 },      branch: 'automation', unlockAtPrestige: 0 },
-  { id: 'ra2', name: 'אוטומציה חכמה',   emoji: '🤖', description: 'x3 הכנסה פסיבית לצמיתות',   cost: 3,  effect: { type: 'all_multiply', value: 3 },      branch: 'automation', unlockAtPrestige: 3,  requires: 'ra1' },
-  { id: 'ra3', name: 'מהפכת מזון',      emoji: '🌟', description: 'x5 הכנסה פסיבית לצמיתות',   cost: 8,  effect: { type: 'all_multiply', value: 5 },      branch: 'automation', unlockAtPrestige: 10, requires: 'ra2' },
-  { id: 'ra4', name: 'עובדים נאמנים',   emoji: '🌙', description: 'x5 הכנסה אופליין לצמיתות',  cost: 4,  effect: { type: 'offline_multiply', value: 5 },  branch: 'automation', unlockAtPrestige: 4,  requires: 'ra1' },
+  { id: 'ra1', name: 'יעילות מטבח',     emoji: '📈', description: 'x1.5 הכנסה פסיבית לצמיתות',  cost: 3,   effect: { type: 'all_multiply', value: 1.5 },     branch: 'automation', unlockAtPrestige: 0 },
+  { id: 'ra2', name: 'אוטומציה חכמה',   emoji: '🤖', description: 'x1.8 הכנסה פסיבית לצמיתות',  cost: 8,   effect: { type: 'all_multiply', value: 1.8 },     branch: 'automation', unlockAtPrestige: 10,  requires: 'ra1' },
+  { id: 'ra3', name: 'מהפכת מזון',      emoji: '🌟', description: 'x2 הכנסה פסיבית לצמיתות',    cost: 20,  effect: { type: 'all_multiply', value: 2 },       branch: 'automation', unlockAtPrestige: 30, requires: 'ra2' },
+  { id: 'ra4', name: 'עובדים נאמנים',   emoji: '🌙', description: 'x2 הכנסה אופליין לצמיתות',   cost: 8,   effect: { type: 'offline_multiply', value: 2 },   branch: 'automation', unlockAtPrestige: 10,  requires: 'ra1' },
 
   // ── Economy Branch ──
-  { id: 're1', name: 'קשרים בשוק',      emoji: '🤝', description: 'עלויות x0.85 לצמיתות',     cost: 2,  effect: { type: 'cost_reduce', value: 0.85 },    branch: 'economy',    unlockAtPrestige: 0 },
-  { id: 're2', name: 'רשת אספקה',       emoji: '📦', description: 'עלויות x0.8 לצמיתות',      cost: 5,  effect: { type: 'cost_reduce', value: 0.8 },     branch: 'economy',    unlockAtPrestige: 5,  requires: 're1' },
-  { id: 're3', name: 'מונופול',          emoji: '🏦', description: 'עלויות x0.7 לצמיתות',      cost: 12, effect: { type: 'cost_reduce', value: 0.7 },     branch: 'economy',    unlockAtPrestige: 15, requires: 're2' },
+  { id: 're1', name: 'קשרים בשוק',      emoji: '🤝', description: 'עלויות x0.92 לצמיתות',      cost: 5,   effect: { type: 'cost_reduce', value: 0.92 },     branch: 'economy',    unlockAtPrestige: 5 },
+  { id: 're2', name: 'רשת אספקה',       emoji: '📦', description: 'עלויות x0.88 לצמיתות',      cost: 12,  effect: { type: 'cost_reduce', value: 0.88 },     branch: 'economy',    unlockAtPrestige: 15,  requires: 're1' },
+  { id: 're3', name: 'מונופול',          emoji: '🏦', description: 'עלויות x0.82 לצמיתות',      cost: 30,  effect: { type: 'cost_reduce', value: 0.82 },     branch: 'economy',    unlockAtPrestige: 40, requires: 're2' },
 
   // ── Prestige Branch ──
-  { id: 'rp1', name: 'מורשת מתמשכת',    emoji: '📜', description: '+50% נקודות פרסטיג',        cost: 3,  effect: { type: 'all_multiply', value: 1 },      branch: 'prestige',   unlockAtPrestige: 3 },
-  { id: 'rp2', name: 'שם עולמי',        emoji: '🌐', description: '+100% נקודות פרסטיג',       cost: 8,  effect: { type: 'all_multiply', value: 1 },      branch: 'prestige',   unlockAtPrestige: 10, requires: 'rp1' },
+  { id: 'rp1', name: 'מורשת מתמשכת',    emoji: '📜', description: '+25% נקודות פרסטיג',         cost: 6,   effect: { type: 'all_multiply', value: 1 },       branch: 'prestige',   unlockAtPrestige: 8 },
+  { id: 'rp2', name: 'שם עולמי',        emoji: '🌐', description: '+50% נקודות פרסטיג',         cost: 18,  effect: { type: 'all_multiply', value: 1 },       branch: 'prestige',   unlockAtPrestige: 25, requires: 'rp1' },
 
   // ── Events Branch ──
-  { id: 'rv1', name: 'עין חדה',          emoji: '👁️', description: 'אירועים בתדירות גבוהה',    cost: 2,  effect: { type: 'all_multiply', value: 1 },      branch: 'events',     unlockAtPrestige: 2 },
-  { id: 'rv2', name: 'קומבו מאסטר',     emoji: '🎵', description: 'x2 עוצמת קומבו לצמיתות',    cost: 4,  effect: { type: 'combo_power', value: 2 },       branch: 'events',     unlockAtPrestige: 4,  requires: 'rv1' },
+  { id: 'rv1', name: 'עין חדה',          emoji: '👁️', description: 'אירועים בתדירות גבוהה',     cost: 4,   effect: { type: 'all_multiply', value: 1 },       branch: 'events',     unlockAtPrestige: 5 },
+  { id: 'rv2', name: 'קומבו מאסטר',     emoji: '🎵', description: 'x1.5 עוצמת קומבו לצמיתות',   cost: 8,   effect: { type: 'combo_power', value: 1.5 },      branch: 'events',     unlockAtPrestige: 10,  requires: 'rv1' },
 ]
 
 // ── Prestige Config ──
-// Formula: floor(sqrt(totalEarned / divisor))
-// At 1M → ~31 stars, at 10M → ~100, at 100M → ~316
-export const PRESTIGE_DIVISOR = 1000
-export const PRESTIGE_UNLOCK_EARNED = 500000  // need 500K total earned to see prestige tab
+// Formula: floor((totalEarned / divisor) ^ exponent)
+// At 2M → 1 star, at 20M → 3 stars, at 200M → 10 stars, at 2B → 31 stars
+export const PRESTIGE_DIVISOR = 2000000
+export const PRESTIGE_EXPONENT = 0.45
+export const PRESTIGE_UNLOCK_EARNED = 2000000  // need 2M total earned to see prestige
 
-// Prestige bonus from research rp1/rp2 (checked by id in engine)
+// Prestige bonus from research rp1/rp2
 export const PRESTIGE_RESEARCH_BONUS: Record<string, number> = {
-  rp1: 1.5,   // +50%
-  rp2: 2.0,   // +100% (multiplicative with rp1)
+  rp1: 1.25,  // +25%
+  rp2: 1.5,   // +50% (multiplicative with rp1)
 }
 
 // Event frequency research (checked by id in engine)

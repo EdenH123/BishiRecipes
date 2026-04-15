@@ -13,7 +13,7 @@ export { ACHIEVEMENTS } from './achievements.config'
 export type { AchievementDef, AchievementCondition, AchievementReward } from './achievements.config'
 
 export {
-  RESEARCH, PRESTIGE_DIVISOR, PRESTIGE_UNLOCK_EARNED,
+  RESEARCH, PRESTIGE_DIVISOR, PRESTIGE_EXPONENT, PRESTIGE_UNLOCK_EARNED,
   PRESTIGE_RESEARCH_BONUS, EVENT_RESEARCH_FREQUENCY,
 } from './prestige.config'
 export type { ResearchDef } from './prestige.config'
@@ -40,4 +40,4 @@ export const SAVE_KEY = 'bishi_culinary_empire'
 export const AUTO_SAVE_INTERVAL = 10000
 
 // Prestige bonus per lifetime star
-export const PRESTIGE_STAR_BONUS = 0.01   // +1% all income per lifetime star
+export const PRESTIGE_STAR_BONUS = 0.002   // +0.2% all income per lifetime star

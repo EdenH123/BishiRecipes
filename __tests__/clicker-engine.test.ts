@@ -189,15 +189,24 @@ describe('Prestige system', () => {
     expect(calcPrestigeReward(state)).toBe(0)
   })
 
-  it('prestige reward at 1M earned', () => {
-    state.totalEarned = 1000000
+  it('prestige reward at 2M earned is small', () => {
+    state.totalEarned = 2000000
     const reward = calcPrestigeReward(state)
-    expect(reward).toBe(31) // floor(sqrt(1000000 / 1000))
+    // floor((2000000 / 2000000) ^ 0.45) = floor(1) = 1
+    expect(reward).toBe(1)
+  })
+
+  it('prestige reward scales with exponent', () => {
+    state.totalEarned = 200000000 // 200M
+    const reward = calcPrestigeReward(state)
+    // floor((200000000 / 2000000) ^ 0.45) = floor(100^0.45) = floor(7.94) = 7
+    expect(reward).toBeGreaterThanOrEqual(5)
+    expect(reward).toBeLessThanOrEqual(15)
   })
 
   it('prestige resets run progress', () => {
-    state.coins = 5000000
-    state.totalEarned = 5000000
+    state.coins = 50000000
+    state.totalEarned = 50000000
     state.generators['spoon'] = 50
     state.upgrades.add('c1')
     const reward = doPrestige(state)
@@ -221,17 +230,17 @@ describe('Prestige system', () => {
 
   it('research bought with prestige points', () => {
     state.prestigePoints = 5
-    expect(buyResearch(state, 'rc1')).toBe(true) // costs 1
-    expect(state.prestigePoints).toBe(4)
+    expect(buyResearch(state, 'rc1')).toBe(true) // costs 3
+    expect(state.prestigePoints).toBe(2)
     expect(state.research.has('rc1')).toBe(true)
   })
 
   it('prestige research bonus multiplies reward', () => {
-    state.totalEarned = 1000000
+    state.totalEarned = 200000000 // 200M for meaningful reward
     const base = calcPrestigeReward(state)
-    state.research.add('rp1') // 1.5x bonus
+    state.research.add('rp1') // 1.25x bonus
     const boosted = calcPrestigeReward(state)
-    expect(boosted).toBe(Math.floor(base * 1.5))
+    expect(boosted).toBe(Math.floor(base * 1.25))
   })
 })
 

@@ -5,7 +5,7 @@
 import {
   GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH,
   SYNERGY_THRESHOLD, SYNERGY_MULTIPLIER,
-  PRESTIGE_DIVISOR, PRESTIGE_RESEARCH_BONUS,
+  PRESTIGE_DIVISOR, PRESTIGE_EXPONENT, PRESTIGE_RESEARCH_BONUS,
   MAX_OFFLINE_SECONDS, BASE_OFFLINE_RATE,
   SAVE_KEY, COMBO_BASE_POWER, COMBO_MAX,
   PRESTIGE_STAR_BONUS,
@@ -264,8 +264,8 @@ export function getTotalGenerators(state: GameState): number {
 // ── Prestige ──
 
 export function calcPrestigeReward(state: GameState): number {
-  if (state.totalEarned < 500000) return 0
-  let reward = Math.floor(Math.sqrt(state.totalEarned / PRESTIGE_DIVISOR))
+  if (state.totalEarned < 2000000) return 0
+  let reward = Math.floor(Math.pow(state.totalEarned / PRESTIGE_DIVISOR, PRESTIGE_EXPONENT))
   // Apply prestige research bonuses
   for (const [rid, bonus] of Object.entries(PRESTIGE_RESEARCH_BONUS)) {
     if (state.research.has(rid)) reward = Math.floor(reward * bonus)
