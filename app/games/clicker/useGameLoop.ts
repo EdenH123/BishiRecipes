@@ -9,10 +9,13 @@ import {
   getCritInfo, getComboMultiplier, getGeneratorCost, getGeneratorIncome,
   getTotalGenerators, calcOfflineEarnings, getMaxAffordable, getGeneratorBulkCost,
   startChallenge, abandonChallenge, checkChallengeComplete, canBuyGeneratorInChallenge,
+  buyRepeatableUpgrade, getRepeatableCost, isGeneratorUnlocked,
+  checkStoryMessage, getDailyBonus, claimDailyBonus, hasAutoBuy, autoBuyBest,
+  getPrestigeMilestoneMult,
 } from './gameEngine'
 import {
-  GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES,
-  AUTO_SAVE_INTERVAL, COMBO_DECAY_MS,
+  GENERATORS, UPGRADES, REPEATABLE_UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES,
+  AUTO_SAVE_INTERVAL, COMBO_DECAY_MS, AUTO_BUY_INTERVAL, PRESTIGE_MILESTONES, GENERATOR_MAX_COUNT,
   GOLDEN_MIN_INTERVAL, GOLDEN_MAX_INTERVAL, GOLDEN_DURATION, GOLDEN_REWARD_CPS_SECONDS,
   PRESTIGE_UNLOCK_EARNED, EVENT_RESEARCH_FREQUENCY,
 } from './gameConfig'
@@ -47,6 +50,21 @@ export interface GameUI {
   challengeCompleted: string | null  // just-completed challenge id for popup
   dismissChallengeComplete: () => void
   canBuyGen: (id: string) => boolean
+  isGenUnlocked: (id: string) => boolean
+  // Repeatable
+  repeatableUpgrades: Record<string, number>
+  handleBuyRepeatable: (id: string) => void
+  getRepeatCost: (id: string) => number
+  // Daily
+  dailyAvailable: boolean; dailyAmount: number; dailyStreak: number
+  handleClaimDaily: () => void
+  // Story
+  storyMessage: { message: string; emoji: string } | null
+  dismissStory: () => void
+  // Auto-buy
+  autoBuyEnabled: boolean
+  // Purchase flash
+  lastPurchaseId: string | null
   dismissOffline: () => void; dismissAchievement: () => void; resetGame: () => void
   // Helpers
   getGenCost: (id: string) => number
@@ -66,6 +84,8 @@ export function useGameLoop(): GameUI {
   const [goldenActive, setGoldenActive] = useState(false)
   const [goldenTimer, setGoldenTimer] = useState(0)
   const [challengeCompleted, setChallengeCompleted] = useState<string | null>(null)
+  const [storyMessage, setStoryMessage] = useState<{ message: string; emoji: string } | null>(null)
+  const [lastPurchaseId, setLastPurchaseId] = useState<string | null>(null)
   const goldenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nextFloatId = useRef(0)
 
@@ -97,6 +117,8 @@ export function useGameLoop(): GameUI {
       if (newAch.length > 0) setNewAchievements(prev => [...prev, ...newAch])
       const chComplete = checkChallengeComplete(s)
       if (chComplete) setChallengeCompleted(chComplete)
+      const story = checkStoryMessage(s)
+      if (story) setStoryMessage(story)
       rerender()
     }, 100)
     return () => clearInterval(interval)
@@ -107,6 +129,16 @@ export function useGameLoop(): GameUI {
     const interval = setInterval(() => saveGame(stateRef.current), AUTO_SAVE_INTERVAL)
     return () => { clearInterval(interval); saveGame(stateRef.current) }
   }, [])
+
+  // Auto-buy interval
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (hasAutoBuy(stateRef.current)) {
+        if (autoBuyBest(stateRef.current)) rerender()
+      }
+    }, AUTO_BUY_INTERVAL)
+    return () => clearInterval(interval)
+  }, [rerender])
 
   // Golden dish event
   useEffect(() => {
@@ -144,13 +176,13 @@ export function useGameLoop(): GameUI {
   }, [rerender])
 
   const handleBuyGenerator = useCallback((id: string, count = 1) => {
-    if (buyGenerator(stateRef.current, id, count)) rerender()
+    if (buyGenerator(stateRef.current, id, count)) { setLastPurchaseId(id); setTimeout(() => setLastPurchaseId(null), 400); rerender() }
   }, [rerender])
 
   const handleBuyMaxGenerator = useCallback((id: string) => {
     const s = stateRef.current
     const max = getMaxAffordable(id, s.generators[id] || 0, s.coins, s)
-    if (max > 0 && buyGenerator(s, id, max)) rerender()
+    if (max > 0 && buyGenerator(s, id, max)) { setLastPurchaseId(id); setTimeout(() => setLastPurchaseId(null), 400); rerender() }
   }, [rerender])
 
   const handleBuyUpgrade = useCallback((id: string) => {
@@ -187,6 +219,20 @@ export function useGameLoop(): GameUI {
   const dismissChallengeComplete = useCallback(() => setChallengeCompleted(null), [])
 
   const canBuyGen = useCallback((id: string) => canBuyGeneratorInChallenge(stateRef.current, id), [])
+  const isGenUnlocked = useCallback((id: string) => isGeneratorUnlocked(stateRef.current, id), [])
+
+  const handleBuyRepeatable = useCallback((id: string) => {
+    if (buyRepeatableUpgrade(stateRef.current, id)) { setLastPurchaseId(id); setTimeout(() => setLastPurchaseId(null), 400); rerender() }
+  }, [rerender])
+
+  const getRepeatCost = useCallback((id: string) => getRepeatableCost(id, stateRef.current.repeatableUpgrades[id] || 0), [])
+
+  const handleClaimDaily = useCallback(() => {
+    const earned = claimDailyBonus(stateRef.current)
+    if (earned > 0) rerender()
+  }, [rerender])
+
+  const dismissStory = useCallback(() => setStoryMessage(null), [])
 
   const dismissOffline = useCallback(() => setOfflineEarnings(null), [])
   const dismissAchievement = useCallback(() => setNewAchievements(prev => prev.slice(1)), [])
@@ -215,10 +261,17 @@ export function useGameLoop(): GameUI {
     handleClick, handleBuyGenerator, handleBuyMaxGenerator, handleBuyUpgrade, handleBuyResearch,
     handlePrestige, handleGoldenClick,
     handleStartChallenge, handleAbandonChallenge, completedChallenges: s.completedChallenges,
-    activeChallenge: s.activeChallenge, challengeCompleted, dismissChallengeComplete, canBuyGen,
+    activeChallenge: s.activeChallenge, challengeCompleted, dismissChallengeComplete,
+    canBuyGen, isGenUnlocked,
+    repeatableUpgrades: s.repeatableUpgrades, handleBuyRepeatable, getRepeatCost,
+    dailyAvailable: getDailyBonus(s).available, dailyAmount: getDailyBonus(s).amount, dailyStreak: getDailyBonus(s).streak,
+    handleClaimDaily,
+    storyMessage, dismissStory,
+    autoBuyEnabled: hasAutoBuy(s),
+    lastPurchaseId,
     dismissOffline, dismissAchievement, resetGame,
     getGenCost, getGenBulkCost, getGenIncome, getGenMaxAffordable,
   }
 }
 
-export { GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES, PRESTIGE_UNLOCK_EARNED }
+export { GENERATORS, UPGRADES, REPEATABLE_UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES, PRESTIGE_UNLOCK_EARNED, PRESTIGE_MILESTONES, GENERATOR_MAX_COUNT }
