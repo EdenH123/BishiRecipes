@@ -88,6 +88,14 @@ export const STORY_MESSAGES: { totalEarned: number; message: string; emoji: stri
   { totalEarned: 1e15,       message: 'בישול מעבר לזמן ולמרחב!', emoji: '🌌' },
 ]
 
+export {
+  GENERATOR_EVOLUTIONS, COMBO_FREEZE_RESEARCH_ID, COMBO_FREEZE_DECAY_MULTIPLIER,
+  CRIT_STREAK_THRESHOLD, CRIT_STREAK_BONUS,
+  BOSSES, BOSS_MIN_INTERVAL, BOSS_MAX_INTERVAL,
+  GENERATOR_MILESTONES, getTimeOfDay, TIME_BACKGROUNDS, calcCompletionPercent,
+} from './advanced.config'
+export type { BossDef, GameNotification } from './advanced.config'
+
 // Auto-buy config (unlocked via research)
 export const AUTO_BUY_RESEARCH_ID = 'ra_auto'
 export const AUTO_BUY_INTERVAL = 2000

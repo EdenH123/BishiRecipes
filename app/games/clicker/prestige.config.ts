@@ -50,6 +50,7 @@ export const RESEARCH: ResearchDef[] = [
 
   // ── Automation Branch (continued) ──
   { id: 'ra_auto', name: 'קנייה אוטומטית', emoji: '🔄', description: 'קונה את ה-generator הכי יעיל אוטומטית', cost: 15, effect: { type: 'all_multiply', value: 1 }, branch: 'automation', unlockAtPrestige: 20, requires: 'ra3' },
+  { id: 'rv_freeze', name: 'הקפאת קומבו', emoji: '🧊', description: 'קומבו דועך לאט יותר (x2.5 זמן)', cost: 6, effect: { type: 'combo_power', value: 1 }, branch: 'events', unlockAtPrestige: 8, requires: 'rv2' },
 ]
 
 // ── Prestige Config ──
