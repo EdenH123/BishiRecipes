@@ -6,6 +6,7 @@ const SUFFIXES = [
 ]
 
 export function fmt(n: number): string {
+  if (!isFinite(n) || isNaN(n)) return '∞'
   if (n < 0) return '-' + fmt(-n)
   if (n < 1000) return n < 10 ? n.toFixed(1) : Math.floor(n).toString()
 
@@ -16,12 +17,16 @@ export function fmt(n: number): string {
     tier++
   }
 
+  // Fallback to scientific notation if still too large
+  if (scaled >= 1000) return n.toExponential(2)
+
   if (scaled >= 100) return Math.floor(scaled) + SUFFIXES[tier]
   if (scaled >= 10) return scaled.toFixed(1) + SUFFIXES[tier]
   return scaled.toFixed(2) + SUFFIXES[tier]
 }
 
 export function fmtInt(n: number): string {
+  if (!isFinite(n) || isNaN(n)) return '∞'
   if (n < 1000) return Math.floor(n).toString()
   return fmt(n)
 }

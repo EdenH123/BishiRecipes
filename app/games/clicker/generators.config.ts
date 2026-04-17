@@ -50,3 +50,4 @@ export const GENERATORS: GeneratorDef[] = [
 // Every 25 of a generator → 2x income multiplier to ALL generators below it
 export const SYNERGY_THRESHOLD = 25
 export const SYNERGY_MULTIPLIER = 2
+export const SYNERGY_MAX_TIERS = 5  // cap: max 5 synergy tiers per generator (x32 max)

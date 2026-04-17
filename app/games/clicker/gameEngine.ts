@@ -4,7 +4,7 @@
 
 import {
   GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES,
-  SYNERGY_THRESHOLD, SYNERGY_MULTIPLIER,
+  SYNERGY_THRESHOLD, SYNERGY_MULTIPLIER, SYNERGY_MAX_TIERS,
   PRESTIGE_DIVISOR, PRESTIGE_EXPONENT, PRESTIGE_RESEARCH_BONUS,
   MAX_OFFLINE_SECONDS, BASE_OFFLINE_RATE,
   SAVE_KEY, COMBO_BASE_POWER, COMBO_MAX,
@@ -179,7 +179,7 @@ function getSynergyMult(state: GameState, genId: string): number {
   let mult = 1
   for (let i = idx + 1; i < GENERATORS.length; i++) {
     const count = state.generators[GENERATORS[i].id] || 0
-    const tiers = Math.floor(count / SYNERGY_THRESHOLD)
+    const tiers = Math.min(Math.floor(count / SYNERGY_THRESHOLD), SYNERGY_MAX_TIERS)
     mult *= Math.pow(SYNERGY_MULTIPLIER, tiers)
   }
   return mult

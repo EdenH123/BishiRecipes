@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════
 
 // Re-export all config modules
-export { GENERATORS, SYNERGY_THRESHOLD, SYNERGY_MULTIPLIER } from './generators.config'
+export { GENERATORS, SYNERGY_THRESHOLD, SYNERGY_MULTIPLIER, SYNERGY_MAX_TIERS } from './generators.config'
 export type { GeneratorDef } from './generators.config'
 
 export { UPGRADES } from './upgrades.config'
