@@ -612,3 +612,14 @@ export function autoBuyBest(state: GameState): boolean {
   if (bestId) return buyGenerator(state, bestId, 1)
   return false
 }
+
+// ── Prestige Skin ──
+
+export function getCurrentSkin(state: GameState): { emoji: string; label: string } {
+  const { PRESTIGE_SKINS } = require('./gameConfig')
+  let best = PRESTIGE_SKINS[0]
+  for (const skin of PRESTIGE_SKINS) {
+    if (state.prestigeCount >= skin.minPrestige) best = skin
+  }
+  return best
+}

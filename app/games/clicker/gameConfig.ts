@@ -90,4 +90,52 @@ export const STORY_MESSAGES: { totalEarned: number; message: string; emoji: stri
 
 // Auto-buy config (unlocked via research)
 export const AUTO_BUY_RESEARCH_ID = 'ra_auto'
-export const AUTO_BUY_INTERVAL = 2000  // buy every 2 seconds
+export const AUTO_BUY_INTERVAL = 2000
+
+// Boost ability
+export const BOOST_DURATION = 30000      // 30 seconds
+export const BOOST_COOLDOWN = 180000     // 3 minute cooldown
+export const BOOST_MULTIPLIER = 5        // x5 all income during boost
+
+// Prestige skins for the main click button
+export const PRESTIGE_SKINS: { minPrestige: number; emoji: string; label: string }[] = [
+  { minPrestige: 0,  emoji: '🍳', label: 'מחבת' },
+  { minPrestige: 2,  emoji: '🥘', label: 'סיר גורמה' },
+  { minPrestige: 5,  emoji: '🍲', label: 'קדירה מלכותית' },
+  { minPrestige: 10, emoji: '🔱', label: 'שלשול הזהב' },
+  { minPrestige: 20, emoji: '👑', label: 'כתר השף' },
+  { minPrestige: 50, emoji: '💎', label: 'יהלום קולינרי' },
+]
+
+// Synergy names (shown when reaching threshold)
+export const SYNERGY_NAMES: string[] = [
+  'שותפות מטבח!',
+  'קומבינציה מנצחת!',
+  'סינרג׳י מושלם!',
+  'כוח משולב!',
+  'אימפריה מאוחדת!',
+]
+
+// Mini quests (rotate daily)
+export interface MiniQuest {
+  id: string
+  description: string
+  emoji: string
+  type: 'clicks' | 'earn' | 'buy_generators' | 'combo'
+  target: number
+  rewardCoins: number  // multiplier of current CPS * 60
+}
+
+export const MINI_QUESTS: MiniQuest[] = [
+  { id: 'q_click50',  description: '50 לחיצות',          emoji: '👆', type: 'clicks',         target: 50,     rewardCoins: 120 },
+  { id: 'q_click200', description: '200 לחיצות',         emoji: '🖱️', type: 'clicks',         target: 200,    rewardCoins: 300 },
+  { id: 'q_earn10k',  description: 'הרווח 10K',          emoji: '💰', type: 'earn',           target: 10000,  rewardCoins: 60 },
+  { id: 'q_earn1m',   description: 'הרווח 1M',           emoji: '💎', type: 'earn',           target: 1000000, rewardCoins: 180 },
+  { id: 'q_buy5',     description: 'קנה 5 עסקים',        emoji: '🏪', type: 'buy_generators', target: 5,      rewardCoins: 90 },
+  { id: 'q_buy20',    description: 'קנה 20 עסקים',       emoji: '🏢', type: 'buy_generators', target: 20,     rewardCoins: 240 },
+  { id: 'q_combo15',  description: 'הגע לקומבו 15',      emoji: '🔥', type: 'combo',          target: 15,     rewardCoins: 150 },
+  { id: 'q_combo30',  description: 'הגע לקומבו 30',      emoji: '💥', type: 'combo',          target: 30,     rewardCoins: 300 },
+]
+
+// Secret achievements (added to achievements config but shown separately)
+export const SECRET_ACHIEVEMENT_IDS = ['cb_50', 'ct_1k']

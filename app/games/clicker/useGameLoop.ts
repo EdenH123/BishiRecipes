@@ -11,11 +11,12 @@ import {
   startChallenge, abandonChallenge, checkChallengeComplete, canBuyGeneratorInChallenge,
   buyRepeatableUpgrade, getRepeatableCost, isGeneratorUnlocked,
   checkStoryMessage, getDailyBonus, claimDailyBonus, hasAutoBuy, autoBuyBest,
-  getPrestigeMilestoneMult,
+  getPrestigeMilestoneMult, getCurrentSkin,
 } from './gameEngine'
 import {
   GENERATORS, UPGRADES, REPEATABLE_UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES,
   AUTO_SAVE_INTERVAL, COMBO_DECAY_MS, AUTO_BUY_INTERVAL, PRESTIGE_MILESTONES, GENERATOR_MAX_COUNT,
+  BOOST_DURATION, BOOST_COOLDOWN, BOOST_MULTIPLIER, PRESTIGE_SKINS, MINI_QUESTS,
   GOLDEN_MIN_INTERVAL, GOLDEN_MAX_INTERVAL, GOLDEN_DURATION, GOLDEN_REWARD_CPS_SECONDS,
   PRESTIGE_UNLOCK_EARNED, EVENT_RESEARCH_FREQUENCY,
 } from './gameConfig'
@@ -63,8 +64,16 @@ export interface GameUI {
   dismissStory: () => void
   // Auto-buy
   autoBuyEnabled: boolean
-  // Purchase flash
   lastPurchaseId: string | null
+  // Boost
+  boostActive: boolean; boostCooldown: boolean
+  handleBoost: () => void
+  // Skin
+  currentSkin: { emoji: string; label: string }
+  // Quest
+  activeQuest: typeof MINI_QUESTS[0] | null
+  questProgress: number
+  handleClaimQuest: () => void
   dismissOffline: () => void; dismissAchievement: () => void; resetGame: () => void
   // Helpers
   getGenCost: (id: string) => number
@@ -86,6 +95,11 @@ export function useGameLoop(): GameUI {
   const [challengeCompleted, setChallengeCompleted] = useState<string | null>(null)
   const [storyMessage, setStoryMessage] = useState<{ message: string; emoji: string } | null>(null)
   const [lastPurchaseId, setLastPurchaseId] = useState<string | null>(null)
+  const [boostActive, setBoostActive] = useState(false)
+  const [boostCooldown, setBoostCooldown] = useState(false)
+  const boostMultRef = useRef(1)
+  const [activeQuestIdx] = useState(() => Math.floor(Math.random() * MINI_QUESTS.length))
+  const questStartRef = useRef({ clicks: 0, earned: 0, gens: 0 })
   const goldenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nextFloatId = useRef(0)
 
@@ -93,6 +107,7 @@ export function useGameLoop(): GameUI {
   useEffect(() => {
     const { state, offlineSeconds } = loadGame()
     stateRef.current = state
+    questStartRef.current = { clicks: state.totalClicks, earned: state.totalEarned, gens: Object.values(state.generators).reduce((a, b) => a + b, 0) }
     if (offlineSeconds > 5) {
       const earned = calcOfflineEarnings(state, offlineSeconds)
       if (earned > 0) {
@@ -108,7 +123,8 @@ export function useGameLoop(): GameUI {
   useEffect(() => {
     const interval = setInterval(() => {
       const s = stateRef.current
-      tick(s, 100)
+      const earned = tick(s, 100)
+      if (boostMultRef.current > 1) { const extra = earned * (boostMultRef.current - 1); s.coins += extra; s.totalEarned += extra }
       // Combo decay
       if (s.combo > 0 && Date.now() - s.lastClickTime > COMBO_DECAY_MS) {
         s.combo = 0
@@ -234,6 +250,40 @@ export function useGameLoop(): GameUI {
 
   const dismissStory = useCallback(() => setStoryMessage(null), [])
 
+  const handleBoost = useCallback(() => {
+    if (boostActive || boostCooldown) return
+    setBoostActive(true)
+    boostMultRef.current = BOOST_MULTIPLIER
+    setTimeout(() => {
+      setBoostActive(false)
+      boostMultRef.current = 1
+      setBoostCooldown(true)
+      setTimeout(() => setBoostCooldown(false), BOOST_COOLDOWN)
+    }, BOOST_DURATION)
+  }, [boostActive, boostCooldown])
+
+  const activeQuest = MINI_QUESTS[activeQuestIdx]
+  const getQuestProgress = useCallback(() => {
+    const s = stateRef.current
+    const start = questStartRef.current
+    if (!activeQuest) return 0
+    switch (activeQuest.type) {
+      case 'clicks': return s.totalClicks - start.clicks
+      case 'earn': return s.totalEarned - start.earned
+      case 'buy_generators': return Object.values(s.generators).reduce((a, b) => a + b, 0) - start.gens
+      case 'combo': return s.stats.bestCombo
+    }
+  }, [activeQuest])
+
+  const handleClaimQuest = useCallback(() => {
+    if (getQuestProgress() < activeQuest.target) return
+    const s = stateRef.current
+    const reward = getTotalCPS(s) * 60 * (activeQuest.rewardCoins / 60)
+    s.coins += reward; s.totalEarned += reward
+    questStartRef.current = { clicks: s.totalClicks, earned: s.totalEarned, gens: Object.values(s.generators).reduce((a, b) => a + b, 0) }
+    rerender()
+  }, [activeQuest, getQuestProgress, rerender])
+
   const dismissOffline = useCallback(() => setOfflineEarnings(null), [])
   const dismissAchievement = useCallback(() => setNewAchievements(prev => prev.slice(1)), [])
   const resetGame = useCallback(() => {
@@ -269,9 +319,12 @@ export function useGameLoop(): GameUI {
     storyMessage, dismissStory,
     autoBuyEnabled: hasAutoBuy(s),
     lastPurchaseId,
+    boostActive, boostCooldown, handleBoost,
+    currentSkin: getCurrentSkin(s),
+    activeQuest, questProgress: getQuestProgress(), handleClaimQuest,
     dismissOffline, dismissAchievement, resetGame,
     getGenCost, getGenBulkCost, getGenIncome, getGenMaxAffordable,
   }
 }
 
-export { GENERATORS, UPGRADES, REPEATABLE_UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES, PRESTIGE_UNLOCK_EARNED, PRESTIGE_MILESTONES, GENERATOR_MAX_COUNT }
+export { GENERATORS, UPGRADES, REPEATABLE_UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES, PRESTIGE_UNLOCK_EARNED, PRESTIGE_MILESTONES, GENERATOR_MAX_COUNT, PRESTIGE_SKINS, MINI_QUESTS }

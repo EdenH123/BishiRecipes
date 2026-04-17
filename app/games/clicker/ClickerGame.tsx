@@ -318,7 +318,7 @@ export default function ClickerGame() {
                 animate={g.combo > 20 ? { rotate: [0, -3, 3, 0] } : {}}
                 transition={{ duration: 0.3, repeat: Infinity }}
               >
-                🍳
+                {g.currentSkin.emoji}
               </motion.span>
 
               {/* Inner shine */}
@@ -379,6 +379,40 @@ export default function ClickerGame() {
             <p className="text-amber-500/25 text-[9px] mt-2">
               ⚡ קריטי: {Math.round(g.critChance * 100)}% · x{g.critMultiplier}
             </p>
+          )}
+
+          {/* Boost button */}
+          <motion.button
+            onClick={g.handleBoost}
+            disabled={g.boostActive || g.boostCooldown}
+            whileTap={{ scale: 0.9 }}
+            animate={g.boostActive ? { borderColor: ['rgba(234,179,8,0.5)', 'rgba(234,179,8,1)', 'rgba(234,179,8,0.5)'] } : {}}
+            transition={g.boostActive ? { duration: 1, repeat: Infinity } : {}}
+            className={`mt-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+              g.boostActive ? 'bg-yellow-600/30 border border-yellow-500/50 text-yellow-200' :
+              g.boostCooldown ? 'bg-amber-950/20 border border-amber-900/10 text-amber-600/30' :
+              'bg-amber-800/25 border border-amber-600/30 text-amber-300 active:scale-95'
+            }`}
+          >
+            {g.boostActive ? '🚀 x5 פעיל!' : g.boostCooldown ? '⏳ מתקרר...' : '🚀 בוסט x5'}
+          </motion.button>
+
+          {/* Quest indicator */}
+          {g.activeQuest && g.cps > 0 && (
+            <div className="mt-2 w-56">
+              <div className="flex items-center justify-between text-[9px] px-1">
+                <span className="text-amber-400/40">{g.activeQuest.emoji} {g.activeQuest.description}</span>
+                <span className="text-amber-500/30">{Math.min(g.questProgress, g.activeQuest.target)}/{g.activeQuest.target}</span>
+              </div>
+              <div className="h-1 mt-0.5 rounded-full bg-amber-900/20 overflow-hidden">
+                <div className="h-full bg-amber-500/40 rounded-full transition-all" style={{ width: `${Math.min(g.questProgress / g.activeQuest.target * 100, 100)}%` }} />
+              </div>
+              {g.questProgress >= g.activeQuest.target && (
+                <button onClick={g.handleClaimQuest} className="mt-1 w-full text-[10px] bg-green-800/30 text-green-300 rounded py-1 font-bold active:scale-95">
+                  🎁 אסוף תגמול!
+                </button>
+              )}
+            </div>
           )}
         </div>
 
