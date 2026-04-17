@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGameLoop, GENERATORS, UPGRADES, REPEATABLE_UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES, PRESTIGE_UNLOCK_EARNED, PRESTIGE_MILESTONES, GENERATOR_MAX_COUNT } from './useGameLoop'
@@ -15,6 +15,44 @@ export default function ClickerGame() {
   const g = useGameLoop()
   const [tab, setTab] = useState<Tab>('generators')
   const [buyAmt, setBuyAmt] = useState<BuyAmount>(1)
+  const [screenShake, setScreenShake] = useState(false)
+  const [showPrestigeAnim, setShowPrestigeAnim] = useState(false)
+  const [particles, setParticles] = useState<{ id: number; x: number; y: number; vx: number; vy: number; emoji: string }[]>([])
+  const particleId = useRef(0)
+
+  // Flavor text rotation
+  const FLAVOR_TEXTS = ['💡 טיפ: קומבו מהיר מכפיל הכנסה', '🧆 ידעת? פלאפל הוא המאכל הלאומי', '⭐ כוכבי מישלן = כוח לצמיתות', '🔥 קריטי = ג׳קפוט!', '🌙 גם כשאתה ישן, המטבח עובד', '🎯 אתגרים נותנים בונוסים קבועים', '💪 שדרוגים חוזרים = כוח אינסופי', '🔄 פרסטיג = התחלה חדשה וחזקה']
+  const [flavorIdx, setFlavorIdx] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => setFlavorIdx(i => (i + 1) % FLAVOR_TEXTS.length), 8000)
+    return () => clearInterval(interval)
+  }, [FLAVOR_TEXTS.length])
+
+  // Vibrate helper
+  const vibrate = useCallback((ms: number) => {
+    try { navigator?.vibrate?.(ms) } catch {}
+  }, [])
+
+  // Spawn particles from click
+  const spawnParticles = useCallback((x: number, y: number, isCrit: boolean) => {
+    const count = isCrit ? 12 : 5
+    const emojis = isCrit ? ['⭐', '✨', '💥', '🔥'] : ['🍳', '🔥', '✨']
+    const newP = Array.from({ length: count }, () => ({
+      id: particleId.current++,
+      x, y,
+      vx: (Math.random() - 0.5) * (isCrit ? 8 : 4),
+      vy: -2 - Math.random() * (isCrit ? 6 : 3),
+      emoji: emojis[Math.floor(Math.random() * emojis.length)],
+    }))
+    setParticles(prev => [...prev.slice(-20), ...newP])
+  }, [])
+
+  // Particle cleanup
+  useEffect(() => {
+    if (particles.length === 0) return
+    const timer = setTimeout(() => setParticles(prev => prev.slice(Math.min(5, prev.length))), 600)
+    return () => clearTimeout(timer)
+  }, [particles])
 
   // ── Floating texts ──
   const floats = (
@@ -104,8 +142,48 @@ export default function ClickerGame() {
   const showPrestige = g.totalEarned >= PRESTIGE_UNLOCK_EARNED || g.prestigeCount > 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a0f00] via-[#2a1500] to-[#1a0a00] font-rubik select-none" dir="rtl">
+    <motion.div
+      animate={screenShake ? { x: [0, -3, 3, -2, 2, 0], y: [0, -2, 2, -1, 0] } : {}}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen bg-gradient-to-b from-[#1a0f00] via-[#2a1500] to-[#1a0a00] font-rubik select-none" dir="rtl">
+
+      {/* Particles layer */}
+      <div className="fixed inset-0 pointer-events-none z-50">
+        <AnimatePresence>
+          {particles.map(p => (
+            <motion.span key={p.id}
+              initial={{ x: p.x - 10, y: p.y - 10, opacity: 1, scale: 1 }}
+              animate={{ x: p.x + p.vx * 30, y: p.y + p.vy * 30, opacity: 0, scale: 0.3 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.7, ease: 'easeOut' }}
+              className="absolute text-lg pointer-events-none"
+            >{p.emoji}</motion.span>
+          ))}
+        </AnimatePresence>
+      </div>
       {floats}{offlineModal}<AnimatePresence>{achPopup}</AnimatePresence>{golden}
+
+      {/* Prestige animation */}
+      <AnimatePresence>
+        {showPrestigeAnim && (
+          <motion.div key="prestige-anim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+            {Array.from({ length: 30 }).map((_, i) => (
+              <motion.span key={i}
+                initial={{ x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 400), y: -30, rotate: 0, opacity: 1 }}
+                animate={{ y: (typeof window !== 'undefined' ? window.innerHeight : 800) + 50, rotate: Math.random() * 720 - 360, opacity: [1, 1, 0] }}
+                transition={{ duration: 1.5 + Math.random(), delay: Math.random() * 0.8, ease: 'easeIn' }}
+                className="absolute text-2xl"
+              >⭐</motion.span>
+            ))}
+            <motion.p initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 1.3, 1], opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 2, times: [0, 0.3, 0.7, 1] }}
+              className="absolute top-1/3 left-0 right-0 text-center text-4xl font-bold text-yellow-300 drop-shadow-lg">
+              ⭐ פרסטיג! ⭐
+            </motion.p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Story message toast */}
       <AnimatePresence>
@@ -220,7 +298,14 @@ export default function ClickerGame() {
               transition={{ type: 'spring', stiffness: 500, damping: 15 }}
               onTap={(e) => {
                 const pe = e as unknown as PointerEvent
-                g.handleClick(pe.clientX ?? window.innerWidth / 2, pe.clientY ?? window.innerHeight / 3)
+                const cx = pe.clientX ?? window.innerWidth / 2
+                const cy = pe.clientY ?? window.innerHeight / 3
+                g.handleClick(cx, cy)
+                vibrate(15)
+                // Check if last click was crit (hacky but works - check if float text has isCrit)
+                const isCrit = g.critChance > 0 && Math.random() < g.critChance
+                spawnParticles(cx, cy, isCrit)
+                if (isCrit) { setScreenShake(true); setTimeout(() => setScreenShake(false), 300) }
               }}
               className="relative w-36 h-36 rounded-full flex items-center justify-center"
               style={{
@@ -577,7 +662,7 @@ export default function ClickerGame() {
               <div className="bg-purple-900/10 border border-purple-800/20 rounded-xl p-4 text-center">
                 <p className="text-purple-300/50 text-xs mb-2">אפס התקדמות ← כוכבי מישלן קבועים</p>
                 <p className="text-lg font-bold text-purple-200 mb-3">{g.canPrestige ? `+${fmtInt(g.prestigeReward)} ⭐` : `צריך ${fmt(PRESTIGE_UNLOCK_EARNED)} סה"כ`}</p>
-                <button onClick={() => { if (confirm('לאפס תמורת כוכבי מישלן? עסקים ושדרוגים יאופסו, מחקרים נשארים.')) g.handlePrestige() }}
+                <button onClick={() => { if (confirm('לאפס תמורת כוכבי מישלן? עסקים ושדרוגים יאופסו, מחקרים נשארים.')) { g.handlePrestige(); setShowPrestigeAnim(true); vibrate(100); setTimeout(() => setShowPrestigeAnim(false), 2500) } }}
                   disabled={!g.canPrestige}
                   className={`w-full py-3 rounded-xl font-bold transition-all ${g.canPrestige ? 'bg-purple-600 text-white active:scale-95' : 'bg-purple-900/20 text-purple-600/30'}`}>
                   פרסטיג!
@@ -679,7 +764,18 @@ export default function ClickerGame() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Flavor text */}
+        <AnimatePresence mode="wait">
+          <motion.p key={flavorIdx}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="text-center text-[10px] text-amber-600/25 mt-6 pb-4">
+            {FLAVOR_TEXTS[flavorIdx]}
+          </motion.p>
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   )
 }
