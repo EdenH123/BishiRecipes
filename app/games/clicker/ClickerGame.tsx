@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useGameLoop, GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES, PRESTIGE_UNLOCK_EARNED } from './useGameLoop'
+import { useGameLoop, GENERATORS, UPGRADES, REPEATABLE_UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES, PRESTIGE_UNLOCK_EARNED, PRESTIGE_MILESTONES, GENERATOR_MAX_COUNT } from './useGameLoop'
 import { SYNERGY_THRESHOLD } from './gameConfig'
 import { fmt, fmtInt, fmtTime } from './formatNumber'
 
@@ -98,7 +98,7 @@ export default function ClickerGame() {
   const showTutorial = g.totalClicks < 5 && g.totalEarned === 0
 
   // ── Visibility filters ──
-  const visGens = GENERATORS.filter(gen => g.totalEarned >= gen.unlockAt || (g.generators[gen.id] || 0) > 0)
+  const visGens = GENERATORS.filter(gen => g.isGenUnlocked(gen.id))
   const visUpgrades = UPGRADES.filter(u => !g.upgrades.has(u.id) && g.totalEarned >= u.unlockAt * 0.5 && (!u.requires || g.upgrades.has(u.requires)))
   const boughtUpgrades = UPGRADES.filter(u => g.upgrades.has(u.id))
   const showPrestige = g.totalEarned >= PRESTIGE_UNLOCK_EARNED || g.prestigeCount > 0
@@ -106,6 +106,20 @@ export default function ClickerGame() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#1a0f00] via-[#2a1500] to-[#1a0a00] font-rubik select-none" dir="rtl">
       {floats}{offlineModal}<AnimatePresence>{achPopup}</AnimatePresence>{golden}
+
+      {/* Story message toast */}
+      <AnimatePresence>
+        {g.storyMessage && (
+          <motion.div key="story" initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
+            onClick={g.dismissStory}
+            className="fixed bottom-28 left-4 right-4 z-50 mx-auto max-w-sm cursor-pointer">
+            <div className="bg-[#2a1a0a] border border-amber-500/30 rounded-2xl p-4 flex items-center gap-3 shadow-xl">
+              <span className="text-3xl">{g.storyMessage.emoji}</span>
+              <p className="text-sm text-amber-200 font-bold flex-1">{g.storyMessage.message}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Challenge complete popup */}
       <AnimatePresence>
@@ -324,12 +338,16 @@ export default function ClickerGame() {
                 const owned = g.generators[gen.id] || 0
                 const count = buyAmt === 'max' ? g.getGenMaxAffordable(gen.id) : (buyAmt as number)
                 const cost = buyAmt === 'max' ? (count > 0 ? g.getGenBulkCost(gen.id, count) : g.getGenCost(gen.id)) : g.getGenBulkCost(gen.id, count)
-                const canAfford = g.coins >= cost && count > 0 && g.canBuyGen(gen.id)
+                const atCap = owned >= GENERATOR_MAX_COUNT
+                const canAfford = !atCap && g.coins >= cost && count > 0 && g.canBuyGen(gen.id)
                 const income = g.getGenIncome(gen.id)
-                const synergyTiers = Math.floor(owned / SYNERGY_THRESHOLD)
+                const synergyTiers = Math.min(Math.floor(owned / SYNERGY_THRESHOLD), 5)
                 const nextSynergy = SYNERGY_THRESHOLD - (owned % SYNERGY_THRESHOLD)
+                const justBought = g.lastPurchaseId === gen.id
                 return (
                   <motion.button key={gen.id} disabled={!canAfford}
+                    animate={justBought ? { borderColor: ['rgba(34,197,94,0.6)', 'rgba(217,119,6,0.25)'] } : {}}
+                    transition={{ duration: 0.4 }}
                     whileTap={canAfford ? { scale: 0.97 } : {}}
                     onClick={() => buyAmt === 'max' ? g.handleBuyMaxGenerator(gen.id) : g.handleBuyGenerator(gen.id, buyAmt as number)}
                     className={`w-full flex items-center gap-3 rounded-2xl p-3.5 text-right transition-all ${canAfford ? 'bg-amber-900/25 border border-amber-700/25 hover:bg-amber-900/35' : 'bg-amber-950/15 border border-amber-900/10 opacity-40'}`}>
@@ -366,8 +384,14 @@ export default function ClickerGame() {
                       )}
                     </div>
                     <div className="text-left shrink-0">
-                      <p className={`text-sm font-bold tabular-nums ${canAfford ? 'text-amber-300' : 'text-amber-600'}`}>{fmt(cost)}</p>
-                      <p className="text-[9px] text-amber-500/30">{buyAmt === 'max' ? (count > 0 ? `x${count}` : '') : buyAmt !== 1 ? `x${buyAmt}` : ''}</p>
+                      {atCap ? (
+                        <p className="text-xs text-amber-500/40 font-bold">MAX</p>
+                      ) : (
+                        <>
+                          <p className={`text-sm font-bold tabular-nums ${canAfford ? 'text-amber-300' : 'text-amber-600'}`}>{fmt(cost)}</p>
+                          <p className="text-[9px] text-amber-500/30">{buyAmt === 'max' ? (count > 0 ? `x${count}` : '') : buyAmt !== 1 ? `x${buyAmt}` : ''}</p>
+                        </>
+                      )}
                     </div>
                   </motion.button>
                 )
@@ -421,6 +445,52 @@ export default function ClickerGame() {
                           <span key={u.id} className="text-lg opacity-80 hover:opacity-100 transition-opacity" title={`${u.name}: ${u.description}`}>{u.emoji}</span>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Repeatable upgrades */}
+                  {REPEATABLE_UPGRADES.filter(rp => g.totalEarned >= rp.unlockAt).length > 0 && (
+                    <div className="pt-3 border-t border-amber-900/15">
+                      <p className="text-[10px] text-amber-500/30 font-bold mb-1.5 px-1">🔄 שדרוגים חוזרים</p>
+                      <div className="space-y-1.5">
+                        {REPEATABLE_UPGRADES.filter(rp => g.totalEarned >= rp.unlockAt).map(rp => {
+                          const level = g.repeatableUpgrades[rp.id] || 0
+                          const maxed = level >= rp.maxLevel
+                          const cost = g.getRepeatCost(rp.id)
+                          const canAfford = !maxed && g.coins >= cost
+                          return (
+                            <motion.button key={rp.id} onClick={() => g.handleBuyRepeatable(rp.id)} disabled={!canAfford && !maxed}
+                              whileTap={canAfford ? { scale: 0.97 } : {}}
+                              className={`w-full flex items-center gap-3 rounded-2xl p-3 text-right transition-all ${maxed ? 'bg-green-900/10 border border-green-700/15' : canAfford ? 'bg-amber-900/15 border border-amber-700/20 hover:bg-amber-900/25' : 'bg-amber-950/10 border border-amber-900/8 opacity-40'}`}>
+                              <span className="text-2xl">{rp.emoji}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-bold text-amber-100 truncate">{rp.name}</p>
+                                  <span className="text-[10px] bg-amber-700/30 text-amber-200 px-1.5 py-0.5 rounded font-bold">{level}/{rp.maxLevel}</span>
+                                </div>
+                                <p className="text-[10px] text-amber-400/35">{rp.description}</p>
+                              </div>
+                              {maxed ? <span className="text-green-400 text-xs">MAX</span> : <p className={`text-sm font-bold shrink-0 tabular-nums ${canAfford ? 'text-amber-300' : 'text-amber-600'}`}>{fmt(cost)}</p>}
+                            </motion.button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Daily bonus */}
+                  {g.dailyAmount > 0 && (
+                    <div className="pt-3 border-t border-amber-900/15">
+                      <motion.button
+                        onClick={g.handleClaimDaily}
+                        disabled={!g.dailyAvailable}
+                        animate={g.dailyAvailable ? { borderColor: ['rgba(234,179,8,0.3)', 'rgba(234,179,8,0.6)', 'rgba(234,179,8,0.3)'] } : {}}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className={`w-full rounded-2xl p-4 text-center transition-all ${g.dailyAvailable ? 'bg-yellow-900/20 border border-yellow-600/30' : 'bg-amber-950/10 border border-amber-900/10 opacity-40'}`}>
+                        <p className="text-lg mb-1">🎁</p>
+                        <p className="text-sm font-bold text-yellow-200">{g.dailyAvailable ? 'בונוס יומי!' : 'בונוס יומי (נאסף)'}</p>
+                        <p className="text-xs text-yellow-300/50">+{fmt(g.dailyAmount)} 🪙 {g.dailyStreak > 0 && `(סטריק: ${g.dailyStreak} ימים)`}</p>
+                      </motion.button>
                     </div>
                   )}
                 </>
@@ -545,6 +615,31 @@ export default function ClickerGame() {
                       </div>
                     )
                   })}
+                </div>
+              )}
+
+              {/* Prestige milestones */}
+              <div>
+                <p className="text-purple-300/50 text-xs mb-2 font-bold">🏅 אבני דרך</p>
+                <div className="flex flex-wrap gap-2">
+                  {PRESTIGE_MILESTONES.map(m => {
+                    const reached = g.prestigeCount >= m.count
+                    return (
+                      <div key={m.count} className={`rounded-xl px-3 py-2 text-center ${reached ? 'bg-purple-800/20 border border-purple-600/20' : 'bg-purple-950/10 border border-purple-900/10 opacity-30'}`}>
+                        <span className="text-lg">{m.emoji}</span>
+                        <p className="text-[9px] text-purple-300/50 mt-0.5">{m.label}</p>
+                        <p className="text-[8px] text-purple-400/30">פרסטיג x{m.count}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Auto-buy indicator */}
+              {g.autoBuyEnabled && (
+                <div className="bg-green-900/15 border border-green-700/20 rounded-xl p-3 text-center">
+                  <p className="text-green-300/60 text-xs">🔄 קנייה אוטומטית פעילה</p>
+                  <p className="text-[10px] text-green-400/40">קונה את העסק הכי יעיל כל 2 שניות</p>
                 </div>
               )}
             </motion.div>
