@@ -17,6 +17,11 @@ import {
   GENERATORS, UPGRADES, REPEATABLE_UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES,
   AUTO_SAVE_INTERVAL, COMBO_DECAY_MS, AUTO_BUY_INTERVAL, PRESTIGE_MILESTONES, GENERATOR_MAX_COUNT,
   BOOST_DURATION, BOOST_COOLDOWN, BOOST_MULTIPLIER, PRESTIGE_SKINS, MINI_QUESTS,
+  COMBO_FREEZE_RESEARCH_ID, COMBO_FREEZE_DECAY_MULTIPLIER,
+  CRIT_STREAK_THRESHOLD, CRIT_STREAK_BONUS,
+  BOSSES, BOSS_MIN_INTERVAL, BOSS_MAX_INTERVAL,
+  GENERATOR_EVOLUTIONS, GENERATOR_MILESTONES,
+  getTimeOfDay, TIME_BACKGROUNDS, calcCompletionPercent,
   GOLDEN_MIN_INTERVAL, GOLDEN_MAX_INTERVAL, GOLDEN_DURATION, GOLDEN_REWARD_CPS_SECONDS,
   PRESTIGE_UNLOCK_EARNED, EVENT_RESEARCH_FREQUENCY,
 } from './gameConfig'
@@ -68,12 +73,21 @@ export interface GameUI {
   // Boost
   boostActive: boolean; boostCooldown: boolean
   handleBoost: () => void
-  // Skin
   currentSkin: { emoji: string; label: string }
-  // Quest
   activeQuest: typeof MINI_QUESTS[0] | null
   questProgress: number
   handleClaimQuest: () => void
+  // Boss
+  bossActive: boolean; bossEmoji: string; bossName: string
+  bossClicksLeft: number; bossTimer: number
+  handleBossClick: () => void
+  // Advanced
+  critStreak: number
+  gameNotifications: string[]
+  dismissNotification: () => void
+  completionPercent: number
+  bgGradient: string
+  getGenEvolution: (id: string) => { name: string; emoji: string } | null
   dismissOffline: () => void; dismissAchievement: () => void; resetGame: () => void
   // Helpers
   getGenCost: (id: string) => number
@@ -100,6 +114,18 @@ export function useGameLoop(): GameUI {
   const boostMultRef = useRef(1)
   const [activeQuestIdx] = useState(() => Math.floor(Math.random() * MINI_QUESTS.length))
   const questStartRef = useRef({ clicks: 0, earned: 0, gens: 0 })
+  // Boss
+  const [bossActive, setBossActive] = useState(false)
+  const [bossIdx, setBossIdx] = useState(0)
+  const [bossClicks, setBossClicks] = useState(0)
+  const [bossTimer, setBossTimer] = useState(0)
+  const bossTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Crit streak
+  const critStreakRef = useRef(0)
+  const [critStreak, setCritStreak] = useState(0)
+  // Notifications
+  const [gameNotifications, setGameNotifications] = useState<string[]>([])
+  const shownMilestonesRef = useRef(new Set<string>())
   const goldenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nextFloatId = useRef(0)
 
@@ -125,8 +151,9 @@ export function useGameLoop(): GameUI {
       const s = stateRef.current
       const earned = tick(s, 100)
       if (boostMultRef.current > 1) { const extra = earned * (boostMultRef.current - 1); s.coins += extra; s.totalEarned += extra }
-      // Combo decay
-      if (s.combo > 0 && Date.now() - s.lastClickTime > COMBO_DECAY_MS) {
+      // Combo decay (freeze research slows it)
+      const freezeMult = s.research.has(COMBO_FREEZE_RESEARCH_ID) ? COMBO_FREEZE_DECAY_MULTIPLIER : 1
+      if (s.combo > 0 && Date.now() - s.lastClickTime > COMBO_DECAY_MS * freezeMult) {
         s.combo = 0
       }
       const newAch = checkAchievements(s)
@@ -135,10 +162,40 @@ export function useGameLoop(): GameUI {
       if (chComplete) setChallengeCompleted(chComplete)
       const story = checkStoryMessage(s)
       if (story) setStoryMessage(story)
+      // Generator milestone notifications
+      for (const [genId, count] of Object.entries(s.generators)) {
+        for (const m of GENERATOR_MILESTONES) {
+          const key = `${genId}_${m}`
+          if (count >= m && !shownMilestonesRef.current.has(key)) {
+            shownMilestonesRef.current.add(key)
+            const gen = GENERATORS.find(g => g.id === genId)
+            if (gen) setGameNotifications(prev => [...prev.slice(-4), `${gen.emoji} ${gen.name} הגיע ל-${m}!`])
+          }
+        }
+      }
       rerender()
     }, 100)
     return () => clearInterval(interval)
   }, [rerender])
+
+  // Boss spawning
+  useEffect(() => {
+    function scheduleBoss() {
+      const delay = (BOSS_MIN_INTERVAL + Math.random() * (BOSS_MAX_INTERVAL - BOSS_MIN_INTERVAL)) * 1000
+      bossTimeoutRef.current = setTimeout(() => {
+        if (getTotalCPS(stateRef.current) > 0 && !bossActive) {
+          const idx = Math.floor(Math.random() * BOSSES.length)
+          setBossIdx(idx); setBossClicks(0); setBossTimer(BOSSES[idx].timeLimit); setBossActive(true)
+          const countdown = setInterval(() => {
+            setBossTimer(t => { if (t <= 1) { clearInterval(countdown); setBossActive(false); return 0 }; return t - 1 })
+          }, 1000)
+          bossTimeoutRef.current = setTimeout(() => { clearInterval(countdown); setBossActive(false); scheduleBoss() }, BOSSES[idx].timeLimit * 1000)
+        } else { scheduleBoss() }
+      }, delay)
+    }
+    scheduleBoss()
+    return () => { if (bossTimeoutRef.current) clearTimeout(bossTimeoutRef.current) }
+  }, [bossActive])
 
   // Auto-save + save on unmount
   useEffect(() => {
@@ -250,6 +307,34 @@ export function useGameLoop(): GameUI {
 
   const dismissStory = useCallback(() => setStoryMessage(null), [])
 
+  const handleBossClick = useCallback(() => {
+    if (!bossActive) return
+    setBossClicks(c => {
+      const next = c + 1
+      if (next >= BOSSES[bossIdx].clicksRequired) {
+        setBossActive(false)
+        const s = stateRef.current
+        const reward = getTotalCPS(s) * BOSSES[bossIdx].rewardCpsSeconds
+        s.coins += reward; s.totalEarned += reward
+        setGameNotifications(prev => [...prev.slice(-4), `${BOSSES[bossIdx].emoji} ניצחת! +${Math.floor(reward)} מטבעות`])
+        rerender()
+      }
+      return next
+    })
+  }, [bossActive, bossIdx, rerender])
+
+  const dismissNotification = useCallback(() => setGameNotifications(prev => prev.slice(1)), [])
+
+  const getGenEvolution = useCallback((id: string) => {
+    const evos = GENERATOR_EVOLUTIONS[id]
+    if (!evos) return null
+    let best: { name: string; emoji: string } | null = null
+    for (const evo of evos) {
+      if (stateRef.current.prestigeCount >= evo.minPrestige) best = evo
+    }
+    return best
+  }, [])
+
   const handleBoost = useCallback(() => {
     if (boostActive || boostCooldown) return
     setBoostActive(true)
@@ -322,6 +407,12 @@ export function useGameLoop(): GameUI {
     boostActive, boostCooldown, handleBoost,
     currentSkin: getCurrentSkin(s),
     activeQuest, questProgress: getQuestProgress(), handleClaimQuest,
+    bossActive, bossEmoji: BOSSES[bossIdx]?.emoji || '', bossName: BOSSES[bossIdx]?.name || '',
+    bossClicksLeft: bossActive ? Math.max(0, BOSSES[bossIdx].clicksRequired - bossClicks) : 0, bossTimer, handleBossClick,
+    critStreak, gameNotifications, dismissNotification,
+    completionPercent: calcCompletionPercent(s.achievements.size, ACHIEVEMENTS.length, s.research.size, RESEARCH.length, s.completedChallenges.size, CHALLENGES.length, Object.keys(s.generators).filter(k => s.generators[k] > 0).length, GENERATORS.length),
+    bgGradient: TIME_BACKGROUNDS[getTimeOfDay()],
+    getGenEvolution,
     dismissOffline, dismissAchievement, resetGame,
     getGenCost, getGenBulkCost, getGenIncome, getGenMaxAffordable,
   }
