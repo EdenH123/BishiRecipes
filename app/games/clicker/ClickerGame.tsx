@@ -145,7 +145,7 @@ export default function ClickerGame() {
     <motion.div
       animate={screenShake ? { x: [0, -3, 3, -2, 2, 0], y: [0, -2, 2, -1, 0] } : {}}
       transition={{ duration: 0.3 }}
-      className="min-h-screen bg-gradient-to-b from-[#1a0f00] via-[#2a1500] to-[#1a0a00] font-rubik select-none" dir="rtl">
+      className={`min-h-screen bg-gradient-to-b ${g.bgGradient} font-rubik select-none`} dir="rtl">
 
       {/* Particles layer */}
       <div className="fixed inset-0 pointer-events-none z-50">
@@ -162,6 +162,40 @@ export default function ClickerGame() {
         </AnimatePresence>
       </div>
       {floats}{offlineModal}<AnimatePresence>{achPopup}</AnimatePresence>{golden}
+
+      {/* Boss fight overlay */}
+      <AnimatePresence>
+        {g.bossActive && (
+          <motion.div key="boss" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 flex items-center justify-center bg-red-950/40 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.5 }} animate={{ scale: [1, 1.05, 1] }}
+              transition={{ scale: { repeat: Infinity, duration: 0.8 } }}
+              className="text-center">
+              <span className="text-8xl block mb-2">{g.bossEmoji}</span>
+              <p className="text-xl font-bold text-red-200 mb-1">{g.bossName}</p>
+              <p className="text-amber-300 text-lg font-bold mb-2">נשאר: {g.bossClicksLeft} לחיצות</p>
+              <p className="text-red-400/60 text-sm mb-4">⏱️ {g.bossTimer}s</p>
+              <motion.button whileTap={{ scale: 0.85 }} onClick={g.handleBossClick}
+                className="px-10 py-4 rounded-2xl bg-red-700 text-white text-xl font-bold shadow-lg shadow-red-900/50 active:bg-red-600">
+                💥 תקוף!
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Game notifications */}
+      <div className="fixed top-16 right-4 z-40 space-y-1 pointer-events-none" style={{ maxWidth: '250px' }}>
+        <AnimatePresence>
+          {g.gameNotifications.slice(0, 3).map((text, i) => (
+            <motion.div key={text + i} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }}
+              onClick={g.dismissNotification}
+              className="pointer-events-auto bg-[#2a1a0a]/90 border border-amber-700/30 rounded-xl px-3 py-2 text-xs text-amber-200 shadow-lg cursor-pointer">
+              {text}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       {/* Prestige animation */}
       <AnimatePresence>
@@ -471,7 +505,7 @@ export default function ClickerGame() {
                     onClick={() => buyAmt === 'max' ? g.handleBuyMaxGenerator(gen.id) : g.handleBuyGenerator(gen.id, buyAmt as number)}
                     className={`w-full flex items-center gap-3 rounded-2xl p-3.5 text-right transition-all ${canAfford ? 'bg-amber-900/25 border border-amber-700/25 hover:bg-amber-900/35' : 'bg-amber-950/15 border border-amber-900/10 opacity-40'}`}>
                     <div className="relative">
-                      <span className="text-3xl">{gen.emoji}</span>
+                      <span className="text-3xl">{g.getGenEvolution(gen.id)?.emoji || gen.emoji}</span>
                       {synergyTiers > 0 && (
                         <span className="absolute -top-1 -right-1 bg-amber-500 text-[8px] text-white font-bold w-4 h-4 rounded-full flex items-center justify-center">
                           {synergyTiers}
@@ -480,7 +514,7 @@ export default function ClickerGame() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-amber-100 truncate">{gen.name}</p>
+                        <p className="text-sm font-bold text-amber-100 truncate">{g.getGenEvolution(gen.id)?.name || gen.name}</p>
                         {owned > 0 && (
                           <span className="bg-amber-700/40 text-amber-200 text-[10px] px-1.5 py-0.5 rounded-md font-bold tabular-nums">{owned}</span>
                         )}
@@ -770,6 +804,7 @@ export default function ClickerGame() {
               <div className="bg-amber-900/10 border border-amber-800/20 rounded-xl p-4">
                 <div className="grid grid-cols-2 gap-y-2.5 text-xs">
                   {[
+                    ['השלמת משחק', `${g.completionPercent}%`],
                     ['סה״כ הרווחת', fmt(g.totalEarned)],
                     ['סה״כ לחיצות', fmtInt(g.totalClicks)],
                     ['הכנסה/שנייה', fmt(g.cps)],
