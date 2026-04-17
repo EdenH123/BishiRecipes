@@ -6,8 +6,8 @@
 export { GENERATORS, SYNERGY_THRESHOLD, SYNERGY_MULTIPLIER, SYNERGY_MAX_TIERS, GENERATOR_MAX_COUNT } from './generators.config'
 export type { GeneratorDef } from './generators.config'
 
-export { UPGRADES } from './upgrades.config'
-export type { UpgradeDef, UpgradeEffect } from './upgrades.config'
+export { UPGRADES, REPEATABLE_UPGRADES } from './upgrades.config'
+export type { UpgradeDef, UpgradeEffect, RepeatableUpgradeDef } from './upgrades.config'
 
 export { ACHIEVEMENTS } from './achievements.config'
 export type { AchievementDef, AchievementCondition, AchievementReward } from './achievements.config'

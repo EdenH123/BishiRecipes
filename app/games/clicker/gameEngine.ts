@@ -3,12 +3,15 @@
 // ══════════════════════════════════════════════════
 
 import {
-  GENERATORS, UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES,
-  SYNERGY_THRESHOLD, SYNERGY_MULTIPLIER, SYNERGY_MAX_TIERS,
-  PRESTIGE_DIVISOR, PRESTIGE_EXPONENT, PRESTIGE_RESEARCH_BONUS,
+  GENERATORS, UPGRADES, REPEATABLE_UPGRADES, ACHIEVEMENTS, RESEARCH, CHALLENGES,
+  SYNERGY_THRESHOLD, SYNERGY_MULTIPLIER, SYNERGY_MAX_TIERS, GENERATOR_MAX_COUNT,
+  PRESTIGE_DIVISOR, PRESTIGE_EXPONENT, PRESTIGE_RESEARCH_BONUS, PRESTIGE_SCALING,
+  PRESTIGE_MILESTONES, PRESTIGE_GATED_GENERATORS,
   MAX_OFFLINE_SECONDS, BASE_OFFLINE_RATE,
   SAVE_KEY, COMBO_BASE_POWER, COMBO_MAX,
-  PRESTIGE_STAR_BONUS,
+  PRESTIGE_STAR_BONUS, MAX_BUY_PER_CLICK,
+  STORY_MESSAGES, DAILY_BONUS_BASE, DAILY_STREAK_BONUS, DAILY_STREAK_MAX, DAILY_STORAGE_KEY,
+  AUTO_BUY_RESEARCH_ID,
   type UpgradeEffect, type ChallengeRestriction,
 } from './gameConfig'
 
@@ -40,9 +43,11 @@ export interface GameState {
   lastTick: number
   startedAt: number
   stats: GameStats
+  repeatableUpgrades: Record<string, number>  // id → level
+  lastStoryShown: number  // totalEarned threshold of last story message
   // Challenges
   completedChallenges: Set<string>
-  activeChallenge: string | null   // challenge id or null
+  activeChallenge: string | null
 }
 
 export function newGameState(): GameState {
@@ -53,6 +58,7 @@ export function newGameState(): GameState {
     prestigePoints: 0, totalPrestigeEarned: 0, prestigeCount: 0,
     combo: 0, lastClickTime: 0, lastTick: now, startedAt: now,
     stats: { bestCps: 0, totalCritClicks: 0, bestCombo: 0, totalOfflineEarned: 0, totalEventsClicked: 0, totalPlaytimeMs: 0, sessionStartedAt: now },
+    repeatableUpgrades: {}, lastStoryShown: 0,
     completedChallenges: new Set(), activeChallenge: null,
   }
 }
@@ -67,6 +73,7 @@ interface SaveData {
   prestigePoints: number; totalPrestigeEarned: number; prestigeCount: number
   lastTick: number; startedAt: number; stats: GameStats
   completedChallenges?: string[]; activeChallenge?: string | null
+  repeatableUpgrades?: Record<string, number>; lastStoryShown?: number
 }
 
 export function saveGame(state: GameState): void {
@@ -80,6 +87,8 @@ export function saveGame(state: GameState): void {
     stats: { ...state.stats, totalPlaytimeMs: state.stats.totalPlaytimeMs + (Date.now() - state.stats.sessionStartedAt) },
     completedChallenges: Array.from(state.completedChallenges),
     activeChallenge: state.activeChallenge,
+    repeatableUpgrades: state.repeatableUpgrades,
+    lastStoryShown: state.lastStoryShown,
   }
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)) } catch {}
 }
@@ -98,6 +107,8 @@ export function loadGame(): { state: GameState; offlineSeconds: number } {
       prestigePoints: d.prestigePoints || 0, totalPrestigeEarned: d.totalPrestigeEarned || 0, prestigeCount: d.prestigeCount || 0,
       combo: 0, lastClickTime: 0, lastTick: d.lastTick || Date.now(), startedAt: d.startedAt || Date.now(),
       stats: d.stats || fresh.stats,
+      repeatableUpgrades: d.repeatableUpgrades || {},
+      lastStoryShown: d.lastStoryShown || 0,
       completedChallenges: new Set(d.completedChallenges || []),
       activeChallenge: d.activeChallenge || null,
     }
@@ -134,6 +145,12 @@ function collectMultiplier(state: GameState, targetType: string, generatorId?: s
       mult *= e.value
     }
   }
+  // Repeatable upgrades (applied level times)
+  for (const [rpId, level] of Object.entries(state.repeatableUpgrades)) {
+    if (level <= 0) continue
+    const def = REPEATABLE_UPGRADES.find(r => r.id === rpId)
+    if (def && def.effect.type === targetType) mult *= Math.pow(def.effect.value, level)
+  }
   return mult
 }
 
@@ -146,6 +163,11 @@ function collectAdditive(state: GameState, targetType: string): number {
   for (const rid of Array.from(state.research)) {
     const def = RESEARCH.find(r => r.id === rid)
     if (def && def.effect.type === targetType) total += def.effect.value
+  }
+  for (const [rpId, level] of Object.entries(state.repeatableUpgrades)) {
+    if (level <= 0) continue
+    const def = REPEATABLE_UPGRADES.find(r => r.id === rpId)
+    if (def && def.effect.type === targetType) total += def.effect.value * level
   }
   return total
 }
@@ -253,7 +275,7 @@ export function getGeneratorIncome(state: GameState, genId: string): number {
   const allMult = collectMultiplier(state, 'all_multiply')
   const achMult = getAchievementMult(state, 'multiply_all')
   const synergy = getSynergyMult(state, genId)
-  return count * def.baseIncome * genMult * allMult * achMult * synergy * prestigeStarBonus(state) * getChallengeIncomeMult(state) * getChallengeRewardMult(state, 'all')
+  return count * def.baseIncome * genMult * allMult * achMult * synergy * prestigeStarBonus(state) * getPrestigeMilestoneMult(state) * getChallengeIncomeMult(state) * getChallengeRewardMult(state, 'all')
 }
 
 export function getTotalCPS(state: GameState): number {
@@ -278,13 +300,22 @@ export function getTotalGenerators(state: GameState): number {
 
 export function calcPrestigeReward(state: GameState): number {
   if (state.totalEarned < 2000000) return 0
-  let reward = Math.floor(Math.pow(state.totalEarned / PRESTIGE_DIVISOR, PRESTIGE_EXPONENT))
-  // Apply prestige research bonuses
+  // Scaling: each prestige makes the next one harder
+  const effectiveDivisor = PRESTIGE_DIVISOR * (1 + state.prestigeCount * PRESTIGE_SCALING)
+  let reward = Math.floor(Math.pow(state.totalEarned / effectiveDivisor, PRESTIGE_EXPONENT))
   for (const [rid, bonus] of Object.entries(PRESTIGE_RESEARCH_BONUS)) {
     if (state.research.has(rid)) reward = Math.floor(reward * bonus)
   }
   reward = Math.floor(reward * getChallengeRewardMult(state, 'prestige'))
-  return reward
+  return Math.max(reward, 0)
+}
+
+export function getPrestigeMilestoneMult(state: GameState): number {
+  let mult = 1
+  for (const m of PRESTIGE_MILESTONES) {
+    if (state.prestigeCount >= m.count) mult *= m.reward
+  }
+  return mult
 }
 
 export function canPrestige(state: GameState): boolean {
@@ -319,10 +350,16 @@ export function processClick(state: GameState): { gained: number; isCrit: boolea
 
 export function buyGenerator(state: GameState, genId: string, count = 1): boolean {
   if (!canBuyGeneratorInChallenge(state, genId)) return false
+  // Check prestige gate
+  const prestigeReq = PRESTIGE_GATED_GENERATORS[genId]
+  if (prestigeReq !== undefined && state.prestigeCount < prestigeReq) return false
   const owned = state.generators[genId] || 0
-  const cost = getGeneratorBulkCost(genId, owned, count, state)
+  // Enforce cap
+  const actualCount = Math.min(count, GENERATOR_MAX_COUNT - owned, MAX_BUY_PER_CLICK)
+  if (actualCount <= 0) return false
+  const cost = getGeneratorBulkCost(genId, owned, actualCount, state)
   if (state.coins < cost) return false
-  state.coins -= cost; state.generators[genId] = owned + count
+  state.coins -= cost; state.generators[genId] = owned + actualCount
   return true
 }
 
@@ -474,4 +511,104 @@ export function getChallengeRewardMult(state: GameState, type: 'all' | 'click' |
     if (type === 'prestige' && r.type === 'permanent_prestige_bonus') mult *= r.value
   }
   return mult
+}
+
+// ── Repeatable Upgrades ──
+
+export function getRepeatableCost(rpId: string, level: number): number {
+  const def = REPEATABLE_UPGRADES.find(r => r.id === rpId)
+  if (!def) return Infinity
+  return Math.floor(def.baseCost * Math.pow(def.costMultiplier, level))
+}
+
+export function buyRepeatableUpgrade(state: GameState, rpId: string): boolean {
+  const def = REPEATABLE_UPGRADES.find(r => r.id === rpId)
+  if (!def) return false
+  const level = state.repeatableUpgrades[rpId] || 0
+  if (level >= def.maxLevel) return false
+  const cost = getRepeatableCost(rpId, level)
+  if (state.coins < cost) return false
+  state.coins -= cost
+  state.repeatableUpgrades[rpId] = level + 1
+  return true
+}
+
+// ── Generator Unlock Check ──
+
+export function isGeneratorUnlocked(state: GameState, genId: string): boolean {
+  const def = GENERATORS.find(g => g.id === genId)
+  if (!def) return false
+  if (state.totalEarned < def.unlockAt && (state.generators[genId] || 0) === 0) return false
+  const prestigeReq = PRESTIGE_GATED_GENERATORS[genId]
+  if (prestigeReq !== undefined && state.prestigeCount < prestigeReq) return false
+  return true
+}
+
+// ── Story Messages ──
+
+export function checkStoryMessage(state: GameState): { message: string; emoji: string } | null {
+  for (let i = STORY_MESSAGES.length - 1; i >= 0; i--) {
+    const sm = STORY_MESSAGES[i]
+    if (state.totalEarned >= sm.totalEarned && state.lastStoryShown < sm.totalEarned) {
+      state.lastStoryShown = sm.totalEarned
+      return sm
+    }
+  }
+  return null
+}
+
+// ── Daily Bonus ──
+
+export function getDailyBonus(state: GameState): { available: boolean; amount: number; streak: number } {
+  if (typeof window === 'undefined') return { available: false, amount: 0, streak: 0 }
+  try {
+    const raw = localStorage.getItem(DAILY_STORAGE_KEY)
+    const data = raw ? JSON.parse(raw) : { lastClaim: 0, streak: 0 }
+    const now = Date.now()
+    const hoursSince = (now - (data.lastClaim || 0)) / (1000 * 60 * 60)
+    const available = hoursSince >= 20
+    const streak = hoursSince < 48 ? Math.min(data.streak || 0, DAILY_STREAK_MAX) : 0
+    const cps = getTotalCPS(state)
+    const baseAmount = cps * 3600 * DAILY_BONUS_BASE
+    const streakMult = 1 + streak * DAILY_STREAK_BONUS
+    return { available, amount: baseAmount * streakMult, streak }
+  } catch { return { available: false, amount: 0, streak: 0 } }
+}
+
+export function claimDailyBonus(state: GameState): number {
+  const bonus = getDailyBonus(state)
+  if (!bonus.available || bonus.amount <= 0) return 0
+  state.coins += bonus.amount
+  state.totalEarned += bonus.amount
+  try {
+    const raw = localStorage.getItem(DAILY_STORAGE_KEY)
+    const data = raw ? JSON.parse(raw) : { lastClaim: 0, streak: 0 }
+    const hoursSince = (Date.now() - (data.lastClaim || 0)) / (1000 * 60 * 60)
+    const newStreak = hoursSince < 48 ? Math.min((data.streak || 0) + 1, DAILY_STREAK_MAX) : 1
+    localStorage.setItem(DAILY_STORAGE_KEY, JSON.stringify({ lastClaim: Date.now(), streak: newStreak }))
+  } catch {}
+  return bonus.amount
+}
+
+// ── Auto-buy (research-gated) ──
+
+export function hasAutoBuy(state: GameState): boolean {
+  return state.research.has(AUTO_BUY_RESEARCH_ID)
+}
+
+export function autoBuyBest(state: GameState): boolean {
+  if (!hasAutoBuy(state)) return false
+  let bestId: string | null = null
+  let bestEfficiency = 0
+  for (const gen of GENERATORS) {
+    if (!isGeneratorUnlocked(state, gen.id)) continue
+    const owned = state.generators[gen.id] || 0
+    if (owned >= GENERATOR_MAX_COUNT) continue
+    const cost = getGeneratorCost(gen.id, owned, state)
+    if (cost > state.coins) continue
+    const efficiency = gen.baseIncome / cost
+    if (efficiency > bestEfficiency) { bestEfficiency = efficiency; bestId = gen.id }
+  }
+  if (bestId) return buyGenerator(state, bestId, 1)
+  return false
 }

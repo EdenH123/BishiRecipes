@@ -47,6 +47,9 @@ export const RESEARCH: ResearchDef[] = [
   // ── Events Branch ──
   { id: 'rv1', name: 'עין חדה',          emoji: '👁️', description: 'אירועים בתדירות גבוהה',     cost: 4,   effect: { type: 'all_multiply', value: 1 },       branch: 'events',     unlockAtPrestige: 5 },
   { id: 'rv2', name: 'קומבו מאסטר',     emoji: '🎵', description: 'x1.5 עוצמת קומבו לצמיתות',   cost: 8,   effect: { type: 'combo_power', value: 1.5 },      branch: 'events',     unlockAtPrestige: 10,  requires: 'rv1' },
+
+  // ── Automation Branch (continued) ──
+  { id: 'ra_auto', name: 'קנייה אוטומטית', emoji: '🔄', description: 'קונה את ה-generator הכי יעיל אוטומטית', cost: 15, effect: { type: 'all_multiply', value: 1 }, branch: 'automation', unlockAtPrestige: 20, requires: 'ra3' },
 ]
 
 // ── Prestige Config ──

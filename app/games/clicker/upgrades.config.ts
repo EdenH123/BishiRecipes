@@ -83,3 +83,23 @@ export const UPGRADES: UpgradeDef[] = [
   { id: 'o3', name: 'אוטומציה מלאה',    emoji: '🤖', description: 'x3 הכנסה אופליין',       cost: 250000000,    effect: { type: 'offline_multiply', value: 3 },  unlockAt: 80000000,   category: 'offline', requires: 'o2' },
   { id: 'o4', name: 'מפעל 24/7',        emoji: '🏭', description: 'x3 הכנסה אופליין',       cost: 25000000000,  effect: { type: 'offline_multiply', value: 3 },  unlockAt: 8000000000, category: 'offline', requires: 'o3' },
 ]
+
+// ── Repeatable Upgrades (can be bought multiple times, cost scales) ──
+export interface RepeatableUpgradeDef {
+  id: string
+  name: string
+  emoji: string
+  description: string
+  baseCost: number
+  costMultiplier: number
+  effect: UpgradeEffect
+  maxLevel: number
+  unlockAt: number
+}
+
+export const REPEATABLE_UPGRADES: RepeatableUpgradeDef[] = [
+  { id: 'rp_click', name: 'אימון ידיים',   emoji: '💪', description: 'x1.5 כוח לחיצה',   baseCost: 10000,   costMultiplier: 3,   effect: { type: 'click_multiply', value: 1.5 },  maxLevel: 20, unlockAt: 5000 },
+  { id: 'rp_income', name: 'ייעול תהליכים', emoji: '📈', description: 'x1.3 הכנסה כללית',  baseCost: 50000,   costMultiplier: 3.5, effect: { type: 'all_multiply', value: 1.3 },    maxLevel: 20, unlockAt: 20000 },
+  { id: 'rp_crit',  name: 'חידוד חושים',    emoji: '🎯', description: '+2% קריטי',         baseCost: 100000,  costMultiplier: 4,   effect: { type: 'crit_chance', value: 0.02 },   maxLevel: 10, unlockAt: 50000 },
+  { id: 'rp_combo', name: 'תרגול קצב',     emoji: '🥁', description: '+25% עוצמת קומבו',  baseCost: 30000,   costMultiplier: 3,   effect: { type: 'combo_power', value: 1.25 },   maxLevel: 10, unlockAt: 15000 },
+]
