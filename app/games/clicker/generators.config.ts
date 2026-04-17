@@ -44,6 +44,11 @@ export const GENERATORS: GeneratorDef[] = [
   // ── Endgame (Tier 14-15) ──
   { id: 'franchise',   name: 'רשת בינלאומית',    emoji: '🌍', description: 'סניפים ב-50 מדינות',           baseCost: 7e12,        baseIncome: 1.1e9,     growthRate: 1.20, unlockAt: 2e12 },
   { id: 'space',       name: 'מטבח חלל',         emoji: '🚀', description: 'בישול בתחנת החלל',             baseCost: 8e13,        baseIncome: 7e9,       growthRate: 1.20, unlockAt: 2.5e13 },
+
+  // ── Prestige-gated (Tier 16-18) — require prestige count to unlock ──
+  { id: 'quantum',     name: 'מטבח קוונטי',      emoji: '⚛️', description: 'בישול ב-∞ ממדים (פרסטיג 3+)',  baseCost: 1e15,        baseIncome: 5e10,      growthRate: 1.22, unlockAt: 1e15 },
+  { id: 'time',        name: 'מסעדת הזמן',       emoji: '⏳', description: 'מנות מהעתיד (פרסטיג 5+)',      baseCost: 2e16,        baseIncome: 4e11,      growthRate: 1.23, unlockAt: 1e16 },
+  { id: 'multiverse',  name: 'אימפריה מולטיוורס', emoji: '🌌', description: 'סניפים ביקומים מקבילים (פרסטיג 8+)', baseCost: 5e17, baseIncome: 3e12,      growthRate: 1.25, unlockAt: 1e17 },
 ]
 
 // ── Synergy system ──
@@ -51,3 +56,4 @@ export const GENERATORS: GeneratorDef[] = [
 export const SYNERGY_THRESHOLD = 25
 export const SYNERGY_MULTIPLIER = 2
 export const SYNERGY_MAX_TIERS = 5  // cap: max 5 synergy tiers per generator (x32 max)
+export const GENERATOR_MAX_COUNT = 500  // max units per generator
