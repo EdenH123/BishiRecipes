@@ -39,6 +39,7 @@ export default function EticketPage() {
   const [seat, setSeat] = useState('Check-In Required')
   const [eticketReceipt] = useState(() => generateEticketReceipt())
   const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const selectedAirline = ALL_AIRLINES.find(a => a.code === selectedAirlineCode) ?? null
 
@@ -356,6 +357,12 @@ export default function EticketPage() {
 
                 <div className="pt-2 space-y-2">
                   <button
+                    onClick={() => setPreviewOpen(true)}
+                    className="w-full border border-white/30 text-white rounded-lg py-2 text-sm hover:border-white/60 transition-colors"
+                  >
+                    Preview ticket
+                  </button>
+                  <button
                     onClick={handleDownloadPNG}
                     disabled={exporting !== null}
                     className="w-full border border-white/20 text-white rounded-lg py-2 text-sm hover:border-white/50 disabled:opacity-50 transition-colors"
@@ -373,13 +380,64 @@ export default function EticketPage() {
               </div>
             </div>
 
-            {/* Live preview */}
+            {/* Live preview (sidebar) */}
             <div className="flex-1 overflow-x-auto">
               <p className="text-white/40 text-xs mb-2">Live preview</p>
               <div ref={ticketRef} className="shadow-2xl inline-block">
                 <TicketPreview ticket={ticketData} />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── Ticket preview modal ── */}
+        {previewOpen && ticketData && (
+          <div
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 overflow-y-auto"
+            style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(10px)' }}
+            onClick={() => setPreviewOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+              className="relative w-full"
+              style={{ maxWidth: 860 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Bar */}
+              <div className="flex items-center justify-between mb-3 px-1">
+                <span className="text-white/50 text-xs">Ticket preview</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setPreviewOpen(false); setTimeout(handleDownloadPNG, 50) }}
+                    disabled={exporting !== null}
+                    className="text-xs border border-white/20 text-white rounded-lg px-3 py-1.5 hover:border-white/50 disabled:opacity-50 transition-colors"
+                  >
+                    Download PNG
+                  </button>
+                  <button
+                    onClick={() => { setPreviewOpen(false); setTimeout(handleDownloadPDF, 50) }}
+                    disabled={exporting !== null}
+                    className="text-xs bg-white text-black rounded-lg px-3 py-1.5 font-semibold hover:bg-white/90 disabled:opacity-50 transition-colors"
+                  >
+                    Download PDF
+                  </button>
+                  <button
+                    onClick={() => setPreviewOpen(false)}
+                    className="text-white/40 hover:text-white text-xl leading-none ml-1 transition-colors"
+                    aria-label="Close"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Ticket box — scrollable so nothing is cut off */}
+              <div className="rounded-2xl shadow-2xl overflow-x-auto overflow-y-auto bg-white" style={{ maxHeight: '80vh' }}>
+                <TicketPreview ticket={ticketData} />
+              </div>
+            </motion.div>
           </div>
         )}
       </div>
