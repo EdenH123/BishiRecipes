@@ -12,21 +12,23 @@ import jsPDF from 'jspdf'
 
 const TITLES = ['MR', 'MS', 'MRS', 'DR'] as const
 
-type Step = 'search' | 'form'
+type Step = 'search' | 'preview'
 
 export default function EticketPage() {
   const router = useRouter()
   const ticketRef = useRef<HTMLDivElement>(null)
 
-  const [step, setStep] = useState<Step>('search')
+  // Step 1 — all filled together
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [date, setDate] = useState('')
+  const [passengerName, setPassengerName] = useState('')
+  const [passengerTitle, setPassengerTitle] = useState<string>('MR')
+
+  const [step, setStep] = useState<Step>('search')
   const [results, setResults] = useState<FlightResult[]>([])
   const [selected, setSelected] = useState<FlightResult | null>(null)
 
-  const [passengerName, setPassengerName] = useState('')
-  const [passengerTitle, setPassengerTitle] = useState<string>('MR')
   const [reservationCode, setReservationCode] = useState('')
   const [airlineResCode, setAirlineResCode] = useState('')
   const [seat, setSeat] = useState('Check-In Required')
@@ -49,7 +51,7 @@ export default function EticketPage() {
 
   function handleSelect(flight: FlightResult) {
     setSelected(flight)
-    setStep('form')
+    setStep('preview')
   }
 
   const ticketData = selected ? {
@@ -114,27 +116,46 @@ export default function EticketPage() {
               <p className="text-[11px] text-white/40">For entertainment only</p>
             </div>
           </div>
-          <button
-            onClick={() => router.push('/admin')}
-            className="text-sm text-white/50 hover:text-white transition-colors"
-          >
+          <button onClick={() => router.push('/admin')} className="text-sm text-white/50 hover:text-white transition-colors">
             ← Back to Admin
           </button>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
+
+        {/* ── Step 1: Form + Results ── */}
         {step === 'search' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-lg"
-          >
-            <h2 className="text-white font-bold text-xl mb-4">Find a flight</h2>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg">
+            <h2 className="text-white font-bold text-xl mb-4">Create a ticket</h2>
+
             <form onSubmit={handleSearch} className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 backdrop-blur">
+
+              {/* Passenger */}
+              <div>
+                <label className="block text-xs text-white/60 mb-1">Passenger name</label>
+                <div className="flex gap-2">
+                  <select
+                    value={passengerTitle}
+                    onChange={(e) => setPassengerTitle(e.target.value)}
+                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/50"
+                  >
+                    {TITLES.map((t) => <option key={t} className="text-black">{t}</option>)}
+                  </select>
+                  <input
+                    value={passengerName}
+                    onChange={(e) => setPassengerName(e.target.value.toUpperCase())}
+                    placeholder="LASTNAME/FIRSTNAME"
+                    required
+                    className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm font-mono text-white uppercase placeholder:text-white/30 focus:outline-none focus:border-white/50"
+                  />
+                </div>
+              </div>
+
+              {/* Route */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-white/60 mb-1">From (IATA)</label>
+                  <label className="block text-xs text-white/60 mb-1">Departure (IATA)</label>
                   <input
                     value={from}
                     onChange={(e) => setFrom(e.target.value.toUpperCase())}
@@ -145,7 +166,7 @@ export default function EticketPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-white/60 mb-1">To (IATA)</label>
+                  <label className="block text-xs text-white/60 mb-1">Arrival (IATA)</label>
                   <input
                     value={to}
                     onChange={(e) => setTo(e.target.value.toUpperCase())}
@@ -156,6 +177,8 @@ export default function EticketPage() {
                   />
                 </div>
               </div>
+
+              {/* Date */}
               <div>
                 <label className="block text-xs text-white/60 mb-1">Date</label>
                 <input
@@ -166,14 +189,13 @@ export default function EticketPage() {
                   className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/50"
                 />
               </div>
-              <button
-                type="submit"
-                className="w-full bg-white text-black rounded-lg py-2 text-sm font-semibold hover:bg-white/90 transition-colors"
-              >
+
+              <button type="submit" className="w-full bg-white text-black rounded-lg py-2 text-sm font-semibold hover:bg-white/90 transition-colors">
                 Search flights
               </button>
             </form>
 
+            {/* Results */}
             {results.length > 0 && (
               <div className="mt-4 space-y-2">
                 <p className="text-white/40 text-xs mb-2">{results.length} flights found — select one</p>
@@ -187,7 +209,9 @@ export default function EticketPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-white text-sm font-semibold">{f.airline.name} <span className="text-white/40 font-normal">{f.airline.flightNumber}</span></p>
+                        <p className="text-white text-sm font-semibold">
+                          {f.airline.name} <span className="text-white/40 font-normal">{f.airline.flightNumber}</span>
+                        </p>
                         <p className="text-white/60 text-xs mt-0.5">
                           {f.origin.iata} → {f.destination.iata} · {f.duration} · {f.aircraft}
                         </p>
@@ -206,37 +230,35 @@ export default function EticketPage() {
           </motion.div>
         )}
 
-        {step === 'form' && selected && ticketData && (
+        {/* ── Step 2: Ticket preview + fine-tune ── */}
+        {step === 'preview' && selected && ticketData && (
           <div className="flex gap-6 items-start">
-            {/* Form */}
+            {/* Side controls */}
             <div className="w-72 shrink-0">
-              <button
-                onClick={() => { setStep('search'); setSelected(null) }}
-                className="text-white/40 hover:text-white text-xs mb-3 transition-colors"
-              >
+              <button onClick={() => { setStep('search'); setSelected(null) }} className="text-white/40 hover:text-white text-xs mb-3 transition-colors">
                 ← Back to results
               </button>
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 backdrop-blur">
-                <h2 className="text-white font-semibold">Passenger details</h2>
-                <div>
-                  <label className="block text-xs text-white/60 mb-1">Title</label>
-                  <select
-                    value={passengerTitle}
-                    onChange={(e) => setPassengerTitle(e.target.value)}
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/50"
-                  >
-                    {TITLES.map((t) => <option key={t} className="text-black">{t}</option>)}
-                  </select>
-                </div>
+                <h2 className="text-white font-semibold">Fine-tune</h2>
+
                 <div>
                   <label className="block text-xs text-white/60 mb-1">Passenger name</label>
-                  <input
-                    value={passengerName}
-                    onChange={(e) => setPassengerName(e.target.value.toUpperCase())}
-                    placeholder="LASTNAME/FIRSTNAME"
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm font-mono text-white uppercase placeholder:text-white/30 focus:outline-none focus:border-white/50"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={passengerTitle}
+                      onChange={(e) => setPassengerTitle(e.target.value)}
+                      className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/50"
+                    >
+                      {TITLES.map((t) => <option key={t} className="text-black">{t}</option>)}
+                    </select>
+                    <input
+                      value={passengerName}
+                      onChange={(e) => setPassengerName(e.target.value.toUpperCase())}
+                      className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm font-mono text-white uppercase focus:outline-none focus:border-white/50"
+                    />
+                  </div>
                 </div>
+
                 <div>
                   <label className="block text-xs text-white/60 mb-1">Reservation code</label>
                   <input
@@ -246,6 +268,7 @@ export default function EticketPage() {
                     className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm font-mono text-white uppercase focus:outline-none focus:border-white/50"
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs text-white/60 mb-1">Airline reservation code</label>
                   <input
@@ -255,6 +278,7 @@ export default function EticketPage() {
                     className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm font-mono text-white uppercase focus:outline-none focus:border-white/50"
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs text-white/60 mb-1">Seat</label>
                   <input
@@ -265,7 +289,6 @@ export default function EticketPage() {
                   />
                 </div>
 
-                {/* Export buttons */}
                 <div className="pt-2 space-y-2">
                   <button
                     onClick={handleDownloadPNG}
