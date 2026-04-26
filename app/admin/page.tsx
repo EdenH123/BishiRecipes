@@ -539,6 +539,22 @@ export default function AdminDashboard() {
           📊 לוח בקרה
         </motion.h1>
 
+        {/* ── Quick Tools ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex justify-center"
+        >
+          <button
+            onClick={() => router.push('/admin/eticket')}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-lowest text-on-surface text-sm font-rubik hover:border-primary/50 transition-colors shadow-sm"
+          >
+            <span className="text-xl">🎫</span>
+            <span>eTicket Generator</span>
+          </button>
+        </motion.div>
+
         {/* ── Overview Cards ── */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {overviewCards.map((card, i) => (
