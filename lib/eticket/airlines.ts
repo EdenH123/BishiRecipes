@@ -43,3 +43,46 @@ const AIRLINES: Record<string, string> = {
 export function getAirlineName(code: string): string {
   return AIRLINES[code.toUpperCase()] ?? code;
 }
+
+// Brand colors for ticket header
+export const AIRLINE_COLORS: Record<string, { bg: string; text: string }> = {
+  LY: { bg: '#003366', text: '#ffffff' },  // El Al
+  EK: { bg: '#d71920', text: '#ffffff' },  // Emirates
+  QR: { bg: '#5c0632', text: '#ffffff' },  // Qatar
+  BA: { bg: '#075AAA', text: '#ffffff' },  // British Airways
+  LH: { bg: '#05164d', text: '#ffffff' },  // Lufthansa
+  AF: { bg: '#002157', text: '#ffffff' },  // Air France
+  TK: { bg: '#c8102e', text: '#ffffff' },  // Turkish Airlines
+  UA: { bg: '#002244', text: '#ffffff' },  // United
+  DL: { bg: '#003366', text: '#ffffff' },  // Delta
+  AA: { bg: '#0078D2', text: '#ffffff' },  // American
+  SQ: { bg: '#F0AB00', text: '#1a1a2e' }, // Singapore
+  KL: { bg: '#00A1DE', text: '#ffffff' },  // KLM
+  EY: { bg: '#BD8B13', text: '#1a1a2e' }, // Etihad
+  AI: { bg: '#E8452C', text: '#ffffff' },  // Air India
+  TG: { bg: '#6B2C91', text: '#ffffff' },  // Thai Airways
+  CX: { bg: '#006564', text: '#ffffff' },  // Cathay Pacific
+  QF: { bg: '#E40000', text: '#ffffff' },  // Qantas
+  NH: { bg: '#00467F', text: '#ffffff' },  // ANA
+  JL: { bg: '#CC0000', text: '#ffffff' },  // JAL
+  KE: { bg: '#00256C', text: '#ffffff' },  // Korean Air
+  ET: { bg: '#009639', text: '#ffffff' },  // Ethiopian
+  SV: { bg: '#006633', text: '#ffffff' },  // Saudia
+  FZ: { bg: '#F26F21', text: '#ffffff' },  // flydubai
+  W6: { bg: '#CF007C', text: '#ffffff' },  // Wizz Air
+  PC: { bg: '#FFD200', text: '#1a1a2e' }, // Pegasus
+}
+
+export function getAirlineColor(code: string): { bg: string; text: string } {
+  return AIRLINE_COLORS[code.toUpperCase()] ?? { bg: '#1a1a2e', text: '#ffffff' }
+}
+
+// Seat options
+export const SEAT_ROWS = Array.from({ length: 40 }, (_, i) => i + 1)
+export const SEAT_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
+
+export function generateRandomSeat(): string {
+  const row = Math.floor(Math.random() * 30) + 1
+  const letter = SEAT_LETTERS[Math.floor(Math.random() * SEAT_LETTERS.length)]
+  return `${row}${letter}`
+}

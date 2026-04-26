@@ -156,6 +156,23 @@ export function getAirportInfo(iata: string): { city: string; country: string } 
   return info ? { city: info[0], country: info[1] } : { city: iata, country: "" };
 }
 
+export function searchAirports(query: string): { iata: string; city: string; country: string }[] {
+  const q = query.toUpperCase()
+  if (!q) return []
+  return Object.entries(AIRPORTS)
+    .filter(([iata, [city, country]]) =>
+      iata.includes(q) || city.toUpperCase().includes(q) || country.toUpperCase().includes(q)
+    )
+    .slice(0, 10)
+    .map(([iata, [city, country]]) => ({ iata, city, country }))
+}
+
+export function generateGate(): string {
+  const letter = ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)]
+  const num = Math.floor(Math.random() * 30) + 1
+  return `${letter}${num}`
+}
+
 export function buildFlight(
   airline: typeof ALL_AIRLINES[0],
   fromIata: string, toIata: string,

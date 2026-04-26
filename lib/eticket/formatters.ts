@@ -25,3 +25,20 @@ export function generateShareSlug(): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
+
+export function generatePassportNumber(): string {
+  const num = Math.floor(10000000 + Math.random() * 90000000)
+  return String(num)
+}
+
+// Generate barcode-like SVG data (visual only, not scannable)
+export function generateBarcodeBars(seed: string): number[] {
+  let h = 2166136261
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = (h * 16777619) >>> 0 }
+  const bars: number[] = []
+  for (let i = 0; i < 60; i++) {
+    h ^= h << 13; h ^= h >> 17; h ^= h << 5; h = h >>> 0
+    bars.push(h % 3 === 0 ? 2 : h % 3 === 1 ? 1 : 3)
+  }
+  return bars
+}

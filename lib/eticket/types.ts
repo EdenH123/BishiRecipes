@@ -32,12 +32,16 @@ export interface FlightResult {
 }
 
 export interface TicketData {
-  passengerName: string;    // "HEISER/EDEN"
-  passengerTitle: string;   // "MR"
+  passengerName: string;
+  passengerTitle: string;
   reservationCode: string;
   airlineResCode: string;
   seat: string;
   eticketReceipt: string;
   flight: FlightResult;
-  createdAt: string;        // ISO datetime
+  createdAt: string;
+  passportNumber?: string;
+  gate?: string;
+  boardingGroup?: string;
+  template: 'classic' | 'modern' | 'boarding-pass';
 }

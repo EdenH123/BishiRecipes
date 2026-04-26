@@ -67,6 +67,9 @@ export default function EticketPage() {
     setStep('preview')
   }
 
+  const [template, setTemplate] = useState<'classic' | 'modern' | 'boarding-pass'>('classic')
+  const [passportNumber, setPassportNumber] = useState('')
+
   const ticketData = flight ? {
     passengerName: passengerName || 'PASSENGER/NAME',
     passengerTitle,
@@ -76,6 +79,9 @@ export default function EticketPage() {
     eticketReceipt,
     flight,
     createdAt: new Date().toISOString(),
+    passportNumber: passportNumber || undefined,
+    gate: flight ? `${['A','B','C','D'][Math.floor(Math.random()*4)]}${Math.floor(Math.random()*30)+1}` : undefined,
+    template,
   } : null
 
   async function handleDownloadPNG() {
