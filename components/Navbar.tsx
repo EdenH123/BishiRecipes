@@ -90,6 +90,15 @@ export default function Navbar() {
     <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm overflow-visible" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex flex-row-reverse justify-between items-center px-4 h-16 max-w-5xl mx-auto overflow-visible">
         <div className="flex items-center gap-3">
+          {profile?.is_admin && (
+            <button
+              onClick={() => router.push('/admin/eticket')}
+              className="transition-transform active:scale-90"
+              title="eTicket Generator"
+            >
+              <span className="text-xl">🎫</span>
+            </button>
+          )}
           {profile && (
             <button
               onClick={() => router.push('/notifications')}
