@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { generateMockFlights } from '@/lib/eticket/mock'
+import { ALL_AIRLINES, buildFlight, calcDurationFromTimes } from '@/lib/eticket/mock'
 import { generateReservationCode, generateEticketReceipt } from '@/lib/eticket/formatters'
 import { FlightResult } from '@/lib/eticket/types'
 import TicketPreview from './TicketPreview'
@@ -12,56 +12,68 @@ import jsPDF from 'jspdf'
 
 const TITLES = ['MR', 'MS', 'MRS', 'DR'] as const
 
-type Step = 'search' | 'preview'
+type Step = 'form' | 'preview'
 
 export default function EticketPage() {
   const router = useRouter()
   const ticketRef = useRef<HTMLDivElement>(null)
 
-  // Step 1 — all filled together
+  // Form fields
+  const [passengerName, setPassengerName] = useState('')
+  const [passengerTitle, setPassengerTitle] = useState<string>('MR')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [date, setDate] = useState('')
-  const [passengerName, setPassengerName] = useState('')
-  const [passengerTitle, setPassengerTitle] = useState<string>('MR')
+  const [airlineSearch, setAirlineSearch] = useState('')
+  const [selectedAirlineCode, setSelectedAirlineCode] = useState<string>('')
+  const [depTime, setDepTime] = useState('')
+  const [arrTime, setArrTime] = useState('')
+  const [airlineDropdownOpen, setAirlineDropdownOpen] = useState(false)
 
-  const [step, setStep] = useState<Step>('search')
-  const [results, setResults] = useState<FlightResult[]>([])
-  const [selected, setSelected] = useState<FlightResult | null>(null)
+  const [step, setStep] = useState<Step>('form')
+  const [flight, setFlight] = useState<FlightResult | null>(null)
 
+  // Fine-tune
   const [reservationCode, setReservationCode] = useState('')
   const [airlineResCode, setAirlineResCode] = useState('')
   const [seat, setSeat] = useState('Check-In Required')
   const [eticketReceipt] = useState(() => generateEticketReceipt())
   const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null)
 
-  useEffect(() => {
-    if (selected) {
-      const code = generateReservationCode()
-      setReservationCode(code)
-      setAirlineResCode(selected.airline.code + code.slice(0, 5))
-    }
-  }, [selected])
+  const selectedAirline = ALL_AIRLINES.find(a => a.code === selectedAirlineCode) ?? null
 
-  function handleSearch(e: React.FormEvent) {
+  const filteredAirlines = useMemo(() => {
+    const q = airlineSearch.toLowerCase()
+    if (!q) return ALL_AIRLINES
+    return ALL_AIRLINES.filter(a =>
+      a.name.toLowerCase().includes(q) || a.code.toLowerCase().includes(q)
+    )
+  }, [airlineSearch])
+
+  const duration = useMemo(() => {
+    if (!depTime || !arrTime || !from || !to) return null
+    return calcDurationFromTimes(depTime, arrTime, from, to)
+  }, [depTime, arrTime, from, to])
+
+  function handleGenerate(e: React.FormEvent) {
     e.preventDefault()
-    const flights = generateMockFlights({ from: from.toUpperCase(), to: to.toUpperCase(), date })
-    setResults(flights)
-  }
-
-  function handleSelect(flight: FlightResult) {
-    setSelected(flight)
+    if (!selectedAirline) return
+    const f = buildFlight(selectedAirline, from, to, date, depTime, arrTime)
+    const code = generateReservationCode()
+    setFlight(f)
+    setReservationCode(code)
+    setAirlineResCode(selectedAirline.code + code.slice(0, 5))
     setStep('preview')
   }
 
-  const ticketData = selected ? {
+  const ticketData = flight ? {
     passengerName: passengerName || 'PASSENGER/NAME',
     passengerTitle,
     reservationCode: reservationCode || 'XXXXXX',
     airlineResCode: airlineResCode || 'XXXXXX',
     seat,
     eticketReceipt,
-    flight: selected,
+    flight,
     createdAt: new Date().toISOString(),
   } : null
 
@@ -124,12 +136,12 @@ export default function EticketPage() {
 
       <div className="max-w-6xl mx-auto px-4 py-8">
 
-        {/* ── Step 1: Form + Results ── */}
-        {step === 'search' && (
+        {/* ── Step 1: Form ── */}
+        {step === 'form' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg">
             <h2 className="text-white font-bold text-xl mb-4">Create a ticket</h2>
 
-            <form onSubmit={handleSearch} className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 backdrop-blur">
+            <form onSubmit={handleGenerate} className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 backdrop-blur">
 
               {/* Passenger */}
               <div>
@@ -190,53 +202,106 @@ export default function EticketPage() {
                 />
               </div>
 
-              <button type="submit" className="w-full bg-white text-black rounded-lg py-2 text-sm font-semibold hover:bg-white/90 transition-colors">
-                Search flights
+              {/* Airline picker */}
+              <div className="relative">
+                <label className="block text-xs text-white/60 mb-1">Airline</label>
+                <div
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white cursor-pointer flex items-center justify-between"
+                  onClick={() => setAirlineDropdownOpen(o => !o)}
+                >
+                  <span className={selectedAirline ? 'text-white' : 'text-white/30'}>
+                    {selectedAirline ? `${selectedAirline.code} — ${selectedAirline.name}` : 'Select airline…'}
+                  </span>
+                  <span className="text-white/40 text-xs">{airlineDropdownOpen ? '▲' : '▼'}</span>
+                </div>
+                {airlineDropdownOpen && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-[#1a1033] border border-white/20 rounded-xl shadow-2xl overflow-hidden">
+                    <div className="p-2 border-b border-white/10">
+                      <input
+                        autoFocus
+                        value={airlineSearch}
+                        onChange={(e) => setAirlineSearch(e.target.value)}
+                        placeholder="Search airline…"
+                        className="w-full bg-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none"
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {filteredAirlines.map(a => (
+                        <button
+                          key={a.code}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAirlineCode(a.code)
+                            setAirlineSearch('')
+                            setAirlineDropdownOpen(false)
+                          }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-white/10 transition-colors flex items-center gap-2 ${selectedAirlineCode === a.code ? 'bg-white/10 text-white' : 'text-white/70'}`}
+                        >
+                          <span className="font-mono text-white/40 w-7 shrink-0">{a.code}</span>
+                          <span>{a.name}</span>
+                        </button>
+                      ))}
+                      {filteredAirlines.length === 0 && (
+                        <p className="text-center text-white/30 text-xs py-4">No airlines found</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Times */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-white/60 mb-1">Departure time</label>
+                  <input
+                    type="time"
+                    value={depTime}
+                    onChange={(e) => setDepTime(e.target.value)}
+                    required
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/60 mb-1">Arrival time</label>
+                  <input
+                    type="time"
+                    value={arrTime}
+                    onChange={(e) => setArrTime(e.target.value)}
+                    required
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/50"
+                  />
+                </div>
+              </div>
+
+              {/* Duration preview */}
+              {duration && (
+                <div className="bg-white/5 rounded-lg px-3 py-2 flex items-center justify-between">
+                  <span className="text-xs text-white/50">Flight duration</span>
+                  <span className="text-sm font-mono text-white">{duration}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={!selectedAirline}
+                className="w-full bg-white text-black rounded-lg py-2 text-sm font-semibold hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Generate ticket
               </button>
             </form>
-
-            {/* Results */}
-            {results.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <p className="text-white/40 text-xs mb-2">{results.length} flights found — select one</p>
-                {results.map((f) => (
-                  <motion.button
-                    key={f.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    onClick={() => handleSelect(f)}
-                    className="w-full text-left bg-white/5 border border-white/10 rounded-xl p-4 hover:border-white/30 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white text-sm font-semibold">
-                          {f.airline.name} <span className="text-white/40 font-normal">{f.airline.flightNumber}</span>
-                        </p>
-                        <p className="text-white/60 text-xs mt-0.5">
-                          {f.origin.iata} → {f.destination.iata} · {f.duration} · {f.aircraft}
-                        </p>
-                        <p className="text-white/40 text-xs mt-0.5">
-                          {new Date(f.origin.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-                          {' → '}
-                          {new Date(f.destination.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-                        </p>
-                      </div>
-                      <span className="text-white/40 text-xs">Select →</span>
-                    </div>
-                  </motion.button>
-                ))}
-              </div>
-            )}
           </motion.div>
         )}
 
-        {/* ── Step 2: Ticket preview + fine-tune ── */}
-        {step === 'preview' && selected && ticketData && (
+        {/* ── Step 2: Preview + fine-tune ── */}
+        {step === 'preview' && flight && ticketData && (
           <div className="flex gap-6 items-start">
             {/* Side controls */}
             <div className="w-72 shrink-0">
-              <button onClick={() => { setStep('search'); setSelected(null) }} className="text-white/40 hover:text-white text-xs mb-3 transition-colors">
-                ← Back to results
+              <button
+                onClick={() => { setStep('form'); setFlight(null) }}
+                className="text-white/40 hover:text-white text-xs mb-3 transition-colors"
+              >
+                ← Back to form
               </button>
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 backdrop-blur">
                 <h2 className="text-white font-semibold">Fine-tune</h2>
