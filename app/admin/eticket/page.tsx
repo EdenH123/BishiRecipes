@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { ALL_AIRLINES, buildFlight, calcDurationFromTimes } from '@/lib/eticket/mock'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ALL_AIRLINES, buildFlight, calcDurationFromTimes, searchAirports } from '@/lib/eticket/mock'
 import { generateReservationCode, generateEticketReceipt } from '@/lib/eticket/formatters'
-import { FlightResult } from '@/lib/eticket/types'
+import { generateRandomSeat, SEAT_ROWS, SEAT_LETTERS } from '@/lib/eticket/airlines'
+import { FlightResult, TicketData } from '@/lib/eticket/types'
 import TicketPreview from './TicketPreview'
 import { toPng } from 'html-to-image'
 import jsPDF from 'jspdf'
@@ -29,6 +30,13 @@ export default function EticketPage() {
   const [depTime, setDepTime] = useState('')
   const [arrTime, setArrTime] = useState('')
   const [airlineDropdownOpen, setAirlineDropdownOpen] = useState(false)
+  // Airport autocomplete
+  const [fromSearch, setFromSearch] = useState('')
+  const [toSearch, setToSearch] = useState('')
+  const [fromDropdown, setFromDropdown] = useState(false)
+  const [toDropdown, setToDropdown] = useState(false)
+  const fromResults = useMemo(() => searchAirports(fromSearch), [fromSearch])
+  const toResults = useMemo(() => searchAirports(toSearch), [toSearch])
 
   const [step, setStep] = useState<Step>('form')
   const [flight, setFlight] = useState<FlightResult | null>(null)
@@ -64,11 +72,54 @@ export default function EticketPage() {
     setFlight(f)
     setReservationCode(code)
     setAirlineResCode(selectedAirline.code + code.slice(0, 5))
-    setStep('preview')
+    if (!seat || seat === 'Check-In Required') setSeat(generateRandomSeat())
+    setShowPrintAnim(true)
+    setTimeout(() => { setShowPrintAnim(false); setStep('preview') }, 1200)
+  }
+
+  // Save to history when ticket is created
+  useEffect(() => {
+    if (step === 'preview' && ticketData) saveToHistory(ticketData)
+  }, [step])
+
+  // Share via native share API or clipboard
+  async function handleShare() {
+    const el = document.getElementById('ticket-root')
+    if (!el) return
+    try {
+      const dataUrl = await toPng(el, { cacheBust: true, pixelRatio: 2 })
+      const blob = await (await fetch(dataUrl)).blob()
+      const file = new File([blob], 'eticket.png', { type: 'image/png' })
+      if (navigator.share) {
+        await navigator.share({ files: [file], title: 'eTicket' })
+      } else {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        alert('Copied to clipboard!')
+      }
+    } catch {}
   }
 
   const [template, setTemplate] = useState<'classic' | 'modern' | 'boarding-pass'>('classic')
   const [passportNumber, setPassportNumber] = useState('')
+  const [showPrintAnim, setShowPrintAnim] = useState(false)
+  const [history, setHistory] = useState<{ name: string; route: string; date: string; template: string }[]>([])
+
+  // Load history from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('eticket_history')
+      if (raw) setHistory(JSON.parse(raw))
+    } catch {}
+  }, [])
+
+  const saveToHistory = useCallback((data: TicketData) => {
+    const entry = { name: data.passengerName, route: `${data.flight.origin.iata}→${data.flight.destination.iata}`, date: data.flight.origin.at.split('T')[0], template: data.template }
+    setHistory(prev => {
+      const next = [entry, ...prev].slice(0, 10)
+      try { localStorage.setItem('eticket_history', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }, [])
 
   const ticketData = flight ? {
     passengerName: passengerName || 'PASSENGER/NAME',
@@ -171,30 +222,73 @@ export default function EticketPage() {
                 </div>
               </div>
 
-              {/* Route */}
+              {/* Template */}
+              <div>
+                <label className="block text-xs text-white/60 mb-1">Template</label>
+                <div className="flex gap-2">
+                  {([['classic','📄 Classic'],['modern','✨ Modern'],['boarding-pass','🎫 Boarding Pass']] as const).map(([key,label]) => (
+                    <button key={key} type="button" onClick={() => setTemplate(key)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${template === key ? 'bg-white text-black' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Route with autocomplete */}
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-white/60 mb-1">Departure (IATA)</label>
+                <div className="relative">
+                  <label className="block text-xs text-white/60 mb-1">From</label>
                   <input
-                    value={from}
-                    onChange={(e) => setFrom(e.target.value.toUpperCase())}
-                    placeholder="BKK"
-                    maxLength={3}
+                    value={from || fromSearch}
+                    onChange={(e) => { const v = e.target.value.toUpperCase(); setFromSearch(v); if (v.length === 3) setFrom(v); else setFrom(''); setFromDropdown(v.length > 0) }}
+                    placeholder="TLV or Tel Aviv"
                     required
                     className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm font-mono text-white uppercase placeholder:text-white/30 focus:outline-none focus:border-white/50"
                   />
+                  {fromDropdown && fromResults.length > 0 && (
+                    <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-[#1a1033] border border-white/20 rounded-xl shadow-2xl max-h-36 overflow-y-auto">
+                      {fromResults.map(a => (
+                        <button key={a.iata} type="button" onClick={() => { setFrom(a.iata); setFromSearch(a.iata); setFromDropdown(false) }}
+                          className="w-full text-left px-3 py-1.5 text-sm text-white/70 hover:bg-white/10">
+                          <span className="font-mono text-white/40 w-8 inline-block">{a.iata}</span> {a.city}, {a.country}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-xs text-white/60 mb-1">Arrival (IATA)</label>
+                <div className="relative">
+                  <label className="block text-xs text-white/60 mb-1">To</label>
                   <input
-                    value={to}
-                    onChange={(e) => setTo(e.target.value.toUpperCase())}
-                    placeholder="DEL"
-                    maxLength={3}
+                    value={to || toSearch}
+                    onChange={(e) => { const v = e.target.value.toUpperCase(); setToSearch(v); if (v.length === 3) setTo(v); else setTo(''); setToDropdown(v.length > 0) }}
+                    placeholder="JFK or New York"
                     required
                     className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm font-mono text-white uppercase placeholder:text-white/30 focus:outline-none focus:border-white/50"
                   />
+                  {toDropdown && toResults.length > 0 && (
+                    <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-[#1a1033] border border-white/20 rounded-xl shadow-2xl max-h-36 overflow-y-auto">
+                      {toResults.map(a => (
+                        <button key={a.iata} type="button" onClick={() => { setTo(a.iata); setToSearch(a.iata); setToDropdown(false) }}
+                          className="w-full text-left px-3 py-1.5 text-sm text-white/70 hover:bg-white/10">
+                          <span className="font-mono text-white/40 w-8 inline-block">{a.iata}</span> {a.city}, {a.country}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              {/* Passport */}
+              <div>
+                <label className="block text-xs text-white/60 mb-1">Passport number (optional)</label>
+                <input
+                  value={passportNumber}
+                  onChange={(e) => setPassportNumber(e.target.value.toUpperCase())}
+                  placeholder="12345678"
+                  maxLength={12}
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm font-mono text-white placeholder:text-white/30 focus:outline-none focus:border-white/50"
+                />
               </div>
 
               {/* Date */}
@@ -382,6 +476,12 @@ export default function EticketPage() {
                   >
                     {exporting === 'pdf' ? 'Generating…' : 'Download PDF'}
                   </button>
+                  <button
+                    onClick={handleShare}
+                    className="w-full border border-green-500/30 text-green-300 rounded-lg py-2 text-sm hover:border-green-400/60 transition-colors"
+                  >
+                    📤 Share
+                  </button>
                 </div>
               </div>
             </div>
@@ -446,7 +546,42 @@ export default function EticketPage() {
             </motion.div>
           </div>
         )}
+        {/* History */}
+        {history.length > 0 && step === 'form' && (
+          <div className="mt-8 max-w-lg">
+            <h3 className="text-white/40 text-xs mb-2">Recent tickets</h3>
+            <div className="space-y-1">
+              {history.map((h, i) => (
+                <div key={i} className="flex items-center gap-3 bg-white/5 rounded-lg px-3 py-2 text-xs text-white/60">
+                  <span>🎫</span>
+                  <span className="font-mono">{h.route}</span>
+                  <span className="flex-1 truncate">{h.name}</span>
+                  <span className="text-white/30">{h.date}</span>
+                  <span className="text-white/20">{h.template}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Print animation overlay */}
+      <AnimatePresence>
+        {showPrintAnim && (
+          <motion.div key="print" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ y: -50, opacity: 0 }}
+              animate={{ y: [null, 0, 0, 50], opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 1.2, times: [0, 0.2, 0.8, 1] }}
+              className="text-center"
+            >
+              <span className="text-6xl block mb-3">🖨️</span>
+              <p className="text-white text-lg font-bold">Generating ticket...</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
