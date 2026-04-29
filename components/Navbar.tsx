@@ -99,7 +99,7 @@ export default function Navbar() {
               <span className="text-xl">🎫</span>
             </button>
           )}
-          {profile && (
+          {profile?.is_admin && (
             <button
               onClick={() => router.push('/water')}
               className="transition-transform active:scale-90"
