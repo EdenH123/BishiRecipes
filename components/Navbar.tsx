@@ -101,6 +101,15 @@ export default function Navbar() {
           )}
           {profile && (
             <button
+              onClick={() => router.push('/water')}
+              className="transition-transform active:scale-90"
+              title="מעקב שתייה"
+            >
+              <span className="text-xl">💧</span>
+            </button>
+          )}
+          {profile && (
+            <button
               onClick={() => router.push('/notifications')}
               className="relative transition-transform active:scale-90"
             >
