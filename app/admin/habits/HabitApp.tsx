@@ -11,6 +11,7 @@ import HabitEditor from './HabitEditor'
 import WeeklyHeatmap from './WeeklyHeatmap'
 import AchievementsView from './AchievementsView'
 import SettingsView from './SettingsView'
+import CharacterAvatar from './CharacterAvatar'
 import { ACHIEVEMENTS } from '@/lib/habit-rpg/achievements'
 
 type Tab = 'today' | 'stats' | 'achievements' | 'settings'
@@ -24,6 +25,7 @@ export default function HabitApp() {
   const [tab, setTab] = useState<Tab>('today')
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingHabit, setEditingHabit] = useState<HabitDefinition | null>(null)
+  const [completedFlash, setCompletedFlash] = useState<string | null>(null)
 
   // Admin gate
   useEffect(() => {
@@ -89,16 +91,32 @@ export default function HabitApp() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 pb-28">
+        {/* ── Character Avatar ── */}
+        <div className="flex justify-center py-2">
+          <motion.div
+            animate={completedFlash ? { scale: [1, 1.05, 1] } : {}}
+            transition={{ duration: 0.3 }}
+          >
+            <CharacterAvatar
+              tier={char.avatar_config?.tier || 1}
+              hp={char.hp}
+              ascension={char.ascension_level}
+              streak={char.streak}
+              level={engine.levelInfo.level}
+            />
+          </motion.div>
+        </div>
+
         {/* ── Stats bar ── */}
-        <div className="grid grid-cols-4 gap-2 py-4">
+        <div className="grid grid-cols-4 gap-2 pb-3">
           {(['strength', 'wisdom', 'vitality', 'spirit'] as const).map(stat => {
             const meta = STAT_META[stat]
             const val = char[`stat_${stat}` as keyof typeof char] as number
             return (
               <div key={stat} className="text-center">
-                <span className="text-lg">{meta.icon}</span>
-                <p className="text-white text-sm font-bold mt-0.5">{val}</p>
-                <p className="text-white/30 text-[9px]">{meta.label}</p>
+                <span className="text-base">{meta.icon}</span>
+                <p className="text-white text-xs font-bold">{val}</p>
+                <p className="text-white/30 text-[8px]">{meta.label}</p>
               </div>
             )
           })}
@@ -260,8 +278,19 @@ export default function HabitApp() {
                     return (
                       <div key={habit.id} className="flex gap-1.5">
                         <motion.button
+                          animate={completedFlash === habit.id ? { borderColor: ['rgba(34,197,94,0.8)', 'rgba(34,197,94,0)'] } : {}}
+                          transition={{ duration: 0.5 }}
                           whileTap={{ scale: 0.97 }}
-                          onClick={() => completed ? engine.undoCompletion(habit.id) : engine.completeHabit(habit.id)}
+                          onClick={() => {
+                          if (completed) {
+                            engine.undoCompletion(habit.id)
+                          } else {
+                            engine.completeHabit(habit.id)
+                            setCompletedFlash(habit.id)
+                            try { navigator?.vibrate?.(15) } catch {}
+                            setTimeout(() => setCompletedFlash(null), 500)
+                          }
+                        }}
                           className={`flex-1 flex items-center gap-3 rounded-2xl p-4 text-left transition-all ${
                             completed
                               ? 'bg-green-900/20 border border-green-500/20'
