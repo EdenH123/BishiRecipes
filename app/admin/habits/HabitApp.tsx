@@ -65,9 +65,17 @@ export default function HabitApp() {
           <div className="text-center flex-1">
             <p className="text-white text-sm font-bold">{char.name}</p>
             <p className="text-white/40 text-[10px]">
-              Lv.{char.level} · {char.xp} XP
-              {char.ascension_level > 0 && ` · Ascended ${char.ascension_level}`}
+              Lv.{engine.levelInfo.level} {engine.levelInfo.title}
+              {char.ascension_level > 0 && ` · ✦${char.ascension_level}`}
             </p>
+            {/* XP progress bar */}
+            {engine.levelInfo.xpForNext > 0 && (
+              <div className="h-1 mt-1 rounded-full bg-white/10 overflow-hidden max-w-[120px] mx-auto">
+                <motion.div className="h-full bg-indigo-500 rounded-full"
+                  animate={{ width: `${(engine.levelInfo.xpIntoLevel / engine.levelInfo.xpForNext) * 100}%` }}
+                  transition={{ type: 'spring', damping: 15 }} />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-red-400">❤️ {char.hp}</span>
@@ -113,6 +121,34 @@ export default function HabitApp() {
           </div>
         </div>
 
+        {/* Perfect Day banner */}
+        <AnimatePresence>
+          {engine.isPerfectDay && (
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+              className="mb-4 bg-green-900/20 border border-green-500/20 rounded-2xl p-3 text-center">
+              <span className="text-2xl">🌟</span>
+              <p className="text-green-300 text-sm font-bold mt-1">Perfect Day!</p>
+              <p className="text-green-400/50 text-[10px]">+20 XP · +10 coins · +10 HP</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Level-up celebration */}
+        <AnimatePresence>
+          {engine.justLeveledUp && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={engine.clearLevelUp}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer">
+              <motion.div initial={{ scale: 0 }} animate={{ scale: [0, 1.2, 1] }} className="text-center">
+                <span className="text-7xl block mb-4">⚔️</span>
+                <p className="text-3xl font-bold text-yellow-300 mb-2">Level Up!</p>
+                <p className="text-white/60 text-lg">Level {engine.levelInfo.level} — {engine.levelInfo.title}</p>
+                <p className="text-white/30 text-xs mt-4">Tap to continue</p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* ── Tabs ── */}
         <div className="flex gap-1 mb-4 bg-white/5 rounded-xl p-1">
           {([
@@ -145,28 +181,39 @@ export default function HabitApp() {
                   {engine.habits.map(habit => {
                     const completed = engine.todayCompletions.has(habit.id)
                     return (
-                      <motion.button key={habit.id}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => completed ? engine.undoCompletion(habit.id) : engine.completeHabit(habit.id)}
-                        className={`w-full flex items-center gap-3 rounded-2xl p-4 text-left transition-all ${
-                          completed
-                            ? 'bg-green-900/20 border border-green-500/20'
-                            : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                        }`}
-                      >
-                        <span className="text-2xl">{habit.emoji}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-bold ${completed ? 'text-green-300 line-through' : 'text-white'}`}>
-                            {habit.title}
-                          </p>
-                          <p className="text-[10px] text-white/30 mt-0.5">
-                            {STAT_META[habit.stat_primary].icon} {habit.difficulty} · {habit.frequency_type}
-                          </p>
+                      <div key={habit.id} className="flex gap-1.5">
+                        <motion.button
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => completed ? engine.undoCompletion(habit.id) : engine.completeHabit(habit.id)}
+                          className={`flex-1 flex items-center gap-3 rounded-2xl p-4 text-left transition-all ${
+                            completed
+                              ? 'bg-green-900/20 border border-green-500/20'
+                              : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          <span className="text-2xl">{habit.emoji}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-bold ${completed ? 'text-green-300 line-through' : 'text-white'}`}>
+                              {habit.title}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <p className="text-[10px] text-white/30">
+                                {STAT_META[habit.stat_primary].icon} {habit.difficulty} · {habit.frequency_type === 'x_per_week' ? `${engine.weeklyProgress.get(habit.id) || 0}/${habit.frequency_value} this week` : habit.frequency_type}
+                              </p>
+                            </div>
+                          </div>
+                          <span className={`text-xl ${completed ? 'text-green-400' : 'text-white/20'}`}>
+                            {completed ? '✓' : '○'}
+                          </span>
+                        </motion.button>
+                        {/* Edit/delete */}
+                        <div className="flex flex-col gap-1 justify-center">
+                          <button onClick={() => { setEditingHabit(habit); setEditorOpen(true) }}
+                            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/30 hover:text-white/60 text-xs">✏️</button>
+                          <button onClick={() => { if (confirm('Delete this habit?')) engine.deleteHabit(habit.id) }}
+                            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/30 hover:text-red-400 text-xs">🗑️</button>
                         </div>
-                        <span className={`text-xl ${completed ? 'text-green-400' : 'text-white/20'}`}>
-                          {completed ? '✓' : '○'}
-                        </span>
-                      </motion.button>
+                      </div>
                     )
                   })}
                 </div>

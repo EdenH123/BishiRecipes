@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import * as db from './db'
-import type { HabitCharacter, HabitDefinition, HabitCompletion, NewHabit, Stat } from './types'
+import type { HabitCharacter, HabitDefinition, HabitCompletion, NewHabit, UpdateHabit, Stat } from './types'
 import { DIFFICULTY_VALUES, FREQUENCY_MULTIPLIERS } from './types'
+import { getLevelForXP, getTier, LEVELS as LEVELS_IMPORT } from './levels'
 
 // ── Date helpers ──
 
@@ -39,14 +40,21 @@ export interface HabitEngine {
   todayCompletions: Map<string, HabitCompletion> // habitId → completion
   needsOnboarding: boolean
 
+  // Derived
+  isPerfectDay: boolean
+  levelInfo: { level: number; xpIntoLevel: number; xpForNext: number; title: string }
+  weeklyProgress: Map<string, number>  // habitId → completions this week
+  justLeveledUp: boolean
+
   // Actions
   createNewCharacter: (name: string) => Promise<void>
   completeHabit: (habitId: string) => Promise<void>
   undoCompletion: (habitId: string) => Promise<void>
   addHabit: (data: NewHabit) => Promise<void>
-  editHabit: (id: string, updates: Partial<HabitDefinition>) => Promise<void>
+  editHabit: (id: string, updates: UpdateHabit) => Promise<void>
   deleteHabit: (id: string) => Promise<void>
   refresh: () => Promise<void>
+  clearLevelUp: () => void
 }
 
 export function useHabitEngine(): HabitEngine {
@@ -57,6 +65,8 @@ export function useHabitEngine(): HabitEngine {
   const [habits, setHabits] = useState<HabitDefinition[]>([])
   const [todayCompletions, setTodayCompletions] = useState<Map<string, HabitCompletion>>(new Map())
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
+  const [weeklyCompletions, setWeeklyCompletions] = useState<HabitCompletion[]>([])
+  const [justLeveledUp, setJustLeveledUp] = useState(false)
 
   // ── Initial Load ──
   const loadAll = useCallback(async () => {
@@ -76,15 +86,22 @@ export function useHabitEngine(): HabitEngine {
       setCharacter(char)
       setNeedsOnboarding(false)
 
-      const [habitList, completions] = await Promise.all([
+      const today = todayKey(char.timezone)
+      const wStart = weekStart(today)
+      const wEnd = weekEnd(today)
+
+      const [habitList, completions, weekComps] = await Promise.all([
         db.getHabits(user.id),
-        db.getCompletionsForDate(user.id, todayKey(char.timezone)),
+        db.getCompletionsForDate(user.id, today),
+        db.getCompletionsForDateRange(user.id, wStart, wEnd),
       ])
 
       setHabits(habitList)
+      setWeeklyCompletions(weekComps)
       const map = new Map<string, HabitCompletion>()
       for (const c of completions) map.set(c.habit_id, c)
       setTodayCompletions(map)
+      setJustLeveledUp(false)
     } catch (err) {
       console.error('Habit engine load error:', err)
     } finally {
@@ -140,15 +157,40 @@ export function useHabitEngine(): HabitEngine {
       ...statUpdates,
     }
 
+    // Level-up check
+    const oldLevel = getLevelForXP(character.xp)
+    const newLevel = getLevelForXP(newXp)
+    if (newLevel.level > oldLevel.level) {
+      updates.level = newLevel.level
+      updates.avatar_config = { ...character.avatar_config, tier: getTier(newLevel.level) }
+      setJustLeveledUp(true)
+    }
+
+    // Perfect Day check: all daily habits completed after this one
+    const dailyHabits = habits.filter(h => h.frequency_type === 'daily')
+    const completedAfterThis = new Set(todayCompletions.keys())
+    completedAfterThis.add(habitId)
+    const isPerfect = dailyHabits.length > 0 && dailyHabits.every(h => completedAfterThis.has(h.id))
+    if (isPerfect) {
+      const healedHp = Math.min((character.hp || 0) + 10, 100)
+      updates.hp = healedHp
+    }
+
+    // Perfect Day bonus XP/coins
+    if (isPerfect) {
+      updates.xp = (updates.xp as number) + 20
+      updates.coins = (updates.coins as number) + 10
+    }
+
     await db.updateCharacter(character.id, updates as Parameters<typeof db.updateCharacter>[1])
 
-    // Optimistic update
-    setCharacter(prev => prev ? { ...prev, xp: newXp, coins: newCoins, ...statUpdates } as HabitCharacter : null)
+    setCharacter(prev => prev ? { ...prev, ...updates } as HabitCharacter : null)
     setTodayCompletions(prev => {
       const next = new Map(prev)
       next.set(habitId, completion)
       return next
     })
+    setWeeklyCompletions(prev => [...prev, completion])
   }, [character, userId, habits, todayCompletions])
 
   const undoCompletion = useCallback(async (habitId: string) => {
@@ -195,9 +237,28 @@ export function useHabitEngine(): HabitEngine {
     setHabits(prev => prev.filter(h => h.id !== id))
   }, [])
 
+  // ── Derived values ──
+  const dailyHabits = habits.filter(h => h.frequency_type === 'daily')
+  const isPerfectDay = dailyHabits.length > 0 && dailyHabits.every(h => todayCompletions.has(h.id))
+
+  const levelInfo = character ? (() => {
+    const info = getLevelForXP(character.xp)
+    const def = LEVELS_IMPORT[Math.min(info.level, 10) - 1]
+    return { ...info, title: def?.title ?? 'Novice' }
+  })() : { level: 1, xpIntoLevel: 0, xpForNext: 50, title: 'Novice' }
+
+  const weeklyProgress = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const c of weeklyCompletions) {
+      map.set(c.habit_id, (map.get(c.habit_id) || 0) + 1)
+    }
+    return map
+  }, [weeklyCompletions])
+
   return {
     loading, userId, character, habits, todayCompletions, needsOnboarding,
+    isPerfectDay, levelInfo, weeklyProgress, justLeveledUp,
     createNewCharacter, completeHabit, undoCompletion, addHabit, editHabit, deleteHabit,
-    refresh: loadAll,
+    refresh: loadAll, clearLevelUp: () => setJustLeveledUp(false),
   }
 }
