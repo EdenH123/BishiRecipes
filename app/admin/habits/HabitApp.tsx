@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { useHabitEngine } from '@/lib/habit-rpg/useHabitEngine'
 import { STAT_META } from '@/lib/habit-rpg/types'
+import type { HabitDefinition } from '@/lib/habit-rpg/types'
+import HabitEditor from './HabitEditor'
 
 type Tab = 'today' | 'stats' | 'settings'
 
@@ -16,6 +18,8 @@ export default function HabitApp() {
   const [authLoading, setAuthLoading] = useState(true)
   const engine = useHabitEngine()
   const [tab, setTab] = useState<Tab>('today')
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [editingHabit, setEditingHabit] = useState<HabitDefinition | null>(null)
 
   // Admin gate
   useEffect(() => {
@@ -131,7 +135,8 @@ export default function HabitApp() {
                 <div className="text-center py-16">
                   <span className="text-5xl block mb-3">🗡️</span>
                   <p className="text-white/40 text-sm mb-4">No habits yet. Add your first quest!</p>
-                  <button className="bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold active:scale-95 transition-transform">
+                  <button onClick={() => { setEditingHabit(null); setEditorOpen(true) }}
+                    className="bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold active:scale-95 transition-transform">
                     + Add Habit
                   </button>
                 </div>
@@ -186,6 +191,34 @@ export default function HabitApp() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Floating add button */}
+      {tab === 'today' && engine.habits.length > 0 && (
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => { setEditingHabit(null); setEditorOpen(true) }}
+          className="fixed bottom-6 right-6 z-20 w-14 h-14 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-900/50 text-2xl"
+        >
+          +
+        </motion.button>
+      )}
+
+      {/* Editor modal */}
+      <AnimatePresence>
+        {editorOpen && (
+          <HabitEditor
+            habit={editingHabit}
+            onSave={async (data) => {
+              if (editingHabit) {
+                await engine.editHabit(editingHabit.id, data)
+              } else {
+                await engine.addHabit(data)
+              }
+            }}
+            onClose={() => setEditorOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
