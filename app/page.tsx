@@ -12,6 +12,8 @@ import RecipeCard from '@/components/RecipeCard'
 import FilterBar from '@/components/FilterBar'
 import SkeletonCard from '@/components/SkeletonCard'
 import Onboarding from '@/components/Onboarding'
+import AchievementChecker from '@/components/AchievementChecker'
+import XPProgress from '@/components/XPProgress'
 import BackToTop from '@/components/BackToTop'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -81,6 +83,7 @@ export default function HomePage() {
   const [animatedCount, setAnimatedCount] = useState(0)
   const [countPulse, setCountPulse] = useState(false)
   const [recentActivity, setRecentActivity] = useState<{ type: string; title: string; user: string; time: string }[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const allRecipeIdsRef = useRef<string[]>([])
 
   // Track hidden filters
@@ -136,6 +139,7 @@ export default function HomePage() {
 
       const user = userRes.data?.user
       if (user) {
+        setCurrentUserId(user.id)
         const { data: favData } = await supabase
           .from('favorites')
           .select('recipe_id')
@@ -217,7 +221,7 @@ export default function HomePage() {
         query = query.eq('created_by', selectedMember)
       }
       if (search) {
-        query = query.ilike('title', `%${search}%`)
+        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
       }
       if (selectedTags.length > 0) {
         query = query.contains('tags', selectedTags)
@@ -468,6 +472,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-surface" dir="rtl">
       <Navbar />
+      {currentUserId && <AchievementChecker userId={currentUserId} />}
 
       <main className="pt-20 pb-28 px-4">
         {/* Search bar + Surprise button */}
@@ -517,6 +522,20 @@ export default function HomePage() {
             onToggleFavorites={handleToggleFavorites}
           />
         </motion.div>
+
+        {/* XP Level bar */}
+        {currentUserId && !loading && (
+          <div className="max-w-5xl mx-auto mb-4">
+            <Link href="/profile" className="block">
+              <div className="flex items-center gap-3 rounded-2xl bg-surface-container-lowest px-4 py-3 shadow-sm">
+                <div className="flex-1 min-w-0">
+                  <XPProgress userId={currentUserId} />
+                </div>
+                <span className="material-symbols-outlined text-outline/40 text-sm">chevron_left</span>
+              </div>
+            </Link>
+          </div>
+        )}
 
         {/* Activity feed */}
         {recentActivity.length > 0 && !loading && (
@@ -593,16 +612,23 @@ export default function HomePage() {
             </div>
           ) : recipes.length === 0 && !hasMore && !filterChanging ? (
             totalCount === 0 && !selectedCategory && !selectedMember && !search && selectedTags.length === 0 && !showFavoritesOnly ? (
-              <div className="mt-16 flex flex-col items-center gap-3 text-center">
+              <div className="mt-16 flex flex-col items-center gap-3 text-center px-6">
                 <span className="material-symbols-outlined text-6xl text-outline/30">restaurant_menu</span>
-                <p className="text-lg text-on-surface-variant">עדיין אין מתכונים</p>
-                <p className="text-sm text-outline">הוסיפו את המתכון הראשון!</p>
+                <p className="text-lg text-on-surface-variant font-bold">עדיין אין מתכונים</p>
+                <p className="text-sm text-outline">הוסיפו את המתכון הראשון ותתחילו לבנות את ספר המתכונים המשפחתי!</p>
+                <Link href="/recipe/new" className="mt-2 bg-primary text-on-primary px-6 py-2.5 rounded-full text-sm font-bold shadow-md shadow-primary/20 active:scale-95 transition-transform">
+                  ✨ הוסיפו מתכון ראשון
+                </Link>
               </div>
             ) : (
-              <div className="mt-16 flex flex-col items-center gap-3 text-center">
+              <div className="mt-16 flex flex-col items-center gap-3 text-center px-6">
                 <span className="material-symbols-outlined text-6xl text-outline/30">search_off</span>
                 <p className="text-lg text-on-surface-variant">לא נמצאו מתכונים</p>
-                <p className="text-sm text-outline">נסו לשנות את הסינון</p>
+                <p className="text-sm text-outline">נסו לשנות את הסינון או לחפש משהו אחר</p>
+                <button onClick={() => { setSelectedCategory(null); setSelectedTags([]); setSelectedMember(null); setSearch(''); setShowFavoritesOnly(false) }}
+                  className="mt-2 bg-surface-container text-on-surface-variant px-5 py-2 rounded-full text-sm font-bold active:scale-95 transition-transform">
+                  🔄 נקה סינון
+                </button>
               </div>
             )
           ) : (
