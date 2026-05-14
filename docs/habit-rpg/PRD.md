@@ -50,15 +50,22 @@ Habit RPG is a gamified daily habit tracker that lives as an admin-only sub-app 
 
 ### Weekly/Monthly Cadence
 - Weekly habits show remaining days in week; completion window narrows daily
-- "X times per week" shows X/N counter (e.g., "2/3 this week")
+- "X times per week" shows in today's list **every day until quota is met for the week**, then disappears until next week. Counter shown (e.g., "2/3 this week").
 - Monthly habits show days remaining in month
 - All resets happen at period boundaries via Edge Function
 
+### Habit Configuration UI
+When adding/editing a habit, user sets:
+- Title, emoji, category, stat(s)
+- Frequency type
+- **Difficulty** (Easy / Medium / Hard) — single picker, maps to all rewards/penalties. No manual XP/HP entry.
+
 ### Edge Cases
-- **Missed day (zero completions):** Streak resets. Each uncompleted daily habit costs HP. Character looks damaged.
+- **Missed day (zero completions):** Streak resets. `recovery_day_pending` flag set → next active day grants x2 rewards.
 - **Timezone:** User's local timezone stored on first setup. Edge Function uses it for midnight rollover.
-- **Freeze token:** User can activate before midnight. That day's penalties are skipped. 1 token per month, max 3 stored.
-- **Mid-rollover open:** Client checks `last_rollover_date` on load. If stale, runs catch-up calculation before showing today's view.
+- **Freeze token:** User activates before midnight → inserts row in `habit_freeze_used` for that date. Rollover checks this table per-day, so freezes correctly handle multi-day gaps.
+- **Mid-rollover open:** Client checks `last_rollover_date` on load. If stale, runs catch-up — iterates day-by-day, checking `habit_freeze_used` for each.
+- **Spam protection:** `UNIQUE(user_id, habit_id, date_key)` constraint. Undo deletes the row; re-completing inserts a fresh one (one XP grant per habit per day, period).
 
 ---
 
@@ -75,6 +82,18 @@ Habit RPG is a gamified daily habit tracker that lives as an admin-only sub-app 
 
 Each habit declares which stat(s) it feeds. Completing a habit adds +1 to each declared stat.
 
+### Habit Difficulty (NEW)
+
+User selects difficulty per habit. Difficulty maps to all reward/penalty values:
+
+| Difficulty | XP | Coins | HP Penalty | Use Case |
+|------------|-----|-------|------------|----------|
+| Easy | 5 | 3 | 5 | Brush teeth, take vitamin |
+| Medium (default) | 10 | 5 | 10 | Read 20 min, basic workout |
+| Hard | 20 | 10 | 20 | Long run, deep work session |
+
+Weekly habits: multiplier x2.5. Monthly habits: multiplier x5.
+
 ### XP Curve
 
 | Level | Title | XP Required | Cumulative | Avatar Tier |
@@ -90,48 +109,80 @@ Each habit declares which stat(s) it feeds. Completing a habit adds +1 to each d
 | 9 | Legend | 900 | 3270 | Legendary (tier 5) |
 | 10 | Immortal | 1100 | 4370 | Legendary |
 
-### XP Rewards
+### Prestige / Ascension (NEW — long-term progression)
+
+At Level 10, user can **Ascend**:
+- Level resets to 1, XP to 0
+- HP stays full
+- All stats preserved
+- Avatar gains **Ascension badge** (Roman numeral I, II, III...) and tinted color overlay
+- Permanent **+10% XP gain** stacking (capped at +100% at Ascension 10)
+- New title: "Ascended I", "Ascended II", etc.
+- Achievement unlocked per ascension level
+
+No cap on ascensions. Each one takes ~50-60 days at +10% rate. Infinite content runway.
+
+### XP Rewards Summary
 
 | Action | XP | Coins |
 |--------|-----|-------|
-| Complete daily habit | 10 | 5 |
-| Complete weekly habit | 25 | 12 |
-| Complete monthly habit | 50 | 25 |
+| Complete daily habit | 5/10/20 (by difficulty) | 3/5/10 |
+| Complete weekly habit | x2.5 of daily | x2.5 |
+| Complete monthly habit | x5 of daily | x5 |
 | Perfect day (all dailies) | 20 bonus | 10 bonus |
-| 7-day streak milestone | 50 bonus | 25 bonus |
-| 30-day streak milestone | 200 bonus | 100 bonus |
+| 7-day streak milestone | 50 bonus | 25 bonus + ✨ accessory |
+| 30-day streak milestone | 200 bonus | 100 bonus + 🔥 accessory |
+| 100-day streak milestone | 500 bonus | 250 bonus + 👑 accessory |
+| 365-day streak milestone | 2000 bonus | 1000 bonus + 🌟 epic effect |
+| Comeback day (after streak break) | x2 multiplier on all completions | x2 |
 
-### HP System
+### HP System (REVISED)
 
 - **Max HP:** 100
-- **HP loss per missed daily habit:** 10 HP
-- **HP loss for failed weekly habit (week ends uncompleted):** 20 HP
-- **HP regeneration:** +5 HP per completed habit (capped at 100)
+- **HP loss per missed daily habit:** 5/10/20 (matches difficulty)
+- **HP loss for failed weekly habit:** 20
+- **HP regeneration:** **+10 only on Perfect Day** (all dailies completed). No per-completion regen.
 - **Low HP threshold:** ≤30 → character looks tired/damaged
 - **Critical HP:** ≤10 → character looks sick, warning shown
-- **HP cannot go below 0.** At 0, character shows "exhausted" state. No permadeath.
+- **HP cannot go below 0.** No permadeath.
+
+Rationale: Per-completion regen made HP cosmetic. Now you must execute a Perfect Day to heal — recovery requires real effort.
 
 ### Streak Rules
 
 - **One global streak** (not per-habit)
 - **Streak breaks** if user completes **zero habits** for an entire day
 - **Streak survives** if at least 1 habit is completed
-- **Freeze token:** Prevents streak break for that day. Does NOT prevent HP loss from individual missed habits.
+- **Freeze token:** Prevents streak break for that specific day. Does NOT prevent HP loss from individual missed habits.
 - **Token acquisition:** 1 per month, auto-granted on 1st. Max stored: 3.
+- **Comeback bonus (NEW):** When streak breaks, set `recovery_day_pending = true`. The next day with ANY completion grants **x2 XP and coins** for all habits that day. Flag clears after use.
 
-### Penalty Math (Midnight Rollover)
+### Streak Milestone Rewards
+
+| Days | Reward | Unlocked Avatar Item |
+|------|--------|---------------------|
+| 7 | +50 XP, +25 coins | ✨ Glowing aura |
+| 30 | +200 XP, +100 coins | 🔥 Fire pet companion |
+| 100 | +500 XP, +250 coins | 👑 Crown |
+| 365 | +2000 XP, +1000 coins | 🌟 Legendary halo effect |
+
+### Penalty Math (Midnight Rollover) — REVISED
 
 ```
-for each daily habit NOT completed today:
-    character.hp -= 10
+for each missed daily habit:
+    character.hp -= habit.hp_penalty  // 5, 10, or 20 by difficulty
     
-for each weekly habit where week ended AND not completed:
+for each failed weekly habit (week boundary):
     character.hp -= 20
-    mark habit_cycle as "failed"
     
-if total_completions_today == 0 AND no freeze active:
+if total_completions_today == 0 AND date NOT IN habit_freeze_used:
+    if character.streak > 0:
+        character.recovery_day_pending = true
     character.streak = 0
-    
+
+if perfect_day (all daily habits completed):
+    character.hp = min(character.hp + 10, 100)
+
 character.hp = max(character.hp, 0)
 ```
 
@@ -142,7 +193,7 @@ character.hp = max(character.hp, 0)
 All tables in the existing Supabase project. Prefix: `habit_` to avoid collisions.
 
 ```sql
--- Character state (one row per user, but designed for multi-user)
+-- Character state
 CREATE TABLE habit_characters (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid REFERENCES profiles(id) ON DELETE CASCADE UNIQUE NOT NULL,
@@ -160,7 +211,8 @@ CREATE TABLE habit_characters (
     last_active_date date,
     last_rollover_date date,
     freeze_tokens integer DEFAULT 1,
-    freeze_active boolean DEFAULT false,
+    ascension_level integer DEFAULT 0,           -- NEW: prestige count
+    recovery_day_pending boolean DEFAULT false,   -- NEW: x2 bonus next active day
     timezone text DEFAULT 'Asia/Jerusalem',
     avatar_config jsonb DEFAULT '{"tier": 1}',
     created_at timestamptz DEFAULT now()
@@ -185,27 +237,36 @@ CREATE TABLE habit_definitions (
     frequency_type text NOT NULL CHECK (frequency_type IN (
         'daily', 'weekly', 'x_per_week', 'monthly'
     )),
-    frequency_value integer DEFAULT 1,  -- for x_per_week: how many times
-    frequency_day integer,              -- for weekly: 0=Sun..6=Sat (NULL = any day)
-    hp_penalty integer DEFAULT 10,
-    xp_reward integer DEFAULT 10,
-    coin_reward integer DEFAULT 5,
+    frequency_value integer DEFAULT 1,
+    frequency_day integer,
+    difficulty text DEFAULT 'medium' CHECK (difficulty IN ('easy', 'medium', 'hard')),  -- NEW
     is_active boolean DEFAULT true,
     sort_order integer DEFAULT 0,
-    depends_on uuid REFERENCES habit_definitions(id),  -- v2: chained habits
+    depends_on uuid REFERENCES habit_definitions(id),
     created_at timestamptz DEFAULT now()
 );
+-- Note: hp_penalty/xp_reward/coin_reward removed from schema — derived from difficulty in code
 
--- Completion log (append-only event log)
+-- Completion log (append-only, but UNIQUE per habit per day prevents spam)
 CREATE TABLE habit_completions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
     habit_id uuid REFERENCES habit_definitions(id) ON DELETE CASCADE NOT NULL,
     completed_at timestamptz DEFAULT now(),
-    date_key date NOT NULL,  -- "2026-05-14" for easy grouping
+    date_key date NOT NULL,
     xp_earned integer DEFAULT 0,
     coins_earned integer DEFAULT 0,
-    stats_earned jsonb DEFAULT '{}'  -- {"strength": 1, "vitality": 1}
+    stats_earned jsonb DEFAULT '{}',
+    UNIQUE(user_id, habit_id, date_key)  -- NEW: prevents spam complete/undo abuse
+);
+
+-- Freeze tokens used per day (replaces single freeze_active boolean)
+CREATE TABLE habit_freeze_used (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+    date_key date NOT NULL,
+    activated_at timestamptz DEFAULT now(),
+    UNIQUE(user_id, date_key)
 );
 
 -- Streak history (for analytics, one row per day played)
@@ -376,11 +437,20 @@ function process_day(user, date):
     daily_habits = query habit_definitions where user_id = user.id AND frequency = 'daily' AND is_active
     completions = query habit_completions where user_id = user.id AND date_key = date
     completed_ids = set(completions.map(c => c.habit_id))
+    freeze_used_this_day = exists(habit_freeze_used where user_id = user.id AND date_key = date)
     
     hp_change = 0
+    perfect_day = true  // all dailies completed
     for habit in daily_habits:
+        penalty_map = {easy: 5, medium: 10, hard: 20}
         if habit.id NOT IN completed_ids:
-            hp_change -= habit.hp_penalty
+            if NOT freeze_used_this_day:
+                hp_change -= penalty_map[habit.difficulty]
+            perfect_day = false
+    
+    // Perfect Day heal (+10 HP)
+    if perfect_day AND len(daily_habits) > 0:
+        hp_change += 10
     
     // Weekly boundary check (if date is end of week)
     if is_end_of_week(date):
@@ -388,27 +458,36 @@ function process_day(user, date):
         for habit in weekly_habits:
             week_completions = count completions this week
             required = habit.frequency_value
-            if week_completions < required:
+            if week_completions < required AND NOT freeze_used_this_day:
                 hp_change -= 20
     
-    // Streak
+    // Streak — checks per-day freeze, NOT a single flag
     total_completions = len(completions)
-    if total_completions == 0 AND NOT user.freeze_active:
+    if total_completions == 0 AND NOT freeze_used_this_day:
+        if user.streak > 0:
+            user.recovery_day_pending = true  // x2 next active day
         user.streak = 0
-    else:
+    elif total_completions > 0:
         user.streak += 1
     
-    if user.streak > user.longest_streak:
-        user.longest_streak = user.streak
+    user.longest_streak = max(user.longest_streak, user.streak)
+    
+    // Streak milestone rewards
+    for milestone in [7, 30, 100, 365]:
+        if user.streak == milestone:
+            grant_milestone_reward(user, milestone)
     
     // Freeze token grant (1st of month)
     if date.day == 1:
         user.freeze_tokens = min(user.freeze_tokens + 1, 3)
     
-    user.freeze_active = false  // reset for next day
-    user.hp = max(user.hp + hp_change, 0)
+    // Ascension check
+    if user.level >= 10 AND user.xp >= xp_for_level(10):
+        // Don't auto-ascend — user triggers via UI. Just flag eligible.
+        pass
     
-    // Log
+    user.hp = clamp(user.hp + hp_change, 0, 100)
+    
     insert habit_daily_logs(user_id, date, total_habits, completed, hp_change, xp, streak)
 ```
 
@@ -426,15 +505,32 @@ On app open, if `character.last_rollover_date < today_local`:
 
 The avatar is built from stacked SVG layers. Each tier adds/replaces layers.
 
-### Tiers
+### Avatar Slot System (REVISED)
 
-| Tier | Unlock | Layers |
-|------|--------|--------|
-| 1 — Basic | Level 1 | Base body, simple clothes, neutral expression |
-| 2 — Equipped | Level 3 | + Backpack, headband, determined expression |
-| 3 — Armored | Level 5 | + Armor chest piece, gauntlets, confident pose |
-| 4 — Glowing | Level 7 | + Aura effect, glowing eyes, power stance |
-| 5 — Legendary | Level 9 | + Crown/halo, particle effects, epic background |
+Avatar is composed from **slots**. Tier gear fills core slots; shop items fill cosmetic slots. No collision.
+
+| Slot | Source | Description |
+|------|--------|-------------|
+| `body` | Tier (auto) | Base character body, expression, pose |
+| `armor` | Tier (auto) | Chest/leg armor, weapons |
+| `aura` | Tier 4+ only | Glow effects around character |
+| `hat` | Shop | Optional headwear (overrides tier headband) |
+| `cape` | Shop | Back accessory |
+| `background` | Shop | Scene behind character |
+| `particle` | Shop / streak milestone | Visual effects (sparkles, fire, etc.) |
+| `ascension_badge` | Auto from ascension_level | Roman numeral overlay |
+
+### Tier Progression
+
+| Tier | Unlock | Slots Filled |
+|------|--------|--------------|
+| 1 — Basic | Level 1 | body (simple), simple clothes |
+| 2 — Equipped | Level 3 | body, armor (light), expression upgrade |
+| 3 — Armored | Level 5 | body, armor (full), confident pose |
+| 4 — Glowing | Level 7 | body, armor, aura (faint) |
+| 5 — Legendary | Level 9 | body, armor, aura (strong), epic stance |
+
+**Shop items overlay these slots.** A "Phoenix Crown" hat from the shop hides the tier headband. A "Cosmic" particle effect adds to any tier.
 
 ### HP Visual States
 
@@ -536,13 +632,26 @@ The Habit RPG sub-app renders its **own Navbar** (dark themed, with back button 
 
 ## 13. Open Risks & Decisions
 
+### Resolved in v1.1 spec
+- ✅ **Economy balance:** Added Ascension system for infinite progression. Level 10 in ~55 days is intentional; ascension extends indefinitely with +10% XP stacking.
+- ✅ **HP regen abuse:** Removed per-completion regen. Now only Perfect Day grants +10 HP. Recovery requires effort.
+- ✅ **Streak milestones:** Added 100 and 365 day milestones with unique avatar rewards.
+- ✅ **Freeze multi-day bug:** Replaced `freeze_active` boolean with `habit_freeze_used` table keyed by date. Each day's freeze tracked independently.
+- ✅ **Spam protection:** `UNIQUE(user_id, habit_id, date_key)` constraint on completions.
+- ✅ **x_per_week visibility:** Shows every day until quota met, then disappears.
+- ✅ **Difficulty UX:** Easy/Medium/Hard picker maps to all values. No manual XP/HP entry.
+- ✅ **Avatar/shop collision:** Slot system separates tier gear (body, armor) from shop items (hat, cape, background, particle).
+- ✅ **Comeback mechanic:** `recovery_day_pending` flag grants x2 rewards on first active day after streak break.
+
+### Remaining risks
+
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Edge Function cold start delay | Rollover may be slow for first user each hour | Client-side catch-up handles gaps; Edge Function is safety net |
-| SVG avatar complexity | Too many layers = slow render on mobile | Keep to max 5 layers, use CSS filters over SVG manipulation |
-| Timezone edge cases | User travels, DST changes | Store timezone, allow user to update in settings. Use `Intl.DateTimeFormat` for resolution |
-| Single-user assumption | If multiple admins exist, each needs own data | Schema already uses user_id FK — multi-user ready |
-| pg_cron availability | Not all Supabase plans include pg_cron | Fallback: client-side rollover only (works but less reliable) |
+| SVG avatar with shop overrides | Composition logic complexity | Slot-based renderer with priority order: ascension > particle > shop slots > tier core |
+| Timezone edge cases (DST, travel) | User confusion at boundaries | Store timezone, allow user to update in settings. Use `Intl.DateTimeFormat` for resolution |
+| pg_cron availability | Not all Supabase plans include pg_cron | Fallback: client-side rollover only |
+| Ascension reset feels punishing if not introduced well | User confusion at Level 10 | Modal explanation, optional (user triggers, not auto). Show preview of benefits. |
 
 ### Preferred Resolution
 - **Primary rollover: client-side catch-up.** Edge Function is a bonus reliability layer. If pg_cron isn't available, the app still works.
