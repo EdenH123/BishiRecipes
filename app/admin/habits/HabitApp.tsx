@@ -9,8 +9,11 @@ import { STAT_META } from '@/lib/habit-rpg/types'
 import type { HabitDefinition } from '@/lib/habit-rpg/types'
 import HabitEditor from './HabitEditor'
 import WeeklyHeatmap from './WeeklyHeatmap'
+import AchievementsView from './AchievementsView'
+import SettingsView from './SettingsView'
+import { ACHIEVEMENTS } from '@/lib/habit-rpg/achievements'
 
-type Tab = 'today' | 'stats' | 'settings'
+type Tab = 'today' | 'stats' | 'achievements' | 'settings'
 
 export default function HabitApp() {
   const router = useRouter()
@@ -122,6 +125,28 @@ export default function HabitApp() {
           </div>
         </div>
 
+        {/* Achievement toast */}
+        <AnimatePresence>
+          {engine.newAchievement && (() => {
+            const ach = ACHIEVEMENTS.find(a => a.id === engine.newAchievement)
+            if (!ach) return null
+            return (
+              <motion.div key={ach.id} initial={{ opacity: 0, y: -40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }}
+                onClick={engine.dismissAchievement}
+                className="fixed top-4 left-4 right-4 z-50 mx-auto max-w-sm cursor-pointer">
+                <div className="bg-yellow-900/80 border border-yellow-500/30 rounded-2xl p-4 flex items-center gap-3 shadow-2xl backdrop-blur-sm">
+                  <span className="text-3xl">{ach.emoji}</span>
+                  <div className="flex-1">
+                    <p className="text-[10px] text-yellow-400 font-bold">Achievement Unlocked!</p>
+                    <p className="text-sm text-yellow-200 font-bold">{ach.name}</p>
+                    <p className="text-[10px] text-yellow-300/50">{ach.description}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )
+          })()}
+        </AnimatePresence>
+
         {/* Rollover report */}
         <AnimatePresence>
           {engine.rolloverResult && engine.rolloverResult.daysProcessed > 0 && (
@@ -205,6 +230,7 @@ export default function HabitApp() {
           {([
             { key: 'today' as Tab, label: 'Today', icon: '⚔️' },
             { key: 'stats' as Tab, label: 'Stats', icon: '📊' },
+            { key: 'achievements' as Tab, label: 'Badges', icon: '🏅' },
             { key: 'settings' as Tab, label: 'Settings', icon: '⚙️' },
           ]).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
@@ -284,11 +310,23 @@ export default function HabitApp() {
             </motion.div>
           )}
 
+          {tab === 'achievements' && engine.userId && (
+            <motion.div key="achievements" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <AchievementsView userId={engine.userId} unlockedIds={engine.unlockedAchievements} />
+            </motion.div>
+          )}
+
           {tab === 'settings' && (
-            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="text-center py-12">
-              <span className="text-5xl block mb-3">⚙️</span>
-              <p className="text-white/30 text-sm">Settings coming in M2</p>
+            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <SettingsView
+                character={char}
+                habits={engine.habits}
+                onEditHabit={(h) => { setEditingHabit(h); setEditorOpen(true) }}
+                onDeleteHabit={engine.deleteHabit}
+                onAscend={engine.ascend}
+                onReset={engine.resetAll}
+                onRefresh={engine.refresh}
+              />
             </motion.div>
           )}
         </AnimatePresence>

@@ -7,6 +7,7 @@ import type { HabitCharacter, HabitDefinition, HabitCompletion, NewHabit, Update
 import { DIFFICULTY_VALUES, FREQUENCY_MULTIPLIERS } from './types'
 import { getLevelForXP, getTier, LEVELS as LEVELS_IMPORT } from './levels'
 import { runCatchUpRollover, type RolloverResult } from './rollover'
+import { checkAchievements as checkAch, type AchievementContext } from './achievements'
 
 // ── Date helpers ──
 
@@ -57,6 +58,11 @@ export interface HabitEngine {
   editHabit: (id: string, updates: UpdateHabit) => Promise<void>
   deleteHabit: (id: string) => Promise<void>
   activateFreeze: () => Promise<void>
+  ascend: () => Promise<void>
+  resetAll: () => Promise<void>
+  unlockedAchievements: Set<string>
+  newAchievement: string | null
+  dismissAchievement: () => void
   refresh: () => Promise<void>
   clearLevelUp: () => void
   dismissRollover: () => void
@@ -74,6 +80,8 @@ export function useHabitEngine(): HabitEngine {
   const [justLeveledUp, setJustLeveledUp] = useState(false)
   const [rolloverResult, setRolloverResult] = useState<RolloverResult | null>(null)
   const [todayFrozen, setTodayFrozen] = useState(false)
+  const [unlockedAchievements, setUnlockedAchievements] = useState<Set<string>>(new Set())
+  const [newAchievement, setNewAchievement] = useState<string | null>(null)
 
   // ── Initial Load ──
   const loadAll = useCallback(async () => {
@@ -124,6 +132,10 @@ export function useHabitEngine(): HabitEngine {
       // Check if today is frozen
       const freeze = await db.getFreezeForDate(user.id, today)
       setTodayFrozen(!!freeze)
+
+      // Load achievements
+      const achs = await db.getAchievements(user.id)
+      setUnlockedAchievements(new Set(achs.map(a => a.achievement_id)))
     } catch (err) {
       console.error('Habit engine load error:', err)
     } finally {
@@ -213,7 +225,17 @@ export function useHabitEngine(): HabitEngine {
       return next
     })
     setWeeklyCompletions(prev => [...prev, completion])
-  }, [character, userId, habits, todayCompletions])
+
+    // Check achievements
+    const updatedChar = { ...character, ...updates } as HabitCharacter
+    const ctx: AchievementContext = { totalCompletions: todayCompletions.size + 1, totalHabits: habits.length, perfectDays: 0 }
+    const newAchs = checkAch(updatedChar, unlockedAchievements, ctx)
+    for (const achId of newAchs) {
+      await db.unlockAchievement(userId, achId)
+      setUnlockedAchievements(prev => { const next = new Set(prev); next.add(achId); return next })
+      setNewAchievement(achId)
+    }
+  }, [character, userId, habits, todayCompletions, unlockedAchievements])
 
   const undoCompletion = useCallback(async (habitId: string) => {
     if (!character || !userId) return
@@ -254,6 +276,45 @@ export function useHabitEngine(): HabitEngine {
     setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h))
   }, [userId])
 
+  const ascend = useCallback(async () => {
+    if (!character || !userId) return
+    const newAscension = character.ascension_level + 1
+    await db.updateCharacter(character.id, {
+      level: 1,
+      xp: 0,
+      ascension_level: newAscension,
+      avatar_config: { ...character.avatar_config, tier: 1 },
+    })
+    setCharacter(prev => prev ? { ...prev, level: 1, xp: 0, ascension_level: newAscension, avatar_config: { ...prev.avatar_config, tier: 1 } } : null)
+    // Check ascension achievement
+    const updatedChar = { ...character, ascension_level: newAscension } as HabitCharacter
+    const newAchs = checkAch(updatedChar, unlockedAchievements, { totalCompletions: 0, totalHabits: habits.length, perfectDays: 0 })
+    for (const achId of newAchs) {
+      await db.unlockAchievement(userId, achId)
+      setUnlockedAchievements(prev => { const next = new Set(prev); next.add(achId); return next })
+      setNewAchievement(achId)
+    }
+  }, [character, userId, habits, unlockedAchievements])
+
+  const resetAll = useCallback(async () => {
+    if (!userId) return
+    // Delete all habit-rpg data for this user
+    const supabase = (await import('@/lib/supabase')).createClient()
+    await supabase.from('habit_completions').delete().eq('user_id', userId)
+    await supabase.from('habit_definitions').delete().eq('user_id', userId)
+    await supabase.from('habit_daily_logs').delete().eq('user_id', userId)
+    await supabase.from('habit_freeze_used').delete().eq('user_id', userId)
+    await supabase.from('habit_achievements').delete().eq('user_id', userId)
+    await supabase.from('habit_inventory').delete().eq('user_id', userId)
+    await supabase.from('habit_characters').delete().eq('user_id', userId)
+    setCharacter(null)
+    setHabits([])
+    setTodayCompletions(new Map())
+    setWeeklyCompletions([])
+    setUnlockedAchievements(new Set())
+    setNeedsOnboarding(true)
+  }, [userId])
+
   const activateFreeze = useCallback(async () => {
     if (!character || !userId || todayFrozen) return
     if (character.freeze_tokens <= 0) return
@@ -292,7 +353,8 @@ export function useHabitEngine(): HabitEngine {
     isPerfectDay, levelInfo, weeklyProgress, justLeveledUp,
     rolloverResult, todayFrozen,
     createNewCharacter, completeHabit, undoCompletion, addHabit, editHabit, deleteHabit,
-    activateFreeze,
+    activateFreeze, ascend, resetAll,
+    unlockedAchievements, newAchievement, dismissAchievement: () => setNewAchievement(null),
     refresh: loadAll, clearLevelUp: () => setJustLeveledUp(false),
     dismissRollover: () => setRolloverResult(null),
   }
