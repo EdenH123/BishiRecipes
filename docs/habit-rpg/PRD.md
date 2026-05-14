@@ -61,7 +61,7 @@ When adding/editing a habit, user sets:
 - **Difficulty** (Easy / Medium / Hard) — single picker, maps to all rewards/penalties. No manual XP/HP entry.
 
 ### Edge Cases
-- **Missed day (zero completions):** Streak resets. `recovery_day_pending` flag set → next active day grants x2 rewards.
+- **Missed day (zero completions):** Streak resets. `recovery_multiplier_active` flag set → x2 rewards on all completions until user reaches a new 7-day streak.
 - **Timezone:** User's local timezone stored on first setup. Edge Function uses it for midnight rollover.
 - **Freeze token:** User activates before midnight → inserts row in `habit_freeze_used` for that date. Rollover checks this table per-day, so freezes correctly handle multi-day gaps.
 - **Mid-rollover open:** Client checks `last_rollover_date` on load. If stale, runs catch-up — iterates day-by-day, checking `habit_freeze_used` for each.
@@ -134,7 +134,7 @@ No cap on ascensions. Each one takes ~50-60 days at +10% rate. Infinite content 
 | 30-day streak milestone | 200 bonus | 100 bonus + 🔥 accessory |
 | 100-day streak milestone | 500 bonus | 250 bonus + 👑 accessory |
 | 365-day streak milestone | 2000 bonus | 1000 bonus + 🌟 epic effect |
-| Comeback day (after streak break) | x2 multiplier on all completions | x2 |
+| Comeback period (active until 7-day streak) | x2 multiplier on all completions | x2 |
 
 ### HP System (REVISED)
 
@@ -155,7 +155,7 @@ Rationale: Per-completion regen made HP cosmetic. Now you must execute a Perfect
 - **Streak survives** if at least 1 habit is completed
 - **Freeze token:** Prevents streak break for that specific day. Does NOT prevent HP loss from individual missed habits.
 - **Token acquisition:** 1 per month, auto-granted on 1st. Max stored: 3.
-- **Comeback bonus (NEW):** When streak breaks, set `recovery_day_pending = true`. The next day with ANY completion grants **x2 XP and coins** for all habits that day. Flag clears after use.
+- **Comeback bonus (NEW):** When streak breaks, set `recovery_multiplier_active = true`. While active, all habit completions grant **x2 XP and coins**. The multiplier persists until the user reaches a new 7-day streak, then clears. If the streak breaks again before reaching 7, the multiplier stays active (does not stack — already active).
 
 ### Streak Milestone Rewards
 
@@ -177,11 +177,15 @@ for each failed weekly habit (week boundary):
     
 if total_completions_today == 0 AND date NOT IN habit_freeze_used:
     if character.streak > 0:
-        character.recovery_day_pending = true
+        character.recovery_multiplier_active = true
     character.streak = 0
 
 if perfect_day (all daily habits completed):
     character.hp = min(character.hp + 10, 100)
+
+// Comeback multiplier clears once user re-establishes a 7-day streak
+if character.recovery_multiplier_active AND character.streak >= 7:
+    character.recovery_multiplier_active = false
 
 character.hp = max(character.hp, 0)
 ```
@@ -211,8 +215,8 @@ CREATE TABLE habit_characters (
     last_active_date date,
     last_rollover_date date,
     freeze_tokens integer DEFAULT 1,
-    ascension_level integer DEFAULT 0,           -- NEW: prestige count
-    recovery_day_pending boolean DEFAULT false,   -- NEW: x2 bonus next active day
+    ascension_level integer DEFAULT 0,                   -- NEW: prestige count
+    recovery_multiplier_active boolean DEFAULT false,    -- NEW: x2 bonus until next 7-day streak
     timezone text DEFAULT 'Asia/Jerusalem',
     avatar_config jsonb DEFAULT '{"tier": 1}',
     created_at timestamptz DEFAULT now()
@@ -465,7 +469,7 @@ function process_day(user, date):
     total_completions = len(completions)
     if total_completions == 0 AND NOT freeze_used_this_day:
         if user.streak > 0:
-            user.recovery_day_pending = true  // x2 next active day
+            user.recovery_multiplier_active = true  // x2 until next 7-day streak
         user.streak = 0
     elif total_completions > 0:
         user.streak += 1
@@ -476,6 +480,10 @@ function process_day(user, date):
     for milestone in [7, 30, 100, 365]:
         if user.streak == milestone:
             grant_milestone_reward(user, milestone)
+    
+    // Comeback multiplier clears when streak reaches 7
+    if user.recovery_multiplier_active AND user.streak >= 7:
+        user.recovery_multiplier_active = false
     
     // Freeze token grant (1st of month)
     if date.day == 1:
@@ -626,7 +634,6 @@ The Habit RPG sub-app renders its **own Navbar** (dark themed, with back button 
 - ❌ Integration with host app's XP/coins
 - ❌ Habit templates / presets library
 - ❌ Export/import habit data
-- ❌ Difficulty levels per habit
 
 ---
 
@@ -641,7 +648,7 @@ The Habit RPG sub-app renders its **own Navbar** (dark themed, with back button 
 - ✅ **x_per_week visibility:** Shows every day until quota met, then disappears.
 - ✅ **Difficulty UX:** Easy/Medium/Hard picker maps to all values. No manual XP/HP entry.
 - ✅ **Avatar/shop collision:** Slot system separates tier gear (body, armor) from shop items (hat, cape, background, particle).
-- ✅ **Comeback mechanic:** `recovery_day_pending` flag grants x2 rewards on first active day after streak break.
+- ✅ **Comeback mechanic:** `recovery_multiplier_active` flag grants x2 rewards on all completions until user re-establishes a 7-day streak.
 
 ### Remaining risks
 
@@ -671,36 +678,42 @@ The Habit RPG sub-app renders its **own Navbar** (dark themed, with back button 
 
 ### M2: Core Loop (3-4 days)
 - Habit CRUD (add, edit, delete)
+- Difficulty picker in habit editor (Easy/Medium/Hard)
 - Today's habit list with completion
 - XP + coin + stat rewards on completion
-- HP regeneration on completion
+- HP regeneration on Perfect Day only (+10 HP)
 - Weekly progress tracking
 - Undo completion
 
-**Demo:** Admin can add habits, complete them, see XP/coins/stats grow.
+**Demo:** Admin can add habits with difficulty, complete them, see XP/coins/stats grow, hit Perfect Day for HP heal.
 
 ### M3: Penalties & Streaks (2-3 days)
 - Client-side rollover (catch-up on app open)
-- HP loss for missed habits
+- HP loss for missed habits (scaled by difficulty)
 - Streak calculation + break logic
-- Freeze token system
+- `habit_freeze_used` table + per-day freeze tracking
+- Comeback bonus mechanic (`recovery_multiplier_active` flag, x2 multiplier until 7-day streak)
 - Weekly habit cycle management
 - Edge Function rollover (if pg_cron available)
 
-**Demo:** Miss a day, see HP drop and streak break. Use freeze token.
+**Demo:** Miss a day, see HP drop and streak break. Use freeze token. After break, see x2 comeback multiplier active until next 7-day streak.
 
 ### M4: Character & Visuals (3-4 days)
+- Slot-based avatar renderer (tier slots vs shop slots, no collision)
 - SVG avatar with 5 tiers
 - HP visual states (expressions, desaturation)
 - Level-up animation
+- Ascension flow at Level 10 (UI trigger, badge overlay, +10% XP buff)
+- Streak milestone reward unlocks (✨🔥👑🌟 at 7/30/100/365)
 - Achievement system (10 badges)
 - Basic cosmetics shop (5 items)
 - Weekly mini-chart
 
-**Demo:** Full visual progression — level up, see character evolve, buy cosmetics.
+**Demo:** Full visual progression — level up, see character evolve, hit streak milestones to unlock avatar items, ascend at Level 10.
 
 ### M5: Polish & Edge Cases (2-3 days)
 - Onboarding improvements
+- Ascension explanation modal at first eligibility
 - Celebration animations (perfect day, streak milestones)
 - Error handling + loading states
 - Timezone handling
@@ -711,4 +724,4 @@ The Habit RPG sub-app renders its **own Navbar** (dark themed, with back button 
 
 ---
 
-*Total estimated effort: 12-17 days of focused development.*
+*Total estimated effort: 14-19 days of focused development.*
