@@ -121,6 +121,56 @@ export default function HabitApp() {
           </div>
         </div>
 
+        {/* Rollover report */}
+        <AnimatePresence>
+          {engine.rolloverResult && engine.rolloverResult.daysProcessed > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={engine.dismissRollover}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 cursor-pointer">
+              <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()}
+                className="bg-[#1a1033] border border-white/10 rounded-3xl p-6 max-w-sm w-full text-center">
+                <span className="text-5xl block mb-3">{engine.rolloverResult.streakBroke ? '💔' : '📋'}</span>
+                <h2 className="text-lg font-bold text-white mb-2">
+                  {engine.rolloverResult.daysProcessed === 1 ? 'Yesterday\'s Report' : `${engine.rolloverResult.daysProcessed} Days Away`}
+                </h2>
+                {engine.rolloverResult.totalHpChange !== 0 && (
+                  <p className={`text-sm font-bold ${engine.rolloverResult.totalHpChange < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                    HP: {engine.rolloverResult.totalHpChange > 0 ? '+' : ''}{engine.rolloverResult.totalHpChange}
+                  </p>
+                )}
+                {engine.rolloverResult.streakBroke && (
+                  <p className="text-orange-400 text-sm mt-1">Streak broken! x2 comeback active 🔥</p>
+                )}
+                <p className="text-white/40 text-xs mt-2">Current streak: {engine.rolloverResult.newStreak}🔥</p>
+                <button onClick={engine.dismissRollover}
+                  className="mt-4 w-full bg-indigo-600 text-white rounded-xl py-2.5 font-bold active:scale-95 transition-transform">
+                  OK
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Freeze token button */}
+        {char.freeze_tokens > 0 && !engine.todayFrozen && (
+          <button onClick={() => { if (confirm('Use a freeze token for today? Your streak won\'t break tonight.')) engine.activateFreeze() }}
+            className="mb-3 w-full bg-cyan-900/20 border border-cyan-500/20 rounded-2xl p-2.5 text-center text-xs text-cyan-300 hover:bg-cyan-900/30 transition-colors">
+            🧊 Freeze today ({char.freeze_tokens} tokens left)
+          </button>
+        )}
+        {engine.todayFrozen && (
+          <div className="mb-3 bg-cyan-900/10 border border-cyan-700/20 rounded-2xl p-2.5 text-center text-xs text-cyan-400/60">
+            🧊 Today is frozen — streak protected
+          </div>
+        )}
+
+        {/* Comeback indicator */}
+        {char.recovery_multiplier_active && (
+          <div className="mb-3 bg-green-900/20 border border-green-500/20 rounded-2xl p-2.5 text-center text-xs text-green-300">
+            ⚡ x2 Comeback Bonus Active (until 7-day streak)
+          </div>
+        )}
+
         {/* Perfect Day banner */}
         <AnimatePresence>
           {engine.isPerfectDay && (

@@ -6,6 +6,7 @@ import * as db from './db'
 import type { HabitCharacter, HabitDefinition, HabitCompletion, NewHabit, UpdateHabit, Stat } from './types'
 import { DIFFICULTY_VALUES, FREQUENCY_MULTIPLIERS } from './types'
 import { getLevelForXP, getTier, LEVELS as LEVELS_IMPORT } from './levels'
+import { runCatchUpRollover, type RolloverResult } from './rollover'
 
 // ── Date helpers ──
 
@@ -45,6 +46,8 @@ export interface HabitEngine {
   levelInfo: { level: number; xpIntoLevel: number; xpForNext: number; title: string }
   weeklyProgress: Map<string, number>  // habitId → completions this week
   justLeveledUp: boolean
+  rolloverResult: RolloverResult | null
+  todayFrozen: boolean
 
   // Actions
   createNewCharacter: (name: string) => Promise<void>
@@ -53,8 +56,10 @@ export interface HabitEngine {
   addHabit: (data: NewHabit) => Promise<void>
   editHabit: (id: string, updates: UpdateHabit) => Promise<void>
   deleteHabit: (id: string) => Promise<void>
+  activateFreeze: () => Promise<void>
   refresh: () => Promise<void>
   clearLevelUp: () => void
+  dismissRollover: () => void
 }
 
 export function useHabitEngine(): HabitEngine {
@@ -67,6 +72,8 @@ export function useHabitEngine(): HabitEngine {
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [weeklyCompletions, setWeeklyCompletions] = useState<HabitCompletion[]>([])
   const [justLeveledUp, setJustLeveledUp] = useState(false)
+  const [rolloverResult, setRolloverResult] = useState<RolloverResult | null>(null)
+  const [todayFrozen, setTodayFrozen] = useState(false)
 
   // ── Initial Load ──
   const loadAll = useCallback(async () => {
@@ -102,6 +109,21 @@ export function useHabitEngine(): HabitEngine {
       for (const c of completions) map.set(c.habit_id, c)
       setTodayCompletions(map)
       setJustLeveledUp(false)
+
+      // Run catch-up rollover if needed
+      if (char.last_rollover_date && char.last_rollover_date < today) {
+        const result = await runCatchUpRollover(char, habitList, today)
+        if (result.daysProcessed > 0) {
+          setRolloverResult(result)
+          // Reload character after rollover updated it
+          const updated = await db.getCharacter(user.id)
+          if (updated) setCharacter(updated)
+        }
+      }
+
+      // Check if today is frozen
+      const freeze = await db.getFreezeForDate(user.id, today)
+      setTodayFrozen(!!freeze)
     } catch (err) {
       console.error('Habit engine load error:', err)
     } finally {
@@ -232,6 +254,16 @@ export function useHabitEngine(): HabitEngine {
     setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h))
   }, [userId])
 
+  const activateFreeze = useCallback(async () => {
+    if (!character || !userId || todayFrozen) return
+    if (character.freeze_tokens <= 0) return
+    const today = todayKey(character.timezone)
+    await db.insertFreeze(userId, today)
+    await db.updateCharacter(character.id, { freeze_tokens: character.freeze_tokens - 1 })
+    setCharacter(prev => prev ? { ...prev, freeze_tokens: prev.freeze_tokens - 1 } : null)
+    setTodayFrozen(true)
+  }, [character, userId, todayFrozen])
+
   const deleteHabit = useCallback(async (id: string) => {
     await db.softDeleteHabit(id)
     setHabits(prev => prev.filter(h => h.id !== id))
@@ -258,7 +290,10 @@ export function useHabitEngine(): HabitEngine {
   return {
     loading, userId, character, habits, todayCompletions, needsOnboarding,
     isPerfectDay, levelInfo, weeklyProgress, justLeveledUp,
+    rolloverResult, todayFrozen,
     createNewCharacter, completeHabit, undoCompletion, addHabit, editHabit, deleteHabit,
+    activateFreeze,
     refresh: loadAll, clearLevelUp: () => setJustLeveledUp(false),
+    dismissRollover: () => setRolloverResult(null),
   }
 }
