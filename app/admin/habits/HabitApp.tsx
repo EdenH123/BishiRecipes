@@ -8,6 +8,7 @@ import { useHabitEngine } from '@/lib/habit-rpg/useHabitEngine'
 import { STAT_META } from '@/lib/habit-rpg/types'
 import type { HabitDefinition } from '@/lib/habit-rpg/types'
 import HabitEditor from './HabitEditor'
+import WeeklyHeatmap from './WeeklyHeatmap'
 
 type Tab = 'today' | 'stats' | 'settings'
 
@@ -271,11 +272,15 @@ export default function HabitApp() {
             </motion.div>
           )}
 
-          {tab === 'stats' && (
-            <motion.div key="stats" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="text-center py-12">
-              <span className="text-5xl block mb-3">📊</span>
-              <p className="text-white/30 text-sm">Stats view coming in M4</p>
+          {tab === 'stats' && engine.userId && (
+            <motion.div key="stats" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <WeeklyHeatmap
+                userId={engine.userId}
+                habits={engine.habits}
+                timezone={char.timezone}
+                streak={char.streak}
+                longestStreak={char.longest_streak}
+              />
             </motion.div>
           )}
 
