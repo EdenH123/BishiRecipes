@@ -221,7 +221,7 @@ export default function HomePage() {
         query = query.eq('created_by', selectedMember)
       }
       if (search) {
-        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
+        query = query.ilike('title', `%${search}%`)
       }
       if (selectedTags.length > 0) {
         query = query.contains('tags', selectedTags)
