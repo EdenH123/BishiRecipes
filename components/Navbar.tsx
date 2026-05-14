@@ -92,6 +92,15 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           {profile?.is_admin && (
             <button
+              onClick={() => router.push('/admin/habits')}
+              className="transition-transform active:scale-90"
+              title="Habit RPG"
+            >
+              <span className="text-xl">⚔️</span>
+            </button>
+          )}
+          {profile?.is_admin && (
+            <button
               onClick={() => router.push('/admin/eticket')}
               className="transition-transform active:scale-90"
               title="eTicket Generator"
