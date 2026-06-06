@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 
 // POST /api/auth/token — Get access token (for Apple Shortcuts)
-//
-// Body:
-//   { "email": "...", "password": "..." }
-//
-// Returns:
-//   200: { access_token: "...", expires_in: 3600 }
-//   401: { error: "Invalid credentials" }
-//
-// Usage in Shortcuts:
-//   1. Call this once to get token
-//   2. Store token in Shortcuts variable
-//   3. Use token in Authorization header for /api/recipes
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +11,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'email and password required' }, { status: 400 })
     }
 
-    const supabase = createServerSupabaseClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -31,7 +22,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (error || !data.session) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      return NextResponse.json({ error: error?.message || 'Invalid credentials' }, { status: 401 })
     }
 
     return NextResponse.json({

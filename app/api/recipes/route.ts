@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
+
+function supabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+}
 
 // POST /api/recipes — Create a recipe via API (for Apple Shortcuts)
 //
@@ -33,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     const token = authHeader.slice(7)
-    const supabase = createServerSupabaseClient()
+    const supabase = supabaseAdmin()
 
     // Verify token and get user
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
@@ -119,7 +126,7 @@ export async function GET(req: NextRequest) {
     }
 
     const token = authHeader.slice(7)
-    const supabase = createServerSupabaseClient()
+    const supabase = supabaseAdmin()
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
     if (authError || !user) {
