@@ -615,6 +615,30 @@ export default function ProfilePage() {
                   {/* ── Divider ── */}
                   <div className="border-t border-outline-variant/30" />
 
+                  {/* ── API Token for Shortcuts ── */}
+                  <div>
+                    <h3 className="text-lg font-bold font-rubik mb-2">API Token</h3>
+                    <p className="text-sm text-on-surface-variant font-rubik mb-3">העתיקו את הטוקן לשימוש ב-Apple Shortcuts</p>
+                    <button
+                      onClick={async () => {
+                        const { data: { session } } = await supabase.auth.getSession()
+                        if (session?.access_token) {
+                          await navigator.clipboard.writeText(session.access_token)
+                          toast.success('הטוקן הועתק!')
+                        } else {
+                          toast.error('לא נמצא טוקן — נסו להתחבר מחדש')
+                        }
+                      }}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-surface-container hover:bg-surface-container-high py-3 text-sm font-rubik text-on-surface-variant transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-lg">content_copy</span>
+                      העתק טוקן
+                    </button>
+                  </div>
+
+                  {/* ── Divider ── */}
+                  <div className="border-t border-outline-variant/30" />
+
                   {/* ── User Visibility ── */}
                   <div>
                     <h3 className="text-lg font-bold font-rubik">הצגת מתכונים לפי משתמש</h3>
