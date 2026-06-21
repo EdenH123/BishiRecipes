@@ -100,21 +100,35 @@ async function fetchAndParseUrl(url: string): Promise<Record<string, unknown>> {
   const isTikTok = host.includes('tiktok.com')
   const isInstagram = host.includes('instagram.com')
 
-  // Try oEmbed first (TikTok/Instagram provide this for free)
+  // Try oEmbed first (TikTok provides caption in title field)
   if (isTikTok) {
     try {
-      const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`
+      // Resolve short URL first
+      let fullUrl = url
+      if (host.includes('vt.tiktok') || host.includes('vm.tiktok')) {
+        try {
+          const redirectRes = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(5000) })
+          fullUrl = redirectRes.url || url
+        } catch {}
+      }
+
+      const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(fullUrl)}`
       const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(10000) })
       if (res.ok) {
         const data = await res.json()
-        if (data.title) {
-          const parsed = parseRecipeText(data.title)
+        // oEmbed title contains the video caption
+        const caption = data.title || ''
+        const thumbnail = data.thumbnail_url || ''
+        const authorName = data.author_name || ''
+
+        if (caption && caption !== 'TikTok - Make Your Day' && caption.length > 10) {
+          const parsed = parseRecipeText(caption)
           return {
-            title: parsed.title || data.title.slice(0, 100),
-            description: data.title,
+            title: parsed.title || caption.slice(0, 80),
+            description: caption,
             ingredients: parsed.ingredients,
             steps: parsed.steps,
-            image_url: data.thumbnail_url || null,
+            image_url: thumbnail || null,
             category: parsed.category,
           }
         }
@@ -122,31 +136,50 @@ async function fetchAndParseUrl(url: string): Promise<Record<string, unknown>> {
     } catch {}
   }
 
-  // Fallback: fetch HTML and extract meta tags
+  // Fallback: fetch HTML and extract meta tags + JSON data
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
-        'Accept': 'text/html',
+        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+        'Accept': 'text/html,application/xhtml+xml',
       },
+      redirect: 'follow',
       signal: AbortSignal.timeout(10000),
     })
     const html = await res.text()
 
+    // Try to find description in multiple places
+    const ogDesc = extractMeta(html, 'og:description') || ''
+    const twitterDesc = extractMeta(html, 'twitter:description') || ''
+    const metaDesc = extractMeta(html, 'description') || ''
+    const description = ogDesc || twitterDesc || metaDesc
+
     const title = extractMeta(html, 'og:title') || extractTitle(html) || 'מתכון מיובא'
-    const description = extractMeta(html, 'og:description') || ''
     const image = extractMeta(html, 'og:image') || ''
 
-    // Try to parse description as recipe
-    const parsed = description ? parseRecipeText(title + '\n' + description) : { title, description: '', ingredients: [] as string[], steps: [] as string[], category: 'ארוחת ערב' }
+    // Also try to extract from JSON-LD or embedded data
+    const jsonMatch = html.match(/"desc"\s*:\s*"([^"]{20,})"/i)
+    const embeddedDesc = jsonMatch ? jsonMatch[1].replace(/\\u[\dA-Fa-f]{4}/g, (m) => String.fromCharCode(parseInt(m.slice(2), 16))) : ''
+
+    const bestDescription = description.length > embeddedDesc.length ? description : embeddedDesc
+
+    if (bestDescription.length > 20) {
+      const parsed = parseRecipeText(bestDescription)
+      return {
+        title: parsed.title || title.replace(/TikTok.*$/, '').trim() || 'מתכון מיובא',
+        description: bestDescription,
+        ingredients: parsed.ingredients,
+        steps: parsed.steps,
+        image_url: image || null,
+        category: parsed.category,
+      }
+    }
 
     return {
-      title: parsed.title || title,
-      description: description || `מקור: ${url}`,
-      ingredients: parsed.ingredients,
-      steps: parsed.steps,
+      title: title.replace(/TikTok.*$/, '').replace(/Instagram.*$/, '').trim() || 'מתכון מיובא',
+      description: bestDescription || `מקור: ${url}`,
       image_url: image || null,
-      category: parsed.category,
+      category: 'ארוחת ערב',
     }
   } catch {
     return { title: 'מתכון מיובא', description: `מקור: ${url}` }
