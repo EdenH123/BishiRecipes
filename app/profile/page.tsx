@@ -622,35 +622,47 @@ export default function ProfilePage() {
                     <button
                       onClick={async () => {
                         if (!profile) return
-                        // Check if key already exists
-                        const { data: current } = await supabase
-                          .from('profiles')
-                          .select('api_key')
-                          .eq('id', profile.id)
-                          .single()
+                        try {
+                          // Check if key already exists
+                          const { data: current, error: fetchErr } = await supabase
+                            .from('profiles')
+                            .select('api_key')
+                            .eq('id', profile.id)
+                            .single()
 
-                        if (current?.api_key) {
-                          await navigator.clipboard.writeText(current.api_key)
-                          toast.success('המפתח הועתק!')
-                          return
+                          if (fetchErr) {
+                            toast.error('שגיאה: ' + fetchErr.message)
+                            return
+                          }
+
+                          let key = current?.api_key
+
+                          if (!key) {
+                            // Generate new key
+                            key = 'bishi_' + Array.from(crypto.getRandomValues(new Uint8Array(24)))
+                              .map(b => b.toString(16).padStart(2, '0')).join('')
+
+                            const { error: updateErr } = await supabase
+                              .from('profiles')
+                              .update({ api_key: key })
+                              .eq('id', profile.id)
+
+                            if (updateErr) {
+                              toast.error('שגיאה: ' + updateErr.message)
+                              return
+                            }
+                          }
+
+                          // Try clipboard, fallback to prompt
+                          try {
+                            await navigator.clipboard.writeText(key)
+                            toast.success('המפתח הועתק!')
+                          } catch {
+                            prompt('העתק את המפתח:', key)
+                          }
+                        } catch (err) {
+                          toast.error('שגיאה לא צפויה')
                         }
-
-                        // Generate new key
-                        const key = 'bishi_' + Array.from(crypto.getRandomValues(new Uint8Array(24)))
-                          .map(b => b.toString(16).padStart(2, '0')).join('')
-
-                        const { error } = await supabase
-                          .from('profiles')
-                          .update({ api_key: key })
-                          .eq('id', profile.id)
-
-                        if (error) {
-                          toast.error('שגיאה ביצירת מפתח')
-                          return
-                        }
-
-                        await navigator.clipboard.writeText(key)
-                        toast.success('מפתח חדש נוצר והועתק!')
                       }}
                       className="w-full flex items-center justify-center gap-2 rounded-xl bg-surface-container hover:bg-surface-container-high py-3 text-sm font-rubik text-on-surface-variant transition-colors"
                     >
