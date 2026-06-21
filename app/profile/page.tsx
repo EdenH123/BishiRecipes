@@ -653,13 +653,16 @@ export default function ProfilePage() {
                             }
                           }
 
-                          // Try clipboard, fallback to prompt
-                          try {
-                            await navigator.clipboard.writeText(key)
-                            toast.success('המפתח הועתק!')
-                          } catch {
-                            prompt('העתק את המפתח:', key)
-                          }
+                          // Copy to clipboard
+                          const textArea = document.createElement('textarea')
+                          textArea.value = key
+                          textArea.style.position = 'fixed'
+                          textArea.style.left = '-9999px'
+                          document.body.appendChild(textArea)
+                          textArea.select()
+                          document.execCommand('copy')
+                          document.body.removeChild(textArea)
+                          toast.success('המפתח הועתק בהצלחה! ✅')
                         } catch (err) {
                           toast.error('שגיאה לא צפויה')
                         }
