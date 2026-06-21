@@ -260,6 +260,9 @@ CREATE POLICY "Users can delete own notifications" ON notifications FOR DELETE T
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id, read, created_at DESC);
 
+-- Personal API keys (for Shortcuts integration)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS api_key text UNIQUE;
+
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_recipes_deleted_at ON recipes(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_recipes_created_by ON recipes(created_by);

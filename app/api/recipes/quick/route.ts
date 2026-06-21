@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// POST /api/recipes/quick — Create recipe with simple API key
+// POST /api/recipes/quick — Create recipe with personal API key
 //
-// No token needed. Uses a secret key + your user ID encoded in it.
-// Set RECIPES_API_KEY in Vercel env vars to: "your-secret:your-user-uuid"
+// No token, no login, no expiry. Each user has a unique permanent key.
 //
-// Example: RECIPES_API_KEY=mysecret123:4ae5aa9c-4ca3-492b-9c7c-683bc5fae4c7
+// Headers:
+//   X-Api-Key: <user's personal api key>
+//   Content-Type: application/json
 //
-// In Shortcuts, just set header: X-Api-Key: mysecret123:4ae5aa9c-4ca3-492b-9c7c-683bc5fae4c7
+// Body: { title, description?, ingredients?[], steps?[], category?, tags?[], prep_time? }
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,15 +25,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing X-Api-Key header' }, { status: 401 })
     }
 
-    const serverKey = process.env.RECIPES_API_KEY
-    if (!serverKey || apiKey !== serverKey) {
-      return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
-    }
+    const supabase = getSupabase()
 
-    // Extract user ID from key (format: "secret:user-uuid")
-    const userId = apiKey.split(':').slice(1).join(':')
-    if (!userId) {
-      return NextResponse.json({ error: 'API key must include user ID (format: secret:uuid)' }, { status: 401 })
+    // Look up user by API key
+    const { data: profile, error: profileErr } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('api_key', apiKey)
+      .single()
+
+    if (profileErr || !profile) {
+      return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
     }
 
     const body = await req.json()
@@ -34,14 +44,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'title is required' }, { status: 400 })
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    )
-
     const recipeData: Record<string, unknown> = {
       title: body.title.trim(),
-      created_by: userId,
+      created_by: profile.id,
     }
 
     if (body.description) recipeData.description = String(body.description).trim()
