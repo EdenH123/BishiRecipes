@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 
 // POST /api/auth/token — Get access token (for Apple Shortcuts)
+// No SDK — direct Supabase REST call to avoid any hanging issues
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,26 +11,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'email and password required' }, { status: 400 })
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    )
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json({ error: 'Server not configured' }, { status: 500 })
+    }
+
+    // Direct REST call to Supabase Auth — no SDK, no hanging
+    const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+      },
+      body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(10000),
     })
 
-    if (error || !data.session) {
-      return NextResponse.json({ error: error?.message || 'Invalid credentials' }, { status: 401 })
+    const data = await res.json()
+
+    if (!res.ok || !data.access_token) {
+      return NextResponse.json({ error: data.error_description || data.msg || 'Invalid credentials' }, { status: 401 })
     }
 
     return NextResponse.json({
-      access_token: data.session.access_token,
-      expires_in: data.session.expires_in,
-      user_id: data.user.id,
+      access_token: data.access_token,
+      expires_in: data.expires_in,
+      user_id: data.user?.id,
     })
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }
