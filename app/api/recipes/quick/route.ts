@@ -1,83 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// POST /api/recipes/quick — Create recipe from plain text or JSON
+// POST /api/recipes/quick
 //
-// Accepts EITHER:
-//   A) JSON: {"title":"...","ingredients":[...],"steps":[...]}
-//   B) Plain text in this format:
-//      Title
-//      Ingredients
-//      - item 1
-//      - item 2
-//      ### Steps
-//      1. step 1
-//      2. step 2
+// Accepts 3 formats:
+//   A) JSON body: {"title":"...","ingredients":[...],"steps":[...]}
+//   B) Plain text: title + ingredients + steps
+//   C) URL mode: {"url":"https://tiktok.com/..."} — server fetches & parses
 //
 // Headers:
 //   X-Api-Key: <user's permanent api key>
-//   Content-Type: application/json OR text/plain
 
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   )
-}
-
-function parseRecipeText(text: string): { title: string; description: string; ingredients: string[]; steps: string[]; category: string } {
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
-
-  let title = ''
-  const ingredients: string[] = []
-  const steps: string[] = []
-  let section: 'title' | 'ingredients' | 'steps' = 'title'
-
-  for (const line of lines) {
-    const lower = line.toLowerCase()
-
-    // Detect section headers
-    if (lower === 'ingredients' || lower === 'מצרכים' || lower.includes('### ingredients') || lower.includes('### מצרכים')) {
-      section = 'ingredients'
-      continue
-    }
-    if (lower.startsWith('### steps') || lower.startsWith('### שלבים') || lower === 'steps' || lower === 'שלבי הכנה' || lower === 'הוראות הכנה') {
-      section = 'steps'
-      continue
-    }
-    if (lower.startsWith('link:') || lower.startsWith('מקור:')) {
-      continue // skip source links
-    }
-
-    if (section === 'title' && !title) {
-      title = line.replace(/^#+\s*/, '')  // remove markdown headers
-      section = 'ingredients' // assume next section is ingredients
-      continue
-    }
-
-    if (section === 'ingredients') {
-      // Remove bullet points, dashes, asterisks
-      const clean = line.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').trim()
-      if (clean) ingredients.push(clean)
-    }
-
-    if (section === 'steps') {
-      // Remove numbering
-      const clean = line.replace(/^\d+[\.\)]\s*/, '').trim()
-      if (clean) steps.push(clean)
-    }
-  }
-
-  // Guess category
-  const allText = (title + ' ' + ingredients.join(' ')).toLowerCase()
-  let category = 'ארוחת ערב'
-  if (allText.includes('עוגה') || allText.includes('עוגיות') || allText.includes('שוקולד') || allText.includes('קרם')) category = 'קינוח'
-  else if (allText.includes('שייק') || allText.includes('מיץ') || allText.includes('סמוזי')) category = 'שתייה'
-  else if (allText.includes('סלט')) category = 'סלט'
-  else if (allText.includes('מרק')) category = 'מרק'
-  else if (allText.includes('לחם') || allText.includes('חלה') || allText.includes('פיתה')) category = 'לחם ואפייה'
-
-  return { title: title || 'מתכון מיובא', description: '', ingredients, steps, category }
 }
 
 export async function POST(req: NextRequest) {
@@ -89,7 +27,6 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabase()
 
-    // Look up user by API key
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('id')
@@ -100,16 +37,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
     }
 
-    // Try to parse as JSON first, fall back to plain text
-    const contentType = req.headers.get('content-type') || ''
     const rawBody = await req.text()
-
     let recipeData: Record<string, unknown>
 
     // Try JSON parse
     try {
       const json = JSON.parse(rawBody)
-      if (json.title) {
+
+      // URL mode — fetch and parse server-side
+      if (json.url && !json.title) {
+        const result = await fetchAndParseUrl(json.url)
+        recipeData = { ...result, created_by: profile.id }
+      } else if (json.title) {
+        // Direct JSON recipe
         recipeData = {
           title: String(json.title).trim(),
           created_by: profile.id,
@@ -122,26 +62,19 @@ export async function POST(req: NextRequest) {
         if (typeof json.prep_time === 'number') recipeData.prep_time = json.prep_time
         if (json.image_url) recipeData.image_url = String(json.image_url).trim()
       } else {
-        throw new Error('no title in JSON')
+        throw new Error('no title or url')
       }
-    } catch {
-      // Parse as plain text
+    } catch (jsonErr) {
+      // Plain text mode
       if (!rawBody.trim()) {
         return NextResponse.json({ error: 'Empty body' }, { status: 400 })
       }
       const parsed = parseRecipeText(rawBody)
-      recipeData = {
-        title: parsed.title,
-        description: parsed.description,
-        ingredients: parsed.ingredients,
-        steps: parsed.steps,
-        category: parsed.category,
-        created_by: profile.id,
-      }
+      recipeData = { ...parsed, created_by: profile.id }
     }
 
     if (!recipeData.title) {
-      return NextResponse.json({ error: 'Could not find recipe title' }, { status: 400 })
+      return NextResponse.json({ error: 'Could not extract recipe' }, { status: 400 })
     }
 
     const { data, error } = await supabase
@@ -158,4 +91,112 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
+}
+
+// ── Fetch URL and extract recipe from meta tags ──
+
+async function fetchAndParseUrl(url: string): Promise<Record<string, unknown>> {
+  const host = new URL(url).hostname.toLowerCase()
+  const isTikTok = host.includes('tiktok.com')
+  const isInstagram = host.includes('instagram.com')
+
+  // Try oEmbed first (TikTok/Instagram provide this for free)
+  if (isTikTok) {
+    try {
+      const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`
+      const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(10000) })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.title) {
+          const parsed = parseRecipeText(data.title)
+          return {
+            title: parsed.title || data.title.slice(0, 100),
+            description: data.title,
+            ingredients: parsed.ingredients,
+            steps: parsed.steps,
+            image_url: data.thumbnail_url || null,
+            category: parsed.category,
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // Fallback: fetch HTML and extract meta tags
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+        'Accept': 'text/html',
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+    const html = await res.text()
+
+    const title = extractMeta(html, 'og:title') || extractTitle(html) || 'מתכון מיובא'
+    const description = extractMeta(html, 'og:description') || ''
+    const image = extractMeta(html, 'og:image') || ''
+
+    // Try to parse description as recipe
+    const parsed = description ? parseRecipeText(title + '\n' + description) : { title, description: '', ingredients: [] as string[], steps: [] as string[], category: 'ארוחת ערב' }
+
+    return {
+      title: parsed.title || title,
+      description: description || `מקור: ${url}`,
+      ingredients: parsed.ingredients,
+      steps: parsed.steps,
+      image_url: image || null,
+      category: parsed.category,
+    }
+  } catch {
+    return { title: 'מתכון מיובא', description: `מקור: ${url}` }
+  }
+}
+
+// ── Parse plain text recipe ──
+
+function parseRecipeText(text: string): { title: string; description: string; ingredients: string[]; steps: string[]; category: string } {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+  let title = ''
+  const ingredients: string[] = []
+  const steps: string[] = []
+  let section: 'title' | 'ingredients' | 'steps' = 'title'
+
+  for (const line of lines) {
+    const lower = line.toLowerCase()
+    if (lower === 'ingredients' || lower === 'מצרכים' || lower.includes('### ingredients') || lower.includes('### מצרכים')) { section = 'ingredients'; continue }
+    if (lower.startsWith('### steps') || lower.startsWith('### שלבים') || lower === 'steps' || lower === 'שלבי הכנה' || lower === 'הוראות הכנה') { section = 'steps'; continue }
+    if (lower.startsWith('link:') || lower.startsWith('מקור:')) continue
+
+    if (section === 'title' && !title) { title = line.replace(/^#+\s*/, ''); section = 'ingredients'; continue }
+    if (section === 'ingredients') { const c = line.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').trim(); if (c) ingredients.push(c) }
+    if (section === 'steps') { const c = line.replace(/^\d+[\.\)]\s*/, '').trim(); if (c) steps.push(c) }
+  }
+
+  const allText = (title + ' ' + ingredients.join(' ')).toLowerCase()
+  let category = 'ארוחת ערב'
+  if (allText.match(/עוגה|עוגיות|שוקולד|קרם|עוגת/)) category = 'קינוח'
+  else if (allText.match(/שייק|מיץ|סמוזי/)) category = 'שתייה'
+  else if (allText.includes('סלט')) category = 'סלט'
+  else if (allText.includes('מרק')) category = 'מרק'
+  else if (allText.match(/לחם|חלה|פיתה|בייגל/)) category = 'לחם ואפייה'
+
+  return { title: title || 'מתכון מיובא', description: '', ingredients, steps, category }
+}
+
+// ── HTML helpers ──
+
+function extractMeta(html: string, property: string): string {
+  const escaped = property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const r1 = new RegExp(`<meta[^>]*(?:property|name)=["']${escaped}["'][^>]*content=["']([^"']*)["']`, 'i')
+  const m1 = html.match(r1)
+  if (m1) return m1[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+  const r2 = new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*(?:property|name)=["']${escaped}["']`, 'i')
+  const m2 = html.match(r2)
+  return m2 ? m2[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"') : ''
+}
+
+function extractTitle(html: string): string {
+  const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
+  return m ? m[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() : ''
 }
