@@ -1,25 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// POST /api/recipes/quick — Create recipe with secret key (no auth token needed)
+// POST /api/recipes/quick — Create recipe with simple API key
 //
-// For Apple Shortcuts — simple, no login flow required.
+// No token needed. Uses a secret key + your user ID encoded in it.
+// Set RECIPES_API_KEY in Vercel env vars to: "your-secret:your-user-uuid"
 //
-// Headers:
-//   X-Api-Key: <your secret key from env>
-//   Content-Type: application/json
+// Example: RECIPES_API_KEY=mysecret123:4ae5aa9c-4ca3-492b-9c7c-683bc5fae4c7
 //
-// Body: same as /api/recipes
-//   { title, description?, ingredients?[], steps?[], category?, tags?[], prep_time? }
-
-const API_KEY = process.env.RECIPES_API_KEY || 'bishi-secret-2026'
+// In Shortcuts, just set header: X-Api-Key: mysecret123:4ae5aa9c-4ca3-492b-9c7c-683bc5fae4c7
 
 export async function POST(req: NextRequest) {
   try {
-    // Simple API key auth
-    const key = req.headers.get('x-api-key')
-    if (!key || key !== API_KEY) {
+    const apiKey = req.headers.get('x-api-key')
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Missing X-Api-Key header' }, { status: 401 })
+    }
+
+    const serverKey = process.env.RECIPES_API_KEY
+    if (!serverKey || apiKey !== serverKey) {
       return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
+    }
+
+    // Extract user ID from key (format: "secret:user-uuid")
+    const userId = apiKey.split(':').slice(1).join(':')
+    if (!userId) {
+      return NextResponse.json({ error: 'API key must include user ID (format: secret:uuid)' }, { status: 401 })
     }
 
     const body = await req.json()
@@ -28,27 +34,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'title is required' }, { status: 400 })
     }
 
-    // Use service role or anon key to insert
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
 
-    // Get first admin user as the creator
-    const { data: admin } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('is_admin', true)
-      .limit(1)
-      .single()
-
-    if (!admin) {
-      return NextResponse.json({ error: 'No admin user found' }, { status: 500 })
-    }
-
     const recipeData: Record<string, unknown> = {
       title: body.title.trim(),
-      created_by: admin.id,
+      created_by: userId,
     }
 
     if (body.description) recipeData.description = String(body.description).trim()
