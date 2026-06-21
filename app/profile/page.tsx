@@ -653,16 +653,30 @@ export default function ProfilePage() {
                             }
                           }
 
-                          // Copy to clipboard
-                          const textArea = document.createElement('textarea')
-                          textArea.value = key
-                          textArea.style.position = 'fixed'
-                          textArea.style.left = '-9999px'
-                          document.body.appendChild(textArea)
-                          textArea.select()
-                          document.execCommand('copy')
-                          document.body.removeChild(textArea)
-                          toast.success('המפתח הועתק בהצלחה! ✅')
+                          // Copy to clipboard — try multiple methods
+                          let copied = false
+                          try {
+                            await navigator.clipboard.writeText(key)
+                            copied = true
+                          } catch {}
+                          if (!copied) {
+                            const ta = document.createElement('textarea')
+                            ta.value = key
+                            ta.style.cssText = 'position:fixed;left:-9999px;top:0'
+                            document.body.appendChild(ta)
+                            ta.focus()
+                            ta.select()
+                            ta.setSelectionRange(0, key.length)
+                            copied = document.execCommand('copy')
+                            document.body.removeChild(ta)
+                          }
+                          if (copied) {
+                            toast.success('המפתח הועתק! ✅')
+                          } else {
+                            // Last resort — show it so user can manually copy
+                            toast(`המפתח שלך: ${key.slice(0, 20)}...`, { duration: 10000 })
+                            window.prompt('העתק ידנית:', key)
+                          }
                         } catch (err) {
                           toast.error('שגיאה לא צפויה')
                         }
